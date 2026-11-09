@@ -44,6 +44,7 @@ Leggi il documento prima di modificarlo e passa sempre `if_version`.
 - **Kit d'esame:** per ogni materia `<corso>/esame/kit-esame.md`, generato una volta dagli appunti (nuclei, definizioni, autori, rubrica, impronta degli appunti). Domande e correzioni partono dal kit, non da tutti gli appunti. Dalle fonti protette solo sintesi e numeri di pagina.
 - **Simulazioni:** avvio con un tocco, già impostate come l'esame reale; nessun modulo lungo. Banca di domande pre-generata per poter iniziare anche a PC spento.
 - **Voce:** nello scritto si usa la dettatura del browser; nell'orale la trascrizione con tempi per parola serve a misurare pause, ritmo e intercalari.
+- **Versioni:** usa sempre l'ultima versione stabile di framework, librerie, CLI e runtime (niente beta, RC o canary), verificandola al momento.
 - **Interfaccia:** testi in italiano, mobile-first, PWA; palette carta `#FAFAF7`, inchiostro `#1A1A1A`, accento `#1F4E8C`; serif per i titoli, sans per l'interfaccia.
 
 ## File
@@ -64,7 +65,7 @@ Non pubblicare mai `fonti/` né `lavorazione/ocr/`: sono materiale protetto e re
 
 ## Questioni aperte
 
-- Revocare la chiave in `storia_delle_dottrine/firebase-narraya-dev.txt` e rimuovere il file (Sprint 0).
+- Firebase del progetto narraya: il file di configurazione è stato tolto dal repository (resta in locale); verificare nella console che le regole di Firestore e Storage non siano aperte.
 - Date degli appelli invernali: se cadono prima del 10/01/2027, anticipare gli sprint 3 e 4.
 - Chiedere alla segreteria se la scelta tra Diritto pubblico comparato e Diritto e regolazione dei mercati va fatta ora o negli anni successivi.
 - Il Regolamento non dice come si contano le lodi nella media.
