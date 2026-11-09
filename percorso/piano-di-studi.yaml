@@ -1,0 +1,696 @@
+# Piano di studi - Scienze politiche e strategie globali (L-36), curriculum Economico-giuridico
+# Dati raccolti il 2026-11-09 da fonti ufficiali UniBg (sito di Ateneo, Course Catalogue Cineca
+# unibg.coursecatalogue.cineca.it, sito del corso lt-spsg.unibg.it, Regolamento didattico 2026/27).
+# Regola: nessun dato inventato. Dove un dato manca: null + nota "non trovato nella scheda".
+# I testi delle schede sono riassunti fedelmente; le citazioni tra virgolette sono testuali.
+
+corso:
+  nome: "Scienze politiche e strategie globali"
+  nome_en: "Political Sciences and Global Strategies"
+  codice: "SPSG-R (cod. Cineca 1405)"
+  classe: "L-36 - Scienze politiche e delle relazioni internazionali"
+  tipo: "Laurea triennale, interdipartimentale e interateneo a titolo congiunto con Università Vita-Salute San Raffaele (Facoltà di Psicologia)"
+  dipartimento: "Giurisprudenza (sede amministrativa); concorrono Scienze economiche; Lettere, filosofia, comunicazione; Scienze umane e sociali"
+  coordinatore: "Adolfo Scotto di Luzio"
+  durata_anni: 3
+  accesso: "Libero, con TOLC-SPS non selettivo (OFA se sotto soglia)"
+  sito_corso: "https://lt-spsg.unibg.it/it"
+
+curriculum: "ECONOMICO - GIURIDICO (codice percorso 100)"
+
+anno_accademico: "2026/2027 - coorte di immatricolazione 2026, ordinamento 2026"
+nota_anno_accademico: >-
+  E' la prima e unica coorte del nuovo ordinamento presente nel Course Catalogue UniBg
+  (il corso e' passato a UniBg come sede amministrativa dall'a.a. 2026/27). Gli insegnamenti
+  del 2° anno (a.a. 2027/28) e del 3° anno (a.a. 2028/29) sono gia' elencati, ma le loro schede
+  non hanno ancora syllabus; alcuni non hanno ancora docente, lingua o semestre.
+
+fonte:
+  pagina_corso: "https://www.unibg.it/studiare/corsi/offertaformativa/scienze-politiche-e-strategie-globali"
+  piano_di_studio_pdf: "https://lt-spsg.unibg.it/sites/cl55/files/piano_di_studio_spsg_26-27_coorte_26_agg1.pdf"
+  regolamento_didattico_pdf: "https://www.unibg.it/sites/default/files/media/documents/2026-10-09/Reg_L_36_SCIENZE_POLITICHE_E_STRATEGIE_GLOBALI_2627.pdf"
+  istruzioni_piani_studio_pdf: "https://lt-spsg.unibg.it/sites/cl55/files/avviso_spsg_2026-27_1.pdf"
+  course_catalogue: "https://unibg.coursecatalogue.cineca.it/corsi/2026/1405?annoOrdinamento=2026"
+  api_schede: "https://unibg.coursecatalogue.cineca.it/api/v1/attivitaFormativa?aaOfferta=<anno>&corso=SPSG-R&annoOrdinamento=2026&coorte=2026&piano=100&ad=<codice>"
+  testi_esame: "Leganto (https://readings.unibg.it/leganto/public/39BRG_INST/lists?courseCode=<codice>) - richiede login, non letto"
+  data_raccolta: "2026-11-09"
+
+regole:
+  cfu_totali: 180
+  cfu_per_anno_economico_giuridico: {primo: 63, secondo: 57, terzo: 60}
+  cfu_ore: "1 CFU = 25 ore: 8 di lezione e in media 17 di studio individuale (Reg. art. 7)"
+  frequenza: "Non obbligatoria ma fortemente consigliata; tirocini a frequenza obbligatoria (Reg. art. 8)"
+  propedeuticita: "Nessuna propedeuticita' fra gli esami (Reg. art. 8)"
+  valutazione_esami: "Voto in trentesimi oppure giudizio di idoneita'/non idoneita'; forma della prova stabilita nel programma di ciascun insegnamento; eventuali prove intermedie in periodi del calendario didattico (Reg. art. 9)"
+  inglese_prerequisito: "Per sostenere l'esame di Lingua inglese serve livello B1 QCER: certificazione B1+ non piu' vecchia di 3 anni caricata all'immatricolazione, oppure superamento dei corsi OFA di inglese (Reg. art. 4)"
+  ofa: "Senza OFA servono 12/40 complessivi al TOLC-SPS e almeno 4,5 nella sezione Ragionamento e linguaggio matematico; OFA da assolvere entro il 30 settembre 2027 (part-time: 30 settembre 2028), pena l'impossibilita' di iscriversi al 2° anno (Reg. art. 4)"
+  curriculum: "Scelto all'immatricolazione; modificabile solo in sede di presentazione del piano di studio (Reg. art. 5). Per la coorte 2026: piano inserito d'ufficio; modulo di cambio curriculum preferibilmente entro il 30/10/2026; termine piani di studio 16/11/2026 (poi mora di 50 euro)"
+  piano_individuale: "Ammesso, purche' coerente con l'ordinamento dell'anno di immatricolazione (Reg. art. 6)"
+  scelta_libera: "12 CFU (nel piano: 'idoneita' - Scelta libera 12 CFU', 3° anno); attivita' coerenti con il progetto formativo, scelte nell'offerta UniBg o UniSR; serve superare esame o verifica (Reg. art. 10)"
+  altre_attivita_formative: "6 CFU (SP-70035 + SP-70036, 3+3), ambito 'Altre conoscenze utili per l'inserimento nel mondo del lavoro'; il Regolamento le indica come 'da caratterizzare meglio'"
+  tirocinio: "Collegato a un progetto formativo, puo' preparare la prova finale; secondo il Regolamento tirocini (Reg. art. 14). Stage attivabili dal 2° anno / dalla fine del 2° anno (pagina corso e SUA)"
+  esami_sovrannumerari: "Richiedibili in sede di piano di studio; se in SSD dell'ordinamento contano nella media fino a 20 CFU (Reg. art. 15-16)"
+  prova_finale:
+    cfu: 3
+    contenuto: "Stesura e discussione di una breve relazione scritta, approvata da un docente del corso, su un argomento degli ambiti del piano di studio; puo' essere il rapporto conclusivo di tirocinio/laboratorio; ammessa in inglese (Reg. art. 16)"
+    requisiti_ammissione: "Aver seguito tutti i corsi e le attivita' opzionali e superato i relativi esami"
+    relatore: "Titolare di insegnamento/modulo o ricercatore UniBg o UniSR; se la tesi riguarda un tirocinio, il docente di riferimento del tirocinio"
+    commissione: "Almeno 3 membri, in maggioranza professori e ricercatori, almeno un professore di I o II fascia"
+  voto_di_laurea:
+    scala: "centodecimi, con eventuale lode"
+    punteggio_base: "Media ponderata (sui CFU) dei voti, espressa in centodecimi e arrotondata all'intero piu' vicino (per eccesso a 0,5)"
+    bonus_estero: "+1 punto se periodo di studio all'estero (Erasmus+ o accordi internazionali) con almeno il 70% dei CFU del Learning Agreement, oppure attivita' di studio all'estero per la tesi d'intesa con il relatore"
+    punti_prova_finale: "Fino a 5 punti oltre il punteggio di base (in caso di presentazione di una tesi)"
+    soglia_superamento: "66/110"
+    lode: "Solo a 110/110, all'unanimita', subordinata alla accertata rilevanza dei risultati"
+    nota: "Il Regolamento non indica come si converte la media in trentesimi in centodecimi ne' come si trattano le lodi nella media [non specificato nel Regolamento]"
+
+insegnamenti:
+
+  # ======================= PRIMO ANNO (a.a. 2026/27) =======================
+
+  - anno: 1
+    semestre: "Primo semestre (14/09/2026 - 18/12/2026)"
+    nome: "ISTITUZIONI DI DIRITTO PUBBLICO"
+    nome_en: "Principles of Public Law"
+    codice: "SP-70001"
+    cfu: 9
+    ore: 72
+    ssd: "GIUR-05/A (ex IUS/09)"
+    tipo_attivita: "Base - Formazione economico-giuridica"
+    docenti: ["Angelo Maestroni"]
+    tipologia: "obbligatorio"
+    alternative: null
+    lingua: "Italiano"
+    esame:
+      tipo: "Orale"
+      dettagli: >-
+        Colloquio orale. Criteri (descrittori di Dublino): conoscenza completa e accurata dei
+        contenuti; appropriatezza del linguaggio specifico; chiarezza espositiva, sintesi e
+        fluidita'; visione articolata dei fenomeni e capacita' di collegarli; rielaborazione
+        autonoma e personale, soprattutto sui temi fondanti della disciplina. Voto finale.
+        Richiesta "adeguata conoscenza della Costituzione italiana (con le sue diverse modifiche)
+        e delle principali leggi del settore" riportate in appendice al testo di riferimento.
+        Nessuna prova intermedia indicata.
+    programma:
+      - "Il diritto: norme e interpretazione; soggetti (persone fisiche e giuridiche, situazioni giuridiche soggettive); atti"
+      - "Lo Stato e il suo ordinamento: concezioni e forme storiche, funzioni, Costituzione, rappresentanza politica, forma di governo, Unione europea"
+      - "Organizzazione dello Stato italiano: profili storici, Parlamento, Governo, Presidente della Repubblica"
+      - "Magistratura: principi costituzionali sulla giurisdizione; giustizia ordinaria, amministrativa e giurisdizioni speciali"
+      - "Corte costituzionale: struttura, ruolo e funzioni; giudizio sulle leggi; conflitti di attribuzione; tipi ed effetti delle sentenze"
+      - "Regioni ed enti locali"
+      - "Pubblica amministrazione"
+      - "Fonti del diritto: costituzionali, internazionali, europee, legislative, regolamentari, regionali e locali"
+      - "Liberta' individuali e collettive e doveri costituzionali"
+    testi: null
+    nota_testi: "non trovato nella scheda: rinvio a Leganto (lista SP-70001, accesso con login) e a un 'testo di riferimento' non nominato"
+    obiettivi: >-
+      Fornire le conoscenze sull'ordinamento della Repubblica italiana e sui suoi rapporti con la
+      comunita' internazionale e l'UE, per comprendere il funzionamento tecnico-giuridico delle
+      istituzioni pubbliche e i loro rapporti con gli individui.
+    metodi_didattici: "Lezione frontale; uso di piattaforme social per individuare contributi video da commentare"
+    prerequisiti: "Nessuno"
+    url: "https://unibg.coursecatalogue.cineca.it/af/2026?corso=SPSG-R&annoOrdinamento=2026&pds=PDS0-2021&coorte=2026&ad=SP-70001&piano=100"
+
+  - anno: 1
+    semestre: "Primo semestre (14/09/2026 - 18/12/2026)"
+    nome: "FONDAMENTI DI SOCIOLOGIA GENERALE"
+    codice: "SP-70011"
+    cfu: 9
+    ore: 72
+    ssd: "GSPS-05/A (ex SPS/07)"
+    tipo_attivita: "Base - Formazione storica, politica e sociale"
+    docenti: ["Roberto Lusardi (titolare, 68 h)", "Stefano Tomelleri (4 h)"]
+    tipologia: "obbligatorio"
+    alternative: null
+    lingua: "Italiano"
+    esame:
+      tipo: "Scritto (secondo il syllabus; il campo 'tipo esame' del catalogo indica 'Orale')"
+      dettagli: >-
+        Prova scritta in due parti: 1) parte sul manuale con quesiti a risposta multipla e/o brevi
+        domande aperte su concetti, classici, paradigmi, metodi e temi del corso; 2) due o tre
+        domande aperte sul testo di Beck (comprensione teorica, argomentazione, collegamenti con i
+        temi del corso). Voto in trentesimi, lode per prove eccellenti. Criteri: correttezza e
+        padronanza concettuale, proprieta' lessicale, capacita' di argomentare e collegare teoria e
+        temi. Programma identico per frequentanti e non frequentanti.
+    programma:
+      - "Lo sguardo sociologico: immaginazione sociologica, costruzione sociale della realta', struttura e azione; sociologia e altre scienze sociali"
+      - "I classici: Marx, Durkheim, Weber, Simmel"
+      - "Paradigmi: struttural-funzionalismo, teorie del conflitto e critiche, interazionismo e teorie dell'azione"
+      - "Metodo e ricerca sociale: approcci quantitativi e qualitativi, validita', affidabilita', etica"
+      - "Cultura, socializzazione e interazione; devianza e controllo sociale"
+      - "Disuguaglianza: stratificazione nazionale e globale; classe, etnia, genere"
+      - "Potere, politica ed economia: Stato, forme di governo, geopolitica, lavoro e consumo"
+      - "Globalizzazione, ambiente e mutamento sociale"
+      - "Ulrich Beck, la societa' del rischio: prima e seconda modernita', distribuzione della ricchezza vs del rischio, individualizzazione, dimensioni politiche del rischio globale"
+    testi: null
+    nota_testi: "non trovato nella scheda: la scheda cita 'il manuale' e 'il testo di Beck' (societa' del rischio) senza riferimenti bibliografici completi; lista su Leganto (login)"
+    obiettivi: >-
+      Acquisire lessico, classici, paradigmi e metodi della sociologia e saperli applicare
+      all'analisi della societa' contemporanea, collegando micro e macro e usando la teoria della
+      societa' del rischio per leggere i processi globali.
+    metodi_didattici: "Lezioni frontali, analisi di casi, lettura e discussione seminariale, presentazioni; supporto e-learning anche per non frequentanti e lavoratori"
+    prerequisiti: "Nessuno specifico; consigliata buona capacita' di lettura critica di testi argomentativi"
+    url: "https://unibg.coursecatalogue.cineca.it/af/2026?corso=SPSG-R&annoOrdinamento=2026&pds=PDS0-2021&coorte=2026&ad=SP-70011&piano=100"
+
+  - anno: 1
+    semestre: "Annuale (14/09/2026 - 28/05/2027)"
+    nome: "STORIA DELLE DOTTRINE E DELLE ISTITUZIONI POLITICHE"
+    codice: "SP-70056"
+    cfu: 12
+    ore: 96
+    ssd: "GSPS-03/B (ex SPS/03) 6 CFU + GSPS-03/A (ex SPS/02) 6 CFU"
+    tipo_attivita: "Corso integrato: Caratterizzante (Formazione storico-politica) + Base (Formazione storica, politica e sociale)"
+    docenti: ["Federico Trocini (modulo 1)", "Giovanni Zucchelli (modulo 2; indicato anche come titolare del modulo 1 nei dati del catalogo)"]
+    tipologia: "obbligatorio (corso integrato in due moduli da 6 CFU, un unico esame)"
+    alternative: null
+    lingua: "Italiano"
+    esame:
+      tipo: "Orale (entrambi i moduli)"
+      dettagli: >-
+        MODULO 1 (Trocini): esame orale, voto in trentesimi; verifica competenze storiche e teoriche,
+        analisi testuale, proprieta' di espressione, linguaggio settoriale. Criteri: 1) conoscenza
+        dei principali concetti e problemi del fenomeno guerra dall'antichita' a oggi; 2) capacita'
+        di orientarsi fra le interpretazioni di "guerra giusta"; 3) analisi critica dei testi primari
+        anche nel contesto storico-culturale. Esercitazioni intermedie possibili, solo come
+        autoverifica. Non frequentanti: contattare il docente per eventuale programma "ad hoc".
+        MODULO 2 (Zucchelli): esame orale, voto in trentesimi; interrogazione di tre domande
+        sull'intero programma: parte "manualistica", coordinate generali di storia delle istituzioni
+        politiche europee e internazionali, capacita' di contestualizzare i casi visti a lezione o
+        sul testo. Nessuna prova intermedia. Studenti lavoratori: stesso programma, concordare il
+        percorso con il docente (giovanni.zucchelli@unibg.it).
+        Come si combinano i due moduli nel voto finale: [non specificato nella scheda].
+    programma:
+      - "Mod. 1 - Storia concettuale della guerra dall'antichita' classica a oggi"
+      - "Mod. 1 - Le nozioni novecentesche di 'guerra totale' e 'guerra globale'"
+      - "Mod. 1 - Il dibattito plurisecolare sulla 'guerra giusta'"
+      - "Mod. 1 - Classici: Sun Tzu, Machiavelli, Hobbes, Kant, Clausewitz, Schmitt, Kelsen, Foucault"
+      - "Mod. 2 - Nodi e problemi della storia delle istituzioni politiche europee e internazionali dalla seconda meta' dell'Ottocento a oggi"
+      - "Mod. 2 - Costruzione delle istituzioni sovranazionali: Congresso di Vienna, Societa' delle Nazioni, ONU, CECA, CEE, UE"
+      - "Mod. 2 - Visione e discussione del film 'Vincitori e vinti' (S. Kramer, 1961): responsabilita', giustizia internazionale, diritti umani, diritto/politica/morale"
+    testi: null
+    nota_testi: "non trovato nella scheda: nessuna bibliografia nei syllabi dei moduli; lista Leganto (login). Mod. 1: materiali sulla pagina personale del docente"
+    obiettivi: >-
+      Mod. 1: conoscenza storica e teorica del fenomeno bellico e del dibattito sulla guerra
+      giusta, strumenti per leggere i classici, consapevolezza critica. Mod. 2: conoscenza della
+      storia delle istituzioni politiche europee e internazionali e capacita' di collegare i fenomeni.
+    metodi_didattici: "Lezioni frontali; esposizioni orali degli studenti, podcast e video-lezioni (mod. 1); seminari e visione di film (mod. 2)"
+    moduli:
+      - {codice: "SP-70056-1", nome: "Storia delle dottrine e delle istituzioni politiche mod. 1", cfu: 6, ssd: "GSPS-03/B", docente: "Federico Trocini"}
+      - {codice: "SP-70056-MOD2 (nel piano PDF: SP-70056-2)", nome: "Storia delle dottrine e delle istituzioni politiche mod. 2", cfu: 6, ssd: "GSPS-03/A", docente: "Giovanni Zucchelli"}
+    url: "https://unibg.coursecatalogue.cineca.it/af/2026?corso=SPSG-R&annoOrdinamento=2026&pds=PDS0-2021&coorte=2026&ad=SP-70056&piano=100"
+
+  - anno: 1
+    semestre: "Annuale (14/09/2026 - 28/05/2027)"
+    nome: "LINGUA INGLESE"
+    codice: "SP-70005"
+    cfu: 6
+    ore: 48
+    ssd: "ANGL-01/C (ex L-LIN/12)"
+    tipo_attivita: "Base - Formazione linguistica"
+    docenti: ["Allison Lindsay Steenson (titolare, 24 h)", "Valeria Giofre' (24 h)"]
+    tipologia: "obbligatorio"
+    alternative: null
+    lingua: "Inglese"
+    esame:
+      tipo: "Orale (campo del catalogo); voto finale"
+      dettagli: >-
+        Il syllabus valuta la capacita' di applicare strumenti di analisi linguistica e discorsiva a
+        testi giornalistici e politici in inglese. Previste attivita' di analisi testuale, raccolta e
+        descrizione di dati, trascrizione e analisi comparativa, individuali o di gruppo, che
+        "contribuiscono alla valutazione finale". Durata, struttura della prova finale e pesi delle
+        attivita': [non specificati nella scheda]. Requisito: livello B1 attestato (vedi regole).
+    programma:
+      - "Linguaggio politico: metafore e metonimie, opposizioni noi/loro, pronomi inclusivi, parallelismi e strutture ternarie"
+      - "Strategie di persuasione basate su autorita', contrasto e associazione"
+      - "Campagne elettorali, discorsi, interviste, dibattiti parlamentari; dinamiche politici-giornalisti"
+      - "Costruzione delle notizie: ordine, focalizzazione, framing, voce, attribuzione"
+      - "Valutazione e stance, responsabilita' delle valutazioni, evidenzialita', modalita', intensificazione e attenuazione"
+      - "Struttura delle notizie in TV, stampa e online; news values"
+      - "Analisi comparativa di rappresentazioni mediatiche di eventi politici in contesti nazionali e transnazionali"
+    testi: null
+    nota_testi: "non trovato nella scheda: lista Leganto (login)"
+    obiettivi: >-
+      Analizzare criticamente il linguaggio dei media e del discorso giornalistico e politico in
+      inglese, riconoscendo come le scelte linguistiche costruiscono informazione, identita' e
+      rappresentazioni, con attenzione a persuasione e potere.
+    metodi_didattici: "Lezioni frontali, analisi guidata di testi autentici, attivita' pratiche individuali e di gruppo"
+    prerequisiti: "Assenza di OFA in inglese; consigliato livello intermedio"
+    url: "https://unibg.coursecatalogue.cineca.it/af/2026?corso=SPSG-R&annoOrdinamento=2026&pds=PDS0-2021&coorte=2026&ad=SP-70005&piano=100"
+
+  - anno: 1
+    semestre: "Secondo semestre (15/02/2027 - 28/05/2027)"
+    nome: "SCIENZA POLITICA"
+    codice: "SP-70004"
+    cfu: 9
+    ore: 72
+    ssd: "GSPS-02/A (ex SPS/04)"
+    tipo_attivita: "Base - Formazione storica, politica e sociale"
+    docenti: ["Paola Coletti (titolare; 24 h a carico indicate)"]
+    tipologia: "obbligatorio"
+    alternative: null
+    lingua: "Italiano"
+    esame:
+      tipo: "Scritto (secondo il syllabus; il campo 'tipo esame' del catalogo indica 'Orale')"
+      dettagli: >-
+        Prova scritta con domande a risposta multipla e aperte. A integrazione dell'esito dello
+        scritto, possibilita' di un lavoro di approfondimento di gruppo. Criteri (descrittori di
+        Dublino): conoscenza completa e accurata; linguaggio specifico; chiarezza, sintesi e fluidita'
+        nell'elaborazione del testo scritto; visione articolata e collegamenti; rielaborazione
+        autonoma. Durata e numero di domande: [non specificati nella scheda].
+    programma:
+      - "Concetti fondamentali della politica"
+      - "Evoluzione della comunita' politica e attori della politica contemporanea"
+      - "Il funzionamento della politica"
+      - "I circuiti della politica"
+      - "Le istituzioni"
+      - "La politica in azione: processi decisionali e politiche pubbliche"
+    testi: null
+    nota_testi: "non trovato nella scheda: lista Leganto (login)"
+    obiettivi: >-
+      Competenze analitiche e metodologiche per analizzare i sistemi politici democratici
+      contemporanei (in particolare l'Italia), la multilevel governance e il contesto europeo,
+      le istituzioni rappresentative, partecipazione e opinione pubblica, politiche pubbliche.
+    metodi_didattici: "Lezioni frontali, approfondimenti e discussione su temi di attualita'"
+    prerequisiti: "Nessuna propedeuticita'"
+    url: "https://unibg.coursecatalogue.cineca.it/af/2026?corso=SPSG-R&annoOrdinamento=2026&pds=PDS0-2021&coorte=2026&ad=SP-70004&piano=100"
+
+  - anno: 1
+    semestre: "Secondo semestre (15/02/2027 - 28/05/2027)"
+    nome: "STATISTICA"
+    codice: "SP-70003"
+    cfu: 9
+    ore: 72
+    ssd: "STAT-01/A (ex SECS-S/01)"
+    tipo_attivita: "Base - Formazione economico-giuridica"
+    docenti: ["Federica Cugnata"]
+    tipologia: "obbligatorio"
+    alternative: null
+    lingua: "Italiano"
+    esame:
+      tipo: "Orale (solo campo del catalogo)"
+      dettagli: null
+      nota: "non trovato nella scheda: syllabus non ancora compilato (nessun testo su modalita' d'esame)"
+    programma: null
+    nota_programma: "non trovato nella scheda"
+    testi: null
+    nota_testi: "non trovato nella scheda: lista Leganto (login)"
+    obiettivi: null
+    nota_obiettivi: "non trovato nella scheda"
+    url: "https://unibg.coursecatalogue.cineca.it/af/2026?corso=SPSG-R&annoOrdinamento=2026&pds=PDS0-2021&coorte=2026&ad=SP-70003&piano=100"
+
+  - anno: 1
+    semestre: "Secondo semestre (15/02/2027 - 28/05/2027)"
+    nome: "SVILUPPO DEI SISTEMI ECONOMICI E DELLA SOCIETA'"
+    codice: "SP-70060"
+    cfu: 9
+    ore: 72
+    ssd: "ECON-01/A (ex SECS-P/01)"
+    tipo_attivita: "Caratterizzante - Formazione economica e statistica"
+    docenti: ["Alessandro Giovanni Maria Vaglio"]
+    tipologia: "obbligatorio (versione da 9 CFU propria del curriculum Economico-giuridico; il Politico-strategico ha SP-70061 da 6 CFU)"
+    alternative: null
+    lingua: "Italiano"
+    esame:
+      tipo: "Scritto (secondo il syllabus; il campo 'tipo esame' del catalogo indica 'Orale')"
+      dettagli: "\"Esame scritto con scelta tra domande\". Durata, numero di domande e criteri: [non specificati nella scheda]."
+    programma:
+      - "Cos'e' la teoria economica; idee-chiave di Smith, Malthus, Schumpeter"
+      - "Lo sviluppo: definizioni e misurazione; crescita, sviluppo e progresso"
+      - "Crescita nel lungo e lunghissimo periodo e divari fra continenti e paesi: interpretazioni geo-climatica, istituzionale, 'culturale'"
+      - "Nascita e sviluppo del mondo industriale: la rivoluzione del XVI secolo, la rivoluzione industriale"
+      - "Rapporti dell'Europa con il resto del mondo"
+      - "Crescita economica contemporanea"
+      - "Cenni di storia economica italiana"
+    testi: null
+    nota_testi: "non trovato nella scheda: lista Leganto (login)"
+    obiettivi: >-
+      Visione preliminare dei problemi e delle idee su sviluppo, sistemi economici e societa',
+      radicata nel pensiero economico ma interdisciplinare (storia economica e scienze sociali).
+    metodi_didattici: "Lezioni e laboratorio sull'uso dei dati"
+    prerequisiti: "Nessuno"
+    url: "https://unibg.coursecatalogue.cineca.it/af/2026?corso=SPSG-R&annoOrdinamento=2026&pds=100&coorte=2026&ad=SP-70060&piano=100"
+
+  # ======================= SECONDO ANNO (a.a. 2027/28) =======================
+  # Syllabi non ancora pubblicati: i campi descrittivi sono null.
+
+  - anno: 2
+    semestre: null
+    nota_semestre: "non trovato nella scheda"
+    nome: "DIRITTO INTERNAZIONALE"
+    codice: "SP-70057"
+    cfu: 6
+    ore: 48
+    ssd: "GIUR-09/A (ex IUS/13)"
+    tipo_attivita: "Caratterizzante - Formazione giuridica"
+    docenti: null
+    tipologia: "obbligatorio"
+    alternative: null
+    lingua: null
+    esame: {tipo: "Orale (solo campo del catalogo)", dettagli: null, nota: "non trovato nella scheda: syllabus a.a. 2027/28 non pubblicato"}
+    programma: null
+    testi: null
+    obiettivi: null
+    nota: "non trovato nella scheda (docente, lingua, semestre, programma, testi, obiettivi)"
+    url: "https://unibg.coursecatalogue.cineca.it/af/2027?corso=SPSG-R&annoOrdinamento=2026&pds=PDS0-2021&coorte=2026&ad=SP-70057&piano=100"
+
+  - anno: 2
+    semestre: null
+    nota_semestre: "non trovato nella scheda"
+    nome: "FILOSOFIA POLITICA"
+    codice: "SP-70012"
+    cfu: 6
+    ore: 48
+    ssd: "GSPS-01/A (ex SPS/01)"
+    tipo_attivita: "Caratterizzante - Formazione politologica"
+    docenti: null
+    tipologia: "obbligatorio"
+    alternative: null
+    lingua: null
+    esame: {tipo: "Orale (solo campo del catalogo)", dettagli: null, nota: "non trovato nella scheda: syllabus a.a. 2027/28 non pubblicato"}
+    programma: null
+    testi: null
+    obiettivi: null
+    nota: "non trovato nella scheda (docente, lingua, semestre, programma, testi, obiettivi)"
+    url: "https://unibg.coursecatalogue.cineca.it/af/2027?corso=SPSG-R&annoOrdinamento=2026&pds=PDS0-2021&coorte=2026&ad=SP-70012&piano=100"
+
+  - anno: 2
+    semestre: "Secondo semestre (15/02/2028 - 28/05/2028)"
+    nome: "PRINCIPI DI ECONOMIA POLITICA"
+    codice: "SP-70062"
+    cfu: 9
+    ore: 72
+    ssd: "ECON-01/A (ex SECS-P/01)"
+    tipo_attivita: "Caratterizzante - Formazione economica e statistica"
+    docenti: ["Mattia Filomena"]
+    tipologia: "obbligatorio"
+    alternative: null
+    lingua: "Italiano"
+    esame: {tipo: "Orale (solo campo del catalogo)", dettagli: null, nota: "non trovato nella scheda: syllabus a.a. 2027/28 non pubblicato"}
+    programma: null
+    testi: null
+    obiettivi: null
+    nota: "non trovato nella scheda (programma, testi, obiettivi)"
+    url: "https://unibg.coursecatalogue.cineca.it/af/2027?corso=SPSG-R&annoOrdinamento=2026&pds=PDS0-2021&coorte=2026&ad=SP-70062&piano=100"
+
+  - anno: 2
+    semestre: null
+    nota_semestre: "non trovato nella scheda"
+    nome: "DIRITTO AMMINISTRATIVO"
+    codice: "SP-70013"
+    cfu: 6
+    ore: 48
+    ssd: "GIUR-06/A (ex IUS/10)"
+    tipo_attivita: "Affine/Integrativa"
+    docenti: null
+    tipologia: "obbligatorio (proprio del curriculum Economico-giuridico)"
+    alternative: null
+    lingua: null
+    esame: {tipo: "Orale (solo campo del catalogo)", dettagli: null, nota: "non trovato nella scheda: syllabus a.a. 2027/28 non pubblicato"}
+    programma: null
+    testi: null
+    obiettivi: null
+    nota: "non trovato nella scheda (docente, lingua, semestre, programma, testi, obiettivi)"
+    url: "https://unibg.coursecatalogue.cineca.it/af/2027?corso=SPSG-R&annoOrdinamento=2026&pds=100&coorte=2026&ad=SP-70013&piano=100"
+
+  - anno: 2
+    semestre: null
+    nota_semestre: "non trovato nella scheda"
+    nome: "STORIA MODERNA"
+    codice: "SP-70064"
+    cfu: 6
+    ore: 48
+    ssd: "HIST-02/A (ex M-STO/02)"
+    tipo_attivita: "Caratterizzante - Formazione storico-politica"
+    docenti: null
+    tipologia: "obbligatorio"
+    alternative: null
+    lingua: null
+    esame: {tipo: "Orale (solo campo del catalogo)", dettagli: null, nota: "non trovato nella scheda: syllabus a.a. 2027/28 non pubblicato"}
+    programma: null
+    testi: null
+    obiettivi: null
+    nota: "non trovato nella scheda (docente, lingua, semestre, programma, testi, obiettivi)"
+    url: "https://unibg.coursecatalogue.cineca.it/af/2027?corso=SPSG-R&annoOrdinamento=2026&pds=PDS0-2021&coorte=2026&ad=SP-70064&piano=100"
+
+  - anno: 2
+    semestre: "Secondo semestre (15/02/2028 - 28/05/2028)"
+    nome: "POLITICA ECONOMICA"
+    codice: "SP-70065"
+    cfu: 6
+    ore: 48
+    ssd: "ECON-02/A (ex SECS-P/02)"
+    tipo_attivita: "Caratterizzante - Formazione economica e statistica"
+    docenti: ["Mara Grasseni"]
+    tipologia: "obbligatorio"
+    alternative: null
+    lingua: "Italiano"
+    esame: {tipo: "Orale (solo campo del catalogo)", dettagli: null, nota: "non trovato nella scheda: syllabus a.a. 2027/28 non pubblicato"}
+    programma: null
+    testi: null
+    obiettivi: null
+    nota: "non trovato nella scheda (programma, testi, obiettivi)"
+    url: "https://unibg.coursecatalogue.cineca.it/af/2027?corso=SPSG-R&annoOrdinamento=2026&pds=PDS0-2021&coorte=2026&ad=SP-70065&piano=100"
+
+  - anno: 2
+    semestre: "Secondo semestre (15/02/2028 - 28/05/2028)"
+    nome: "STORIA DELLE RELAZIONI INTERNAZIONALI"
+    codice: "SP-70048"
+    cfu: 6
+    ore: 48
+    ssd: "GSPS-04/B (ex SPS/06)"
+    tipo_attivita: "Caratterizzante - Formazione storico-politica"
+    docenti: ["Leonida Tedoldi"]
+    tipologia: "obbligatorio"
+    alternative: null
+    lingua: "Italiano"
+    esame: {tipo: "Orale (solo campo del catalogo)", dettagli: null, nota: "non trovato nella scheda: syllabus a.a. 2027/28 non pubblicato"}
+    programma: null
+    testi: null
+    obiettivi: null
+    nota: "non trovato nella scheda (programma, testi, obiettivi)"
+    url: "https://unibg.coursecatalogue.cineca.it/af/2027?corso=SPSG-R&annoOrdinamento=2026&pds=PDS0-2021&coorte=2026&ad=SP-70048&piano=100"
+
+  - anno: 2
+    semestre: null
+    nota_semestre: "non trovato nella scheda"
+    nome: "SOCIOLOGIA POLITICA E DELL'ORGANIZZAZIONE"
+    codice: "SP-70044"
+    cfu: 12
+    ore: 96
+    ssd: "GSPS-07/A (ex SPS/11) 6 CFU + GSPS-08/A (ex SPS/09) 6 CFU"
+    tipo_attivita: "Corso integrato, Caratterizzante - Formazione sociologica"
+    docenti: null
+    tipologia: "obbligatorio (proprio del curriculum Economico-giuridico; corso integrato in due moduli)"
+    alternative: null
+    lingua: null
+    esame: {tipo: "Orale (solo campo del catalogo)", dettagli: null, nota: "non trovato nella scheda: syllabus a.a. 2027/28 non pubblicato"}
+    programma: null
+    testi: null
+    obiettivi: null
+    moduli:
+      - {codice: "SP-70044-1", nome: "Sociologia dell'organizzazione", cfu: 6, ssd: "GSPS-08/A"}
+      - {codice: "SP-70044-2", nome: "Sociologia politica (nel Regolamento didattico allegato: 'Politiche sociali europee')", cfu: 6, ssd: "GSPS-07/A"}
+    nota: "non trovato nella scheda (docenti, lingua, semestre, programma, testi, obiettivi). Denominazione del modulo SP-70044-2 discordante fra catalogo/piano PDF agg1 e Regolamento"
+    url: "https://unibg.coursecatalogue.cineca.it/af/2027?corso=SPSG-R&annoOrdinamento=2026&pds=100&coorte=2026&ad=SP-70044&piano=100"
+
+  # ======================= TERZO ANNO (a.a. 2028/29) =======================
+
+  - anno: 3
+    semestre: null
+    nota_semestre: "non trovato nella scheda"
+    nome: "SCIENZA DELLE FINANZE"
+    codice: "SP-70058"
+    cfu: 9
+    ore: 72
+    ssd: "ECON-03/A (ex SECS-P/03)"
+    tipo_attivita: "Caratterizzante - Formazione economica e statistica"
+    docenti: null
+    tipologia: "obbligatorio (versione da 9 CFU propria del curriculum Economico-giuridico)"
+    alternative: null
+    lingua: null
+    esame: {tipo: "Orale (solo campo del catalogo)", dettagli: null, nota: "non trovato nella scheda: syllabus a.a. 2028/29 non pubblicato"}
+    programma: null
+    testi: null
+    obiettivi: null
+    nota: "non trovato nella scheda (docente, lingua, semestre, programma, testi, obiettivi)"
+    url: "https://unibg.coursecatalogue.cineca.it/af/2028?corso=SPSG-R&annoOrdinamento=2026&pds=100&coorte=2026&ad=SP-70058&piano=100"
+
+  - anno: 3
+    semestre: null
+    nota_semestre: "non trovato nella scheda"
+    nome: "DIRITTO PUBBLICO COMPARATO"
+    codice: "SP-70021"
+    cfu: 6
+    ore: 48
+    ssd: "GIUR-11/B (ex IUS/21)"
+    tipo_attivita: "Affine/Integrativa"
+    docenti: null
+    tipologia: "a scelta vincolata (un esame a scelta tra i due)"
+    alternative: ["SP-70019 DIRITTO E REGOLAZIONE DEI MERCATI"]
+    lingua: null
+    esame: {tipo: "Orale (solo campo del catalogo)", dettagli: null, nota: "non trovato nella scheda: syllabus a.a. 2028/29 non pubblicato"}
+    programma: null
+    testi: null
+    obiettivi: null
+    nota: "non trovato nella scheda (docente, lingua, semestre, programma, testi, obiettivi)"
+    url: "https://unibg.coursecatalogue.cineca.it/af/2028?corso=SPSG-R&annoOrdinamento=2026&pds=100&coorte=2026&ad=SP-70021&piano=100"
+
+  - anno: 3
+    semestre: null
+    nota_semestre: "non trovato nella scheda"
+    nome: "DIRITTO E REGOLAZIONE DEI MERCATI"
+    codice: "SP-70019"
+    cfu: 6
+    ore: 48
+    ssd: "GIUR-03/A (ex IUS/05)"
+    tipo_attivita: "Affine/Integrativa"
+    docenti: null
+    tipologia: "a scelta vincolata (un esame a scelta tra i due)"
+    alternative: ["SP-70021 DIRITTO PUBBLICO COMPARATO"]
+    lingua: null
+    esame: {tipo: "Orale (solo campo del catalogo)", dettagli: null, nota: "non trovato nella scheda: syllabus a.a. 2028/29 non pubblicato"}
+    programma: null
+    testi: null
+    obiettivi: null
+    nota: "non trovato nella scheda (docente, lingua, semestre, programma, testi, obiettivi)"
+    url: "https://unibg.coursecatalogue.cineca.it/af/2028?corso=SPSG-R&annoOrdinamento=2026&pds=100&coorte=2026&ad=SP-70019&piano=100"
+
+  - anno: 3
+    semestre: "Secondo semestre (15/02/2029 - 28/05/2029)"
+    nome: "PSICOLOGIA DELL'INFLUENZA SOCIALE IN AMBITO GIURIDICO-ECONOMICO"
+    codice: "SP-70052"
+    cfu: 6
+    ore: 48
+    ssd: "PSIC-03/A (ex M-PSI/05)"
+    tipo_attivita: "Affine/Integrativa"
+    docenti: ["Simona Sciara"]
+    tipologia: "obbligatorio (proprio del curriculum Economico-giuridico)"
+    alternative: null
+    lingua: "Italiano"
+    esame: {tipo: "Orale (solo campo del catalogo)", dettagli: null, nota: "non trovato nella scheda: syllabus a.a. 2028/29 non pubblicato"}
+    programma: null
+    testi: null
+    obiettivi: null
+    nota: "non trovato nella scheda (programma, testi, obiettivi)"
+    url: "https://unibg.coursecatalogue.cineca.it/af/2028?corso=SPSG-R&annoOrdinamento=2026&pds=100&coorte=2026&ad=SP-70052&piano=100"
+
+  - anno: 3
+    semestre: null
+    nota_semestre: "non trovato nella scheda"
+    nome: "ECONOMIA INDUSTRIALE"
+    codice: "SP-70066"
+    cfu: 6
+    ore: 48
+    ssd: "ECON-04/A (ex SECS-P/06)"
+    tipo_attivita: "Affine/Integrativa"
+    docenti: null
+    tipologia: "obbligatorio (proprio del curriculum Economico-giuridico)"
+    alternative: null
+    lingua: null
+    esame: {tipo: "Orale (solo campo del catalogo)", dettagli: null, nota: "non trovato nella scheda: syllabus a.a. 2028/29 non pubblicato"}
+    programma: null
+    testi: null
+    obiettivi: null
+    nota: "non trovato nella scheda (docente, lingua, semestre, programma, testi, obiettivi)"
+    url: "https://unibg.coursecatalogue.cineca.it/af/2028?corso=SPSG-R&annoOrdinamento=2026&pds=100&coorte=2026&ad=SP-70066&piano=100"
+
+  - anno: 3
+    semestre: null
+    nota_semestre: "non trovato nella scheda"
+    nome: "METODI DI RICERCA E VALUTAZIONE"
+    codice: "SP-70067"
+    cfu: 12
+    ore: 96
+    ssd: "ECON-02/A (ex SECS-P/02) 6 CFU + GSPS-05/A (ex SPS/07) 6 CFU"
+    tipo_attivita: "Corso integrato: Caratterizzante (Formazione economica e statistica) + Base (Formazione storica, politica e sociale)"
+    docenti: null
+    tipologia: "obbligatorio (proprio del curriculum Economico-giuridico; corso integrato in due moduli)"
+    alternative: null
+    lingua: null
+    esame: {tipo: "Orale (solo campo del catalogo)", dettagli: null, nota: "non trovato nella scheda: syllabus a.a. 2028/29 non pubblicato"}
+    programma: null
+    testi: null
+    obiettivi: null
+    moduli:
+      - {codice: "SP-70067-1", nome: "Metodi per la valutazione delle politiche", cfu: 6, ssd: "ECON-02/A"}
+      - {codice: "SP-70067-2", nome: "Metodologie della ricerca sociale", cfu: 6, ssd: "GSPS-05/A"}
+    nota: "non trovato nella scheda (docenti, lingua, semestre, programma, testi, obiettivi)"
+    url: "https://unibg.coursecatalogue.cineca.it/af/2028?corso=SPSG-R&annoOrdinamento=2026&pds=100&coorte=2026&ad=SP-70067&piano=100"
+
+  - anno: 3
+    semestre: null
+    nome: "INSEGNAMENTI A SCELTA LIBERA"
+    codice: null
+    cfu: 12
+    ore: null
+    ssd: null
+    tipo_attivita: "A scelta dello studente"
+    docenti: null
+    tipologia: "a scelta libera (nel piano PDF: 'idoneita' - Scelta libera')"
+    alternative: "Attivita' coerenti con il progetto formativo, nell'offerta UniBg o UniSR; il Consiglio di corso puo' indicare un elenco consigliato; proposte diverse valutate dal Consiglio (Reg. art. 10). Elenco 'Insegnamenti a scelta libera' sulla pagina del corso: vuoto al 2026-11-09"
+    lingua: null
+    esame: {tipo: null, dettagli: "Superamento dell'esame o di altra verifica del profitto dell'insegnamento scelto (Reg. art. 10)"}
+    programma: null
+    testi: null
+    obiettivi: null
+    nota: "non trovato nella scheda: nessuna scheda propria; il piano PDF indica 12 CFU / 120 ore"
+    url: "https://lt-spsg.unibg.it/sites/cl55/files/piano_di_studio_spsg_26-27_coorte_26_agg1.pdf"
+
+  - anno: 3
+    semestre: null
+    nome: "ALTRE ATTIVITA' FORMATIVE 1"
+    codice: "SP-70035"
+    cfu: 3
+    ore: 0
+    ssd: "NN"
+    tipo_attivita: "Altro - Altre conoscenze utili per l'inserimento nel mondo del lavoro"
+    docenti: null
+    tipologia: "obbligatorio (contenuto da definire: nel Regolamento 'da caratterizzare meglio')"
+    alternative: null
+    lingua: null
+    esame: {tipo: "Orale (solo campo del catalogo)", dettagli: null, nota: "non trovato nella scheda"}
+    programma: null
+    testi: null
+    obiettivi: null
+    nota: "non trovato nella scheda. Probabile collegamento con tirocini/laboratori [DA VERIFICARE: nessuna fonte lo afferma per questi codici]"
+    url: "https://unibg.coursecatalogue.cineca.it/af/2028?corso=SPSG-R&annoOrdinamento=2026&pds=PDS0-2021&coorte=2026&ad=SP-70035&piano=100"
+
+  - anno: 3
+    semestre: null
+    nome: "ALTRE ATTIVITA' FORMATIVE 2"
+    codice: "SP-70036"
+    cfu: 3
+    ore: 0
+    ssd: "NN"
+    tipo_attivita: "Altro - Altre conoscenze utili per l'inserimento nel mondo del lavoro"
+    docenti: null
+    tipologia: "obbligatorio (contenuto da definire: nel Regolamento 'da caratterizzare meglio')"
+    alternative: null
+    lingua: null
+    esame: {tipo: "Orale (solo campo del catalogo)", dettagli: null, nota: "non trovato nella scheda"}
+    programma: null
+    testi: null
+    obiettivi: null
+    nota: "non trovato nella scheda"
+    url: "https://unibg.coursecatalogue.cineca.it/af/2028?corso=SPSG-R&annoOrdinamento=2026&pds=PDS0-2021&coorte=2026&ad=SP-70036&piano=100"
+
+  - anno: 3
+    semestre: null
+    nome: "PROVA FINALE"
+    codice: "SP-70034"
+    cfu: 3
+    ore: 0
+    ssd: "PROFIN_S"
+    tipo_attivita: "Lingua/Prova finale - Per la prova finale"
+    docenti: null
+    tipologia: "obbligatorio"
+    alternative: null
+    lingua: "Italiano o inglese (relazione scritta redigibile in inglese, Reg. art. 16)"
+    esame:
+      tipo: "Relazione scritta + discussione davanti a commissione"
+      dettagli: "Vedi regole.prova_finale e regole.voto_di_laurea (Reg. art. 16): base = media ponderata in 110, +1 per esperienza all'estero qualificata, fino a +5 per la tesi; minimo 66, lode solo all'unanimita'."
+    programma: null
+    testi: null
+    obiettivi: "Valutare la padronanza degli strumenti metodologici e teorici, la capacita' di ricerca bibliografica e di analisi critica delle fonti (Reg. art. 16)"
+    url: "https://unibg.coursecatalogue.cineca.it/af/2028?corso=SPSG-R&annoOrdinamento=2026&pds=PDS0-2021&coorte=2026&ad=SP-70034&piano=100"
