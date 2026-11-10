@@ -93,3 +93,35 @@ test('domandaValida: multipla con indice nel range, aperta con rubrica', () => {
   assert.equal(domandaValida({ ...base, tipo: 'aperta', opzioni: [], corretta: null, puntiChiave: ['x'] }), true);
   assert.equal(domandaValida({ ...base, tipo: 'aperta', opzioni: [], corretta: null, puntiChiave: [] }), false);
 });
+
+import { metricheParlato } from '../src/lib/calcoli.ts';
+
+test('metricheParlato: ritmo, avvio, pause lunghe e intercalari', () => {
+  const p = (word: string, start: number, end: number) => ({ word, start, end });
+  const parole = [
+    p(' Ehm,', 1.5, 1.9),
+    p(' lo', 2.0, 2.1),
+    p(' Stato', 2.1, 2.5),
+    p(' è,', 2.5, 2.7),
+    p(' cioè', 5.2, 5.5), // pausa di 2,5 s
+    p(' un', 5.5, 5.6),
+    p(' ordinamento', 5.6, 6.3),
+    p(' giuridico.', 6.3, 7.5),
+  ];
+  const m = metricheParlato(parole, 8);
+  assert.equal(m.parole, 8);
+  assert.equal(m.avvio, 1.5);
+  assert.equal(m.pauseLunghe, 1);
+  assert.equal(m.pausaMassima, 2.5);
+  assert.equal(m.intercalari, 2);
+  assert.deepEqual(m.intercalariUsati, { ehm: 1, cioè: 1 });
+  assert.equal(m.paroleAlMinuto, 80); // 8 parole in 6 s
+  assert.equal(m.durata, 8);
+});
+
+test('metricheParlato: nessuna parola', () => {
+  const m = metricheParlato([], 3);
+  assert.equal(m.parole, 0);
+  assert.equal(m.paroleAlMinuto, null);
+  assert.equal(m.avvio, null);
+});

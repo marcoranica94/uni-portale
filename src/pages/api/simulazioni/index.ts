@@ -1,7 +1,7 @@
 import type { APIRoute } from 'astro';
 import { controllaOrigine } from '../../../lib/origine';
 import { getMaterie } from '../../../lib/percorso';
-import { creaSimulazione, FORMATI, type Formato } from '../../../lib/simulazioni';
+import { creaSimulazione, FORMATI, type Formato, type Modalita } from '../../../lib/simulazioni';
 
 export const prerender = false;
 
@@ -12,9 +12,10 @@ export const POST: APIRoute = async ({ request, url, locals }) => {
   const dati = await request.formData();
   const codice = String(dati.get('codice') ?? '');
   const formato = String(dati.get('formato') ?? 'breve') as Formato;
+  const modalita: Modalita = dati.get('modalita') === 'orale' ? 'orale' : 'scritto';
   const materia = (await getMaterie()).find((m) => m.codice === codice);
   if (!materia || !(formato in FORMATI)) return new Response('Richiesta non valida', { status: 400 });
-  const id = await creaSimulazione(codice, formato);
+  const id = await creaSimulazione(codice, formato, modalita);
   if (!id) return new Response(null, { status: 303, headers: { Location: `/materie/${materia.slug}?esito=senza-domande#simula` } });
   return new Response(null, { status: 303, headers: { Location: `/simulazioni/${id}` } });
 };

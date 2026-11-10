@@ -120,3 +120,56 @@ export function domandaValida(d: DomandaCompleta): boolean {
 /** Voto in trentesimi stimato dalla percentuale di punti. */
 export const votoDa = (punti: number, massimo: number) => (massimo > 0 ? Math.round((punti / massimo) * 30) : 0);
 
+
+// ---------- Metriche del parlato (orale) ----------
+
+export interface Parola {
+  word: string;
+  start: number;
+  end: number;
+}
+
+export interface MetricheParlato {
+  parole: number;
+  durata: number; // secondi di registrazione
+  paroleAlMinuto: number | null;
+  avvio: number | null; // secondi prima della prima parola
+  pauseLunghe: number; // silenzi oltre 2 secondi tra due parole
+  pausaMassima: number;
+  intercalari: number;
+  intercalariUsati: Record<string, number>;
+}
+
+/** Intercalari tipici del parlato italiano ("tipo" escluso: è anche una parola tecnica). */
+const INTERCALARI = new Set(['ehm', 'eh', 'ehh', 'uhm', 'um', 'mm', 'mmm', 'cioè', 'diciamo', 'praticamente', 'insomma']);
+export const SOGLIA_PAUSA = 2;
+
+export function metricheParlato(parole: Parola[], durataTotale: number | null): MetricheParlato {
+  const pulite = parole.filter((p) => p.word.trim() !== '').sort((a, b) => a.start - b.start);
+  const n = pulite.length;
+  const primo = n ? pulite[0].start : null;
+  const ultimo = n ? pulite[n - 1].end : null;
+  const parlato = primo !== null && ultimo !== null ? Math.max(0, ultimo - primo) : 0;
+  let pauseLunghe = 0;
+  let pausaMassima = 0;
+  for (let i = 1; i < n; i++) {
+    const pausa = pulite[i].start - pulite[i - 1].end;
+    if (pausa > SOGLIA_PAUSA) pauseLunghe++;
+    pausaMassima = Math.max(pausaMassima, pausa);
+  }
+  const usati: Record<string, number> = {};
+  for (const p of pulite) {
+    const parola = p.word.toLowerCase().replace(/[^\p{L}]/gu, '');
+    if (INTERCALARI.has(parola)) usati[parola] = (usati[parola] ?? 0) + 1;
+  }
+  return {
+    parole: n,
+    durata: Math.round((durataTotale ?? ultimo ?? 0) * 10) / 10,
+    paroleAlMinuto: parlato >= 5 ? Math.round((n / parlato) * 60) : null,
+    avvio: primo === null ? null : Math.round(primo * 10) / 10,
+    pauseLunghe,
+    pausaMassima: Math.round(pausaMassima * 10) / 10,
+    intercalari: Object.values(usati).reduce((s, x) => s + x, 0),
+    intercalariUsati: usati,
+  };
+}

@@ -14,6 +14,8 @@
     "ACCESS_AUD": "ceb75856ea68b69c34ce29ad99bc489e791f68b2ba095503a7477e58157ccb0c"
   },
   "routes": [{ "pattern": "uni.marcoranica.com", "custom_domain": true }],
+  // Workers AI: trascrizione degli orali (Whisper). L'audio resta solo in memoria.
+  "ai": { "binding": "AI" },
   "d1_databases": [
     {
       "binding": "DB",

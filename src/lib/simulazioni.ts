@@ -11,6 +11,10 @@ export const FORMATI = {
   completo: { etichetta: 'Completo', multiple: 10, aperte: 3, minuti: 60 },
 } as const;
 export type Formato = keyof typeof FORMATI;
+export type Modalita = 'scritto' | 'orale';
+
+/** Orale: tre domande aperte, come un'interrogazione; ogni risposta registrata e trascritta. */
+export const ORALE = { etichetta: 'Orale', aperte: 3, minuti: 20 } as const;
 
 /** Punti per tipo: la scelta multipla vale 1, l'aperta 4 (stima: il syllabus non dà i pesi). */
 export const PUNTI = { multipla: 1, aperta: 4 } as const;
@@ -104,10 +108,10 @@ const daRiga = (r: RigaDomanda): Domanda => ({
 });
 
 /** Crea una simulazione pescando le domande meno usate della banca attiva. */
-export async function creaSimulazione(codice: string, formato: Formato): Promise<string | null> {
+export async function creaSimulazione(codice: string, formato: Formato, modalita: Modalita = 'scritto'): Promise<string | null> {
   const lotto = await ultimoLotto(codice);
   if (!lotto) return null;
-  const f = FORMATI[formato];
+  const f = modalita === 'orale' ? { multiple: 0, aperte: ORALE.aperte, minuti: ORALE.minuti } : FORMATI[formato];
   const pesca = async (tipo: 'multipla' | 'aperta', n: number) =>
     (
       await env.DB.prepare('SELECT id FROM domande WHERE codice = ? AND lotto = ? AND tipo = ? ORDER BY usata ASC, RANDOM() LIMIT ?')
@@ -119,7 +123,7 @@ export async function creaSimulazione(codice: string, formato: Formato): Promise
 
   const id = crypto.randomUUID();
   await env.DB.batch([
-    env.DB.prepare('INSERT INTO simulazioni (id, codice, formato, minuti) VALUES (?, ?, ?, ?)').bind(id, codice, formato, f.minuti),
+    env.DB.prepare('INSERT INTO simulazioni (id, codice, formato, minuti, modalita) VALUES (?, ?, ?, ?, ?)').bind(id, codice, formato, f.minuti, modalita),
     ...scelte.map((s, i) => env.DB.prepare('INSERT INTO risposte (simulazione, ordine, domanda, massimo) VALUES (?, ?, ?, ?)').bind(id, i + 1, s.id, PUNTI[s.tipo])),
     ...scelte.map((s) => env.DB.prepare('UPDATE domande SET usata = usata + 1 WHERE id = ?').bind(s.id)),
   ]);
@@ -139,6 +143,8 @@ export interface Simulazione {
   massimo: number | null;
   voto: number | null;
   giudizio: string | null;
+  modalita: Modalita;
+  esposizione: string | null;
 }
 
 export interface Esito {
@@ -155,18 +161,19 @@ export interface Risposta {
   punti: number | null;
   massimo: number;
   esito: Esito | null;
+  metriche: import('./calcoli').MetricheParlato | null;
 }
 
 export async function getSimulazione(id: string): Promise<{ sim: Simulazione; risposte: Risposta[] } | null> {
   const sim = await env.DB.prepare('SELECT * FROM simulazioni WHERE id = ?').bind(id).first<Simulazione>();
   if (!sim) return null;
   const { results } = await env.DB.prepare(
-    `SELECT r.ordine, r.risposta, r.punti, r.massimo, r.esito, d.id, d.nucleo, d.tipo, d.testo, d.opzioni, d.corretta, d.spiegazione,
+    `SELECT r.ordine, r.risposta, r.punti, r.massimo, r.esito, r.metriche, d.id, d.nucleo, d.tipo, d.testo, d.opzioni, d.corretta, d.spiegazione,
             d.punti_chiave, d.risposta_modello, d.file, d.pagine
      FROM risposte r JOIN domande d ON d.id = r.domanda WHERE r.simulazione = ? ORDER BY r.ordine`,
   )
     .bind(id)
-    .all<RigaDomanda & { ordine: number; risposta: string | null; punti: number | null; massimo: number; esito: string | null }>();
+    .all<RigaDomanda & { ordine: number; risposta: string | null; punti: number | null; massimo: number; esito: string | null; metriche: string | null }>();
   return {
     sim,
     risposte: results.map((r) => ({
@@ -176,14 +183,15 @@ export async function getSimulazione(id: string): Promise<{ sim: Simulazione; ri
       punti: r.punti,
       massimo: r.massimo,
       esito: r.esito ? (JSON.parse(r.esito) as Esito) : null,
+      metriche: r.metriche ? JSON.parse(r.metriche) : null,
     })),
   };
 }
 
 export async function storico(codice: string, limite = 5) {
-  const { results } = await env.DB.prepare('SELECT id, formato, stato, creata, voto, punti, massimo FROM simulazioni WHERE codice = ? ORDER BY creata DESC LIMIT ?')
+  const { results } = await env.DB.prepare('SELECT id, formato, modalita, stato, creata, voto, punti, massimo FROM simulazioni WHERE codice = ? ORDER BY creata DESC LIMIT ?')
     .bind(codice, limite)
-    .all<Pick<Simulazione, 'id' | 'formato' | 'stato' | 'creata' | 'voto' | 'punti' | 'massimo'>>();
+    .all<Pick<Simulazione, 'id' | 'formato' | 'modalita' | 'stato' | 'creata' | 'voto' | 'punti' | 'massimo'>>();
   return results;
 }
 
@@ -199,7 +207,7 @@ export async function consegna(id: string, valori: Map<number, string>): Promise
   let punti = 0;
 
   for (const r of dati.risposte) {
-    const v = (valori.get(r.ordine) ?? '').trim();
+    const v = (valori.get(r.ordine) ?? (dati.sim.modalita === 'orale' ? r.risposta ?? '' : '')).trim();
     if (r.domanda.tipo === 'multipla') {
       const giusta = v !== '' && Number(v) === r.domanda.corretta;
       const p = giusta ? r.massimo : 0;
@@ -223,6 +231,7 @@ export async function consegna(id: string, valori: Map<number, string>): Promise
         rispostaModello: r.domanda.rispostaModello,
         risposta: v.slice(0, 8000),
         massimo: r.massimo,
+        metriche: (r.metriche as Record<string, unknown> | null) ?? null,
       });
     }
   }
@@ -237,7 +246,7 @@ export async function consegna(id: string, valori: Map<number, string>): Promise
   await env.DB.batch(aggiornamenti);
 
   if (daCorreggere.length) {
-    const richiesta: RichiestaCorrezione = { simulazione: id, codice: dati.sim.codice, risposte: daCorreggere };
+    const richiesta: RichiestaCorrezione = { simulazione: id, codice: dati.sim.codice, modalita: dati.sim.modalita, risposte: daCorreggere };
     await accoda('correzione', dati.sim.codice, richiesta);
   }
   return stato;
@@ -265,12 +274,13 @@ export async function applicaCorrezione(id: string, c: RisultatoCorrezione) {
   const punti = dati.risposte.reduce((s, r) => s + (r.punti ?? 0), 0);
   const massimo = dati.risposte.reduce((s, r) => s + r.massimo, 0);
   aggiornamenti.push(
-    env.DB.prepare(`UPDATE simulazioni SET stato = 'corretta', corretta = ?, punti = ?, massimo = ?, voto = ?, giudizio = ? WHERE id = ?`).bind(
+    env.DB.prepare(`UPDATE simulazioni SET stato = 'corretta', corretta = ?, punti = ?, massimo = ?, voto = ?, giudizio = ?, esposizione = ? WHERE id = ?`).bind(
       adesso(),
       punti,
       massimo,
       votoDa(punti, massimo),
       c.giudizio,
+      c.esposizione ? JSON.stringify(c.esposizione) : null,
       id,
     ),
   );
@@ -280,4 +290,15 @@ export async function applicaCorrezione(id: string, c: RisultatoCorrezione) {
 export async function eliminaSimulazione(id: string) {
   await env.DB.batch([
     env.DB.prepare('UPDATE domande SET usata = MAX(usata - 1, 0) WHERE id IN (SELECT domanda FROM risposte WHERE simulazione = ?)').bind(id),env.DB.prepare('DELETE FROM risposte WHERE simulazione = ?').bind(id), env.DB.prepare('DELETE FROM simulazioni WHERE id = ?').bind(id)]);
+}
+
+/** Orale: salva la trascrizione e le metriche di una risposta (l'audio non viene mai salvato). */
+export async function salvaTrascrizione(id: string, ordine: number, testo: string, metriche: import('./calcoli').MetricheParlato) {
+  const r = await env.DB.prepare(
+    `UPDATE risposte SET risposta = ?, metriche = ? WHERE simulazione = ? AND ordine = ?
+       AND EXISTS (SELECT 1 FROM simulazioni WHERE id = ? AND stato = 'in_corso' AND modalita = 'orale')`,
+  )
+    .bind(testo.slice(0, 8000), JSON.stringify(metriche), id, ordine, id)
+    .run();
+  return (r.meta?.changes ?? 0) > 0;
 }

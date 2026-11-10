@@ -124,6 +124,7 @@ export type RisultatoDomande = z.infer<typeof RisultatoDomande>;
 export const RichiestaCorrezione = z.object({
   simulazione: z.string(),
   codice: z.string(),
+  modalita: z.enum(['scritto', 'orale']).default('scritto'),
   risposte: z.array(
     z.object({
       ordine: z.number().int(),
@@ -133,6 +134,8 @@ export const RichiestaCorrezione = z.object({
       rispostaModello: z.string(),
       risposta: z.string(),
       massimo: z.number(),
+      /** Solo orale: metriche del parlato calcolate dai tempi delle parole. */
+      metriche: z.record(z.string(), z.unknown()).nullable().optional(),
     }),
   ),
 });
@@ -157,5 +160,18 @@ export const CorrezioneModello = z
   .strict();
 export type CorrezioneModello = z.infer<typeof CorrezioneModello>;
 
-export const RisultatoCorrezione = CorrezioneModello.extend({ agente: z.string() });
+/** Orale: valutazione dell'esposizione, separata dal contenuto. */
+export const EsposizioneModello = z
+  .object({
+    voto: z.number().describe('Da 1 a 10: chiarezza, ordine, lessico tecnico, fluidità, sicurezza'),
+    puntiForza: z.array(z.string()),
+    daMigliorare: z.array(z.string()),
+    commento: z.string().describe('Due-tre frasi pratiche, con il tu'),
+  })
+  .strict();
+export type EsposizioneModello = z.infer<typeof EsposizioneModello>;
+
+export const CorrezioneOraleModello = CorrezioneModello.extend({ esposizione: EsposizioneModello }).strict();
+
+export const RisultatoCorrezione = CorrezioneModello.extend({ agente: z.string(), esposizione: EsposizioneModello.nullable().optional() });
 export type RisultatoCorrezione = z.infer<typeof RisultatoCorrezione>;

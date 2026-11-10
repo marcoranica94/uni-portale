@@ -4,6 +4,7 @@
 declare module 'cloudflare:workers' {
   export const env: {
     DB: import('@cloudflare/workers-types').D1Database;
+    AI: { run(modello: string, input: Record<string, unknown>): Promise<unknown> };
     ACCESS_TEAM_DOMAIN: string;
     ACCESS_AUD: string;
     /** Client ID del service token di uni-agent (non è il secret). */
