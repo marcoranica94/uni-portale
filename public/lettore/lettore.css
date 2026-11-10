@@ -1,17 +1,17 @@
 /* Lettore degli appunti: barra di navigazione, avanzamento, indice e "vista continua".
    Si aggiunge solo alle copie pubblicate; gli originali e la stampa restano A4.
-   Colori dello stile "taccuino" del portale (carta calda, inchiostro, evidenziatore). */
+   Colori dello stile "Emiciclo" del portale (verde d'aula). */
 :root {
-  --l-fondo: #f4f1ea;
-  --l-carta: #fbfaf6;
-  --l-inchiostro: #1a1a1a;
-  --l-tenue: #57534b;
-  --l-bordo: #dcd5c6;
-  --l-accento: #7a5600;
-  --l-evid: #f2c744;
-  --l-evid-bordo: #c99a1a;
-  --l-sans: 'IBM Plex Sans Variable', 'IBM Plex Sans', system-ui, -apple-system, 'Helvetica Neue', Arial, sans-serif;
-  --l-mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+  --l-fondo: #f3f5f2;
+  --l-carta: #ffffff;
+  --l-inchiostro: #10261c;
+  --l-tenue: #4c5d54;
+  --l-bordo: #d6ddd8;
+  --l-accento: #17663f;
+  --l-evid: #1f9d55;
+  --l-evid-bordo: #0f3d2e;
+  --l-sans: 'Titillium Web', system-ui, -apple-system, 'Segoe UI', Arial, sans-serif;
+  --l-mono: 'Titillium Web', system-ui, -apple-system, 'Segoe UI', Arial, sans-serif;
 }
 .lettore-barra {
   position: sticky;
@@ -124,8 +124,8 @@
   padding: 0 16px;
   border: 1px solid var(--l-evid-bordo);
   border-radius: 999px;
-  background: var(--l-evid);
-  color: #1b1a14;
+  background: #0f3d2e;
+  color: #ffffff;
   font: 600 15px/1 var(--l-sans);
   box-shadow: 0 6px 20px rgba(40, 30, 10, 0.18);
   cursor: pointer;

@@ -197,6 +197,8 @@ export function capitoliDi(file: string): string[] {
 export interface EsitoRisposta {
   /** Campo file della domanda: uno o più capitoli. */
   file: string;
+  /** Argomento (nucleo) del kit da cui nasce la domanda, es. "N07". */
+  nucleo?: string;
   punti: number;
   massimo: number;
   /** Quando è stata fatta la simulazione (ISO). */
@@ -226,13 +228,22 @@ export function statoPadronanza(quota: number | null, inPalio: number): StatoPad
  * una domanda su due capitoli conta per entrambi.
  */
 export function padronanzaCapitoli(esiti: EsitoRisposta[], adesso = new Date()): Map<string, Padronanza> {
+  return aggregaPadronanza(esiti, (e) => capitoliDi(e.file), adesso);
+}
+
+/** Padronanza di ogni argomento del kit (un seggio dell'emiciclo), con le stesse regole dei capitoli. */
+export function padronanzaArgomenti(esiti: EsitoRisposta[], adesso = new Date()): Map<string, Padronanza> {
+  return aggregaPadronanza(esiti, (e) => (e.nucleo ? [e.nucleo] : []), adesso);
+}
+
+function aggregaPadronanza(esiti: EsitoRisposta[], chiavi: (e: EsitoRisposta) => string[], adesso: Date): Map<string, Padronanza> {
   const somme = new Map<string, { presi: number; pesi: number; risposte: number; inPalio: number; ultima: string }>();
   for (const e of esiti) {
     if (!(e.massimo > 0)) continue;
     const giorni = Math.max(0, (adesso.getTime() - Date.parse(e.data)) / 86_400_000);
     const peso = e.massimo * 0.5 ** (giorni / MEZZA_VITA_GIORNI);
     const quota = Math.min(1, Math.max(0, e.punti / e.massimo));
-    for (const c of capitoliDi(e.file)) {
+    for (const c of chiavi(e)) {
       const s = somme.get(c) ?? { presi: 0, pesi: 0, risposte: 0, inPalio: 0, ultima: e.data };
       s.presi += peso * quota;
       s.pesi += peso;
@@ -274,4 +285,40 @@ export function prossimoCapitolo<T extends Padronanza & { file: string; pronto: 
   if (crescita) return { capitolo: crescita, motivo: 'in-crescita' };
   const solido = pronti.filter((c) => c.stato === 'solido').sort((a, b) => (a.ultima ?? '').localeCompare(b.ultima ?? ''))[0];
   return solido ? { capitolo: solido, motivo: 'da-rinfrescare' } : null;
+}
+
+/** Maggioranza dell'emiciclo: la metà più uno dei seggi deve essere "solido". */
+export function maggioranza(totale: number, solidi: number) {
+  const soglia = Math.floor(totale / 2) + 1;
+  return { soglia, raggiunta: totale > 0 && solidi >= soglia, mancano: Math.max(0, soglia - solidi) };
+}
+
+export interface Seggio {
+  x: number;
+  y: number;
+  /** Indice del seggio da sinistra a destra, per assegnare i gruppi. */
+  ordine: number;
+}
+
+/**
+ * Posti dell'emiciclo: file concentriche (la più interna più corta), seggi distribuiti in proporzione
+ * alla lunghezza di ogni fila e ordinati da sinistra a destra, come i gruppi in aula.
+ */
+export function postiEmiciclo(totale: number, opz: { cx: number; cy: number; raggio: number; passo: number; file?: number }): Seggio[] {
+  if (totale <= 0) return [];
+  const file = opz.file ?? Math.min(6, Math.max(2, Math.round(Math.sqrt(totale / 3))));
+  const raggi = Array.from({ length: file }, (_, i) => opz.raggio + i * opz.passo);
+  const somma = raggi.reduce((a, b) => a + b, 0);
+  const perFila = raggi.map((r) => Math.max(1, Math.round((totale * r) / somma)));
+  perFila[file - 1] += totale - perFila.reduce((a, b) => a + b, 0);
+  const posti: { x: number; y: number; angolo: number }[] = [];
+  perFila.forEach((n, f) => {
+    for (let k = 0; k < n; k++) {
+      const angolo = n === 1 ? Math.PI / 2 : Math.PI - (Math.PI * k) / (n - 1);
+      posti.push({ x: opz.cx + raggi[f] * Math.cos(angolo), y: opz.cy - raggi[f] * Math.sin(angolo), angolo });
+    }
+  });
+  return posti
+    .sort((a, b) => b.angolo - a.angolo || a.y - b.y)
+    .map((p, ordine) => ({ x: Math.round(p.x * 10) / 10, y: Math.round(p.y * 10) / 10, ordine }));
 }

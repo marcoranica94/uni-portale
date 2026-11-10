@@ -1,10 +1,11 @@
 ---
 import Base from '../layouts/Base.astro';
+import Emiciclo from '../components/Emiciclo.astro';
 import { getMaterie, CFU_TOTALI } from '../lib/percorso';
 import { getVoti, riepilogo, statoMateria, formatoMedia } from '../lib/voti';
 import { statoAgenti, getKit } from '../lib/coda';
-import { contaBanca, giorniDiStudio, ultimiEsiti, padronanzaMateria, padronanzaTutte, FORMATI, ORALE, CAPITOLO } from '../lib/simulazioni';
-import { prossimoCapitolo, type MotivoCapitolo } from '../lib/calcoli';
+import { contaBanca, giorniDiStudio, padronanzaCompleta, padronanzaTutte, seggiPerMateria, FORMATI, ORALE, CAPITOLO } from '../lib/simulazioni';
+import { prossimoCapitolo, maggioranza, type MotivoCapitolo, type StatoPadronanza } from '../lib/calcoli';
 
 export const prerender = false;
 
@@ -12,9 +13,9 @@ const materie = await getMaterie();
 const voti = await getVoti();
 const r = riepilogo(materie, voti);
 const inCorso = materie.filter((m) => statoMateria(m, voti) === 'in-corso');
-const [agente, studio, esiti, padronanze] = await Promise.all([statoAgenti(), giorniDiStudio(), ultimiEsiti(), padronanzaTutte()]);
+const [agente, studio, padronanze, seggi] = await Promise.all([statoAgenti(), giorniDiStudio(), padronanzaTutte(), seggiPerMateria()]);
 
-// Prossimo passo: la prima materia in corso con il kit d'esame pronto, altrimenti la prima con appunti.
+// Materia della seduta: la prima in corso con il kit d'esame pronto, altrimenti la prima con appunti.
 const conKit = await Promise.all(inCorso.map(async (m) => ({ m, kit: m.codice ? await getKit(m.codice) : null })));
 const adesso = conKit.find((x) => x.kit) ?? conKit.find((x) => x.m.appunti) ?? null;
 const primoCapitolo = adesso?.m.appunti?.capitoli.find((c) => !/indice|mappa/i.test(c.titolo)) ?? adesso?.m.appunti?.capitoli[0];
@@ -22,33 +23,37 @@ const banca = adesso?.m.codice ? await contaBanca(adesso.m.codice) : null;
 const orale = adesso?.m.esame.tipo === 'Orale';
 const simulabile = !!(adesso && banca && banca.totale > 0 && (orale || adesso.m.esame.tipo === 'Scritto'));
 
-// Mossa mirata: se le simulazioni hanno già mostrato un capitolo debole (o ce n'è uno mai provato), si allena quello.
-// Alla prima simulazione, o quando resta solo da rinfrescare, meglio l'esame intero.
-const capitoliP =
-  simulabile && adesso?.m.codice
-    ? await padronanzaMateria(adesso.m.codice, orale ? 'orale' : 'scritto').then((mappa) =>
-        (adesso.m.appunti?.capitoli ?? []).flatMap((c) => {
-          const p = mappa.get(c.file);
-          return p ? [{ ...p, titolo: c.titolo, pronto: p.domande >= (orale ? CAPITOLO.minimoOrale : CAPITOLO.minimo) && !p.inPreparazione }] : [];
-        }),
-      )
-    : [];
-const haProvato = capitoliP.some((c) => c.risposte > 0);
-const scelta = haProvato ? prossimoCapitolo(capitoliP) : null;
+// Aula della materia: un seggio per argomento del kit.
+const aula = adesso?.m.codice && adesso.kit ? await padronanzaCompleta(adesso.m.codice, orale ? 'orale' : 'scritto') : null;
+const argomenti = aula?.argomenti ?? [];
+const conteggio = (stato: StatoPadronanza) => argomenti.filter((a) => a.stato === stato).length;
+const solidi = conteggio('solido');
+const magg = maggioranza(argomenti.length, solidi);
+const haProvato = argomenti.some((a) => a.risposte > 0);
+
+// Ordine del giorno: l'argomento da allenare (pronto, cioè con domande in banca); alla prima seduta, l'esame intero.
+const minimo = orale ? CAPITOLO.minimoOrale : CAPITOLO.minimo;
+const scelta = simulabile && haProvato ? prossimoCapitolo(argomenti.map((a) => ({ ...a, file: a.id, pronto: a.domande >= minimo && !a.inPreparazione }))) : null;
 const mirata = scelta && scelta.motivo !== 'da-rinfrescare' ? scelta : null;
-// "Capitolo V, Sezione II: organi ausiliari" -> "organi ausiliari": il titolo resta leggibile anche nel riquadro.
-const titoloBreve = (t: string) => {
-  const s = t.replace(/^Capitolo\s+[IVXLC\d]+(,\s*Sezione\s+[IVXLC\d]+)?\s*[:—–-]\s*/i, '').trim();
-  return s.charAt(0).toUpperCase() + s.slice(1);
-};
+const capitoloDi = (file: string | undefined) => adesso?.m.appunti?.capitoli.find((c) => c.file === file);
+const capitoloMirato = mirata ? capitoloDi(mirata.capitolo.capitoli[0]) : undefined;
+const percento = (q: number | null) => `${Math.round((q ?? 0) * 100)}%`;
 const MOTIVI: Record<MotivoCapitolo, (q: string) => string> = {
-  debole: (q) => `È il capitolo più debole: nelle simulazioni hai preso il ${q} dei punti.`,
-  'mai-provato': () => 'Non l\'hai ancora mai provato in una simulazione.',
-  'in-crescita': (q) => `Sei al ${q} dei punti: ancora un passo per renderlo solido.`,
+  debole: (q) => `È l'argomento più debole: nelle simulazioni hai preso il ${q} dei punti.`,
+  'mai-provato': () => 'Non è ancora uscito in nessuna simulazione.',
+  'in-crescita': (q) => `Sei al ${q} dei punti: ancora un passo e diventa solido.`,
   'da-rinfrescare': () => '',
 };
-const minuti = mirata ? (orale ? Math.max(8, Math.round(ORALE.minuti * 2 / 3)) : CAPITOLO.scritto.minuti) : orale ? ORALE.minuti : FORMATI.breve.minuti;
-const appuntiMossa = mirata && adesso?.m.appunti ? `/appunti/${adesso.m.appunti.slug}/${mirata.capitolo.file}` : primoCapitolo && adesso?.m.appunti ? `/appunti/${adesso.m.appunti.slug}/${primoCapitolo.file}` : null;
+const minuti = mirata ? (orale ? 15 : CAPITOLO.scritto.minuti) : orale ? ORALE.minuti : FORMATI.breve.minuti;
+const appuntiMossa = adesso?.m.appunti ? `/appunti/${adesso.m.appunti.slug}/${capitoloMirato?.file ?? primoCapitolo?.file ?? ''}` : null;
+
+const titoloAula = !aula
+  ? null
+  : !haProvato
+    ? "L'aula è ancora vuota"
+    : magg.raggiunta
+      ? 'Hai la maggioranza'
+      : 'Non hai ancora la maggioranza';
 
 // Data e settimana del semestre, dalle date ufficiali del piano di studi ("14/09/2026 - 18/12/2026").
 const ora = new Date();
@@ -71,143 +76,128 @@ const semestre = (() => {
   return { settimane, corrente, nome, fineLezioni };
 })();
 
-const nomiGiorni = ['lun', 'mar', 'mer', 'gio', 'ven', 'sab', 'dom'];
-const giornoSettimana = (indietro: number) => nomiGiorni[(new Date(ora.getTime() - indietro * 86_400_000).getUTCDay() + 6) % 7];
+// Altre materie in corso: barretta dei seggi (solidi, in crescita, deboli) su tutti gli argomenti del kit.
+const altre = inCorso
+  .filter((m) => m !== adesso?.m)
+  .map((m) => {
+    const tot = m.codice ? (seggi.get(m.codice) ?? 0) : 0;
+    const p = m.codice ? [...(padronanze.get(m.codice)?.values() ?? [])] : [];
+    const n = (s: StatoPadronanza) => p.filter((x) => x.stato === s).length;
+    return { m, tot, si: n('solido'), forse: n('in-crescita'), no: n('debole') };
+  });
 ---
 
 <Base title="Uni">
-  <header class="testa">
-    <div class="testa__riga">
-      <p class="data">{dataEstesa}</p>
-      <a class:list={['agente', { 'agente--acceso': agente.online }]} href="/agente">
-        <span class="agente__luce" aria-hidden="true"></span>{agente.online ? 'agente acceso' : 'agente spento'}
-      </a>
-    </div>
-    <h1 class="titolo">Oggi</h1>
-    {semestre && (
-      <div class="semestre">
-        <div class="semestre__tacche" role="img" aria-label={`Settimana ${semestre.corrente} di ${semestre.settimane}`}>
-          {Array.from({ length: semestre.settimane }, (_, i) => (
-            <i class:list={{ fatta: i + 1 < semestre.corrente, ora: i + 1 === semestre.corrente }}></i>
-          ))}
-        </div>
-        <p class="semestre__testo">Settimana {semestre.corrente} di {semestre.settimane} del {semestre.nome} · lezioni fino al {semestre.fineLezioni}</p>
-      </div>
-    )}
+  <header class="seduta">
+    <p class="seduta__data">Seduta di {dataEstesa}</p>
+    <a class:list={['agente', { 'agente--acceso': agente.online }]} href="/agente">
+      <span class="agente__luce" aria-hidden="true"></span>{agente.online ? 'Agente acceso' : 'Agente spento'}
+    </a>
+    {semestre && <p class="seduta__settimana">Settimana {semestre.corrente} di {semestre.settimane} del {semestre.nome}, lezioni fino al {semestre.fineLezioni}</p>}
   </header>
 
-  <div class="cruscotto">
+  <div class="tavolo">
+    {aula && adesso && (
+      <section class="aula" aria-labelledby="aula-titolo">
+        <p class="aula__materia">{adesso.m.nome}, esame {adesso.m.esame.tipo.toLowerCase()}</p>
+        <h1 id="aula-titolo" class="aula__titolo">{titoloAula}</h1>
+        <Emiciclo seggi={argomenti.map((a) => ({ stato: a.stato, titolo: a.titolo }))} />
+        <div class="aula__esito">
+          <p class="aula__numero"><strong>{solidi}</strong> su {magg.soglia} per la maggioranza</p>
+          <p class="aula__nota">
+            {magg.raggiunta
+              ? `${solidi} argomenti solidi su ${argomenti.length}: sei pronto, tieni i seggi allenandoli.`
+              : `Ogni seggio è un argomento del kit d'esame (${argomenti.length}). Te ne mancano ${magg.mancano} solidi.`}
+          </p>
+        </div>
+        <ul class="aula__legenda">
+          <li><svg viewBox="0 0 12 12" aria-hidden="true"><circle cx="6" cy="6" r="5" class="l-si" /></svg>{solidi} solidi</li>
+          <li><svg viewBox="0 0 12 12" aria-hidden="true"><circle cx="6" cy="6" r="4.3" class="l-forse-c" /><path d="M6 1.7a4.3 4.3 0 0 1 0 8.6z" class="l-forse" /></svg>{conteggio('in-crescita')} in crescita</li>
+          <li><svg viewBox="0 0 12 12" aria-hidden="true"><rect x="1.5" y="1.5" width="9" height="9" rx="1.2" class="l-no" /></svg>{conteggio('debole')} deboli</li>
+          <li><svg viewBox="0 0 12 12" aria-hidden="true"><circle cx="6" cy="6" r="4.3" class="l-vuoto" /></svg>{conteggio('mai-provato')} mai provati</li>
+        </ul>
+      </section>
+    )}
+
     {adesso && (
-      <section class="mossa" aria-labelledby="mossa-titolo" style={`--c: var(--materia-${adesso.m.colore})`}>
-        <p class="mossa__chi">
-          <span class="quadro" aria-hidden="true"></span>
-          {adesso.m.breve}{simulabile && <> · {orale ? 'orale' : 'scritto'} · circa {minuti} minuti</>}
-        </p>
-        <h2 id="mossa-titolo" class="mossa__titolo">
-          {simulabile ? (
-            <>{orale ? 'Interrogati su ' : 'Mettiti alla prova su '}<span class="evidenzia">{mirata ? titoloBreve(mirata.capitolo.titolo) : adesso.m.breve}</span></>
-          ) : (
-            <>Ripassa <span class="evidenzia">{adesso.m.breve}</span></>
-          )}
+      <section class="ordine" aria-labelledby="ordine-titolo">
+        <p class="ordine__etichetta">Ordine del giorno</p>
+        <h2 id="ordine-titolo" class="ordine__titolo">
+          {mirata ? mirata.capitolo.titolo : simulabile ? (orale ? `Interrogazione di ${adesso.m.breve}` : `Prova scritta di ${adesso.m.breve}`) : `Ripasso di ${adesso.m.breve}`}
         </h2>
-        <p class="mossa__testo">
-          {simulabile && mirata
-            ? `${MOTIVI[mirata.motivo](`${Math.round((mirata.capitolo.quota ?? 0) * 100)}%`)} ${orale ? 'Domande a voce solo su questo capitolo.' : 'Poche domande solo su questo capitolo.'}`
+        {mirata && capitoloMirato && <p class="ordine__capitolo">{capitoloMirato.titolo}</p>}
+        <p class="ordine__testo">
+          {mirata
+            ? `${MOTIVI[mirata.motivo](percento(mirata.capitolo.quota))} ${orale ? 'Domande a voce solo su questo argomento' : 'Poche domande solo su questo argomento'}, circa ${minuti} minuti.`
             : simulabile
-            ? orale
-              ? `Tre domande a voce${agente.online ? ': il docente rilancia dove resti scoperto' : ''}. Poi rileggi i punti mancanti negli appunti.`
-              : 'Sei domande in dieci minuti: la scelta multipla si corregge subito, le aperte le corregge l\'agente.'
-            : adesso.kit
-              ? `Il kit d'esame è pronto (${adesso.kit.nuclei} nuclei): prepara le domande dalla scheda della materia, intanto ripassa dagli appunti.`
-              : "Riparti dagli appunti: dal kit d'esame nasceranno le simulazioni."}
+              ? haProvato
+                ? `${orale ? 'Tre domande a voce' : 'Sei domande'} su tutto il programma, circa ${minuti} minuti.`
+                : `Prima seduta: ${orale ? 'tre domande a voce' : 'sei domande'} su tutto il programma, circa ${minuti} minuti, per vedere da dove partire.${orale && agente.online ? ' Il docente rilancia dove resti scoperto.' : ''}`
+              : adesso.kit
+                ? `Il kit d'esame è pronto: prepara le domande dalla scheda della materia, intanto ripassa dagli appunti.`
+                : "Riparti dagli appunti: dal kit d'esame nasceranno le simulazioni."}
         </p>
-        <div class="mossa__azioni">
+        <div class="ordine__azioni">
           {simulabile ? (
             <form method="post" action="/api/simulazioni">
               <input type="hidden" name="codice" value={adesso.m.codice!} />
               <input type="hidden" name="formato" value="breve" />
               {orale && <input type="hidden" name="modalita" value="orale" />}
               {orale && agente.online && <input type="hidden" name="dal_vivo" value="1" />}
-              {mirata && <input type="hidden" name="capitolo" value={mirata.capitolo.file} />}
-              <button class="btn btn--primary btn--largo" type="submit" data-tasto="s">Inizia <span class="tasto" aria-hidden="true">S</span></button>
+              {mirata && <input type="hidden" name="argomento" value={mirata.capitolo.id} />}
+              <button class="btn btn--primary btn--largo" type="submit" data-tasto="s">{orale ? "Inizia l'interrogazione" : 'Inizia la prova'} <span class="tasto" aria-hidden="true">S</span></button>
             </form>
           ) : (
-            primoCapitolo && adesso.m.appunti && <a class="btn btn--primary btn--largo" href={`/appunti/${adesso.m.appunti.slug}/${primoCapitolo.file}`} data-tasto="s">Apri gli appunti <span class="tasto" aria-hidden="true">S</span></a>
+            appuntiMossa && <a class="btn btn--primary btn--largo" href={appuntiMossa} data-tasto="s">Apri gli appunti <span class="tasto" aria-hidden="true">S</span></a>
           )}
-          {simulabile && appuntiMossa ? (
-            <a class="btn" href={appuntiMossa}>Appunti</a>
-          ) : (
-            <a class="btn" href={`/materie/${adesso.m.slug}`}>Scheda</a>
-          )}
+          {simulabile && appuntiMossa ? <a class="btn" href={appuntiMossa}>Appunti</a> : <a class="btn" href={`/materie/${adesso.m.slug}`}>Scheda</a>}
         </div>
         {mirata && (
-          <form method="post" action="/api/simulazioni" class="mossa__altro">
+          <form method="post" action="/api/simulazioni" class="ordine__altro">
             <input type="hidden" name="codice" value={adesso.m.codice!} />
             <input type="hidden" name="formato" value="breve" />
             {orale && <input type="hidden" name="modalita" value="orale" />}
             {orale && agente.online && <input type="hidden" name="dal_vivo" value="1" />}
-            <button type="submit">oppure simula l'esame intero</button>
+            <button type="submit">Simula invece l'esame intero</button>
           </form>
         )}
       </section>
     )}
 
-    <section class="strumenti" aria-label="Riepilogo">
-      <a class="strumento" href="/libretto">
-        <span class="strumento__val cifra">{r.cfu}<small> / {CFU_TOTALI}</small></span>
-        <span class="strumento__lab">CFU</span>
-      </a>
-      <a class="strumento" href="/libretto">
-        <span class="strumento__val cifra">{formatoMedia(r.media)}</span>
-        <span class="strumento__lab">Media</span>
-      </a>
-      <div class="strumento">
-        <span class="strumento__val cifra">{studio.diFila}</span>
-        <span class="strumento__lab">{studio.diFila === 1 ? 'giorno di studio' : 'giorni di studio di fila'}</span>
-        <span class="giorni" role="img" aria-label={`Ultimi 7 giorni: ${studio.settimana.filter(Boolean).length} con almeno una simulazione`}>
-          {studio.settimana.map((fatto, i) => (
-            <i class:list={{ fatto, oggi: i === 6 }} title={giornoSettimana(6 - i)}></i>
-          ))}
-        </span>
-      </div>
-    </section>
-  </div>
-
-  <section class="corso" aria-labelledby="in-corso">
-    <h2 id="in-corso" class="sezione">In corso</h2>
-    <ul class="materie">
-      {inCorso.map((m) => {
-        const e = m.codice ? esiti.get(m.codice) : undefined;
-        const deboli = m.codice ? [...(padronanze.get(m.codice)?.values() ?? [])].filter((p) => p.stato === 'debole').length : 0;
-        return (
+    <section class="altre" aria-labelledby="altre-titolo">
+      <h2 id="altre-titolo" class="visually-hidden">Altre materie in corso</h2>
+      <ul class="altre__lista">
+        {altre.map((x) => (
           <li>
-            <a class="materia" href={`/materie/${m.slug}`} style={`--c: var(--materia-${m.colore})`}>
-              <span class="quadro" aria-hidden="true"></span>
-              <span class="materia__nome">
-                <b>{m.nome}</b>
-                <small>{m.esame.tipo === 'Da definire' ? 'esame da definire' : m.esame.tipo.toLowerCase()} · {m.cfu} CFU</small>
+            <a class="altra" href={`/materie/${x.m.slug}`} style={`--c: var(--materia-${x.m.colore})`}>
+              <span class="altra__nome">
+                <b>{x.m.nome}</b>
+                <small>{x.m.esame.tipo === 'Da definire' ? 'esame da definire' : `esame ${x.m.esame.tipo.toLowerCase()}`}, {x.tot ? `${x.tot} argomenti` : "kit d'esame da preparare"}</small>
               </span>
-              <span class="materia__esito">
-                {e && e.voto !== null ? (
+              <span class="barretta" role="img" aria-label={x.tot ? `${x.si} solidi, ${x.forse} in crescita, ${x.no} deboli su ${x.tot}` : 'Nessun argomento'}>
+                {x.tot > 0 && (
                   <>
-                    <span class="inchiostro" aria-hidden="true"><i style={`width: ${Math.round((e.voto / 30) * 100)}%`}></i></span>
-                    <span class="materia__voto">{e.voto}/30 · {e.n === 1 ? '1 simulazione' : `${e.n} simulazioni`}</span>
-                    {deboli > 0 && <span class="materia__deboli">{deboli === 1 ? '1 capitolo debole' : `${deboli} capitoli deboli`}</span>}
+                    <i class="b-si" style={`width: ${(x.si / x.tot) * 100}%`}></i>
+                    <i class="b-forse" style={`width: ${(x.forse / x.tot) * 100}%`}></i>
+                    <i class="b-no" style={`width: ${(x.no / x.tot) * 100}%`}></i>
                   </>
-                ) : (
-                  <span class="materia__voto">mai simulata</span>
                 )}
               </span>
             </a>
           </li>
-        );
-      })}
-    </ul>
-  </section>
+        ))}
+      </ul>
+      <dl class="numeri">
+        <div><dt>CFU</dt><dd><a href="/libretto"><strong>{r.cfu}</strong> su {CFU_TOTALI}</a></dd></div>
+        <div><dt>Media</dt><dd><a href="/libretto"><strong>{formatoMedia(r.media)}</strong></a></dd></div>
+        <div><dt>Giorni di studio di fila</dt><dd><strong>{studio.diFila}</strong></dd></div>
+      </dl>
+    </section>
+  </div>
 </Base>
 
 <script>
-  // Scorciatoia: S avvia la mossa di oggi (spenta mentre scrivi in un campo).
+  // Scorciatoia: S avvia l'ordine del giorno (spenta mentre scrivi in un campo).
   document.addEventListener('keydown', (e) => {
     if (e.key.toLowerCase() !== 's' || e.metaKey || e.ctrlKey || e.altKey) return;
     const t = e.target as HTMLElement | null;
@@ -220,302 +210,281 @@ const giornoSettimana = (indietro: number) => nomiGiorni[(new Date(ora.getTime()
 </script>
 
 <style>
-  .testa {
-    display: grid;
-    gap: var(--space-2);
-  }
-  .testa__riga {
+  .seduta {
     display: flex;
+    flex-wrap: wrap;
     justify-content: space-between;
     align-items: baseline;
-    gap: var(--space-3);
+    gap: var(--space-1) var(--space-4);
   }
-  .data {
-    font-family: var(--font-serif);
-    font-style: italic;
+  .seduta__data {
     font-size: var(--text-lg);
-    color: var(--color-ink-muted);
+    font-weight: var(--weight-semibold);
   }
-  .data::first-letter {
-    text-transform: uppercase;
+  .seduta__settimana {
+    flex-basis: 100%;
+    font-size: var(--text-sm);
+    color: var(--color-ink-muted);
   }
   .agente {
     display: inline-flex;
     align-items: center;
     gap: var(--space-2);
-    font-size: var(--text-xs);
-    color: var(--color-ink-faint);
+    font-size: var(--text-sm);
+    font-weight: var(--weight-semibold);
+    color: var(--color-ink-muted);
     text-decoration: none;
-    white-space: nowrap;
-  }
-  .agente:hover {
-    color: var(--color-ink);
   }
   .agente__luce {
     position: relative;
-    width: 7px;
-    height: 7px;
+    width: 8px;
+    height: 8px;
     border-radius: 50%;
     border: 1.5px solid var(--color-ink-faint);
   }
   .agente--acceso .agente__luce {
     border: 0;
-    background: var(--color-success);
+    background: var(--voto-si);
   }
-  /* L'impulso dice che l'agente è collegato: si muove solo quando è vero */
   .agente--acceso .agente__luce::after {
     content: '';
     position: absolute;
     inset: 0;
     border-radius: 50%;
-    background: var(--color-success);
+    background: var(--voto-si);
     animation: impulso 2.4s var(--ease) infinite;
   }
   @keyframes impulso {
     0% { transform: scale(1); opacity: 0.6; }
     70%, 100% { transform: scale(3); opacity: 0; }
   }
-  .titolo {
-    font-size: var(--text-3xl);
-  }
-  .semestre {
-    display: grid;
-    gap: var(--space-2);
-    max-width: 34rem;
-  }
-  .semestre__tacche {
-    display: grid;
-    grid-auto-flow: column;
-    grid-auto-columns: 1fr;
-    gap: 3px;
-  }
-  .semestre__tacche i {
-    height: 4px;
-    border-radius: 2px;
-    background: var(--color-rule);
-  }
-  .semestre__tacche i.fatta {
-    background: var(--color-ink-faint);
-  }
-  .semestre__tacche i.ora {
-    background: var(--color-primary);
-    outline: 1px solid var(--color-primary-edge);
-  }
-  .semestre__testo {
-    font-size: var(--text-xs);
-    color: var(--color-ink-muted);
-  }
 
-  /* Cruscotto: la mossa domina, gli strumenti stanno in riga sotto (telefono) o a lato (desktop) */
-  .cruscotto {
+  /* Tavolo: l'aula domina; su computer l'ordine del giorno e le altre materie stanno a destra */
+  .tavolo {
     display: grid;
     gap: var(--space-4);
   }
-  .mossa {
+  @media (min-width: 900px) {
+    .tavolo {
+      grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+      align-items: start;
+    }
+    .aula {
+      grid-row: span 2;
+    }
+  }
+
+  .aula {
     display: grid;
     gap: var(--space-3);
+    padding: var(--space-5) var(--space-4) var(--space-4);
+    border-radius: var(--radius-aula);
+    background: var(--color-aula);
+    color: var(--color-on-aula);
+  }
+  .aula__materia {
+    font-size: var(--text-sm);
+    font-weight: var(--weight-semibold);
+    color: var(--color-aula-tenue);
+  }
+  .aula__titolo {
+    font-size: clamp(1.75rem, 5vw, var(--text-3xl));
+    font-weight: var(--weight-bold);
+    line-height: 1;
+    letter-spacing: -0.015em;
+  }
+  .aula :global(.emiciclo) {
+    margin-top: var(--space-2);
+  }
+  .aula__esito {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: var(--space-2) var(--space-4);
+  }
+  .aula__numero {
+    font-size: var(--text-lg);
+    font-weight: var(--weight-semibold);
+    color: var(--color-aula-tenue);
+    font-variant-numeric: tabular-nums;
+  }
+  .aula__numero strong {
+    font-size: var(--text-3xl);
+    font-weight: var(--weight-bold);
+    line-height: 1;
+    color: var(--color-on-aula);
+  }
+  .aula__nota {
+    max-width: 30ch;
+    font-size: var(--text-sm);
+    color: var(--color-aula-tenue);
+  }
+  .aula__legenda {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-1) var(--space-4);
+    margin: 0;
+    padding: var(--space-3) 0 0;
+    border-top: 1px solid var(--color-aula-filo);
+    list-style: none;
+    font-size: var(--text-sm);
+    font-weight: var(--weight-semibold);
+    font-variant-numeric: tabular-nums;
+  }
+  .aula__legenda li {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .aula__legenda svg {
+    width: 12px;
+    height: 12px;
+  }
+  .l-si { fill: var(--voto-si); }
+  .l-forse { fill: var(--voto-forse); }
+  .l-forse-c { fill: none; stroke: var(--voto-forse); stroke-width: 1.6; }
+  .l-no { fill: var(--voto-no); }
+  .l-vuoto { fill: none; stroke: var(--color-aula-tenue); stroke-width: 1.4; }
+
+  .ordine {
+    display: grid;
+    gap: var(--space-2);
     padding: var(--space-5);
+    border-radius: var(--radius-lg);
     background: var(--color-surface);
     border: var(--border);
-    border-radius: var(--radius-lg);
   }
-  .quadro {
-    flex: none;
-    width: 9px;
-    height: 9px;
-    border-radius: 2px;
-    background: var(--c, var(--color-ink-faint));
+  .ordine__etichetta {
+    font-size: var(--text-sm);
+    font-weight: var(--weight-semibold);
+    color: var(--color-danger);
   }
-  .mossa__chi {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
+  .ordine__titolo {
+    font-size: var(--text-xl);
+    font-weight: var(--weight-semibold);
+    line-height: 1.15;
+  }
+  .ordine__capitolo {
     font-size: var(--text-sm);
     color: var(--color-ink-muted);
   }
-  .mossa__titolo {
-    font-family: var(--font-serif);
-    font-size: clamp(1.625rem, 4vw, 2.25rem);
-    font-weight: var(--weight-semibold);
-    line-height: 1.1;
-    letter-spacing: -0.015em;
-  }
-  .mossa__testo {
+  .ordine__testo {
     color: var(--color-ink-muted);
-    max-width: 58ch;
+    max-width: 52ch;
   }
-  .mossa__azioni {
+  .ordine__azioni {
     display: flex;
     gap: var(--space-2);
     padding-top: var(--space-2);
   }
-  .mossa__azioni form {
-    margin: 0;
+  .ordine__azioni form,
+  .ordine__azioni > .btn--primary {
     flex: 1;
-    max-width: 22rem;
     display: grid;
-  }
-  .mossa__azioni > .btn--primary {
-    flex: 1;
-    max-width: 22rem;
-  }
-
-  .strumenti {
-    display: grid;
-    grid-template-columns: 1.1fr 1fr 1.2fr;
-    border-block: var(--border);
-  }
-  .strumento {
-    display: grid;
-    gap: var(--space-1);
-    align-content: start;
-    padding: var(--space-4) var(--space-3) var(--space-3) 0;
-    color: inherit;
-    text-decoration: none;
-  }
-  .strumento + .strumento {
-    padding-left: var(--space-3);
-    border-left: var(--border);
-  }
-  a.strumento:hover .strumento__lab {
-    color: var(--color-ink);
-  }
-  .strumento__val {
-    font-size: 1.75rem;
-    font-weight: var(--weight-medium);
-    line-height: 1;
-  }
-  .strumento__val small {
-    font-size: var(--text-sm);
-    color: var(--color-ink-muted);
-    letter-spacing: 0;
-  }
-  .strumento__lab {
-    font-size: var(--text-xs);
-    color: var(--color-ink-muted);
-  }
-  .giorni {
-    display: flex;
-    gap: 3px;
-    margin-top: var(--space-1);
-  }
-  .giorni i {
-    width: 10px;
-    height: 10px;
-    border-radius: 2px;
-    background: var(--color-raised);
-  }
-  .giorni i.fatto {
-    background: var(--color-primary);
-  }
-  .giorni i.oggi:not(.fatto) {
-    box-shadow: inset 0 0 0 1px var(--color-rule-strong);
-  }
-
-  .corso {
-    display: grid;
-    gap: var(--space-2);
-  }
-  .materie {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-    border-bottom: var(--border);
-  }
-  .materia {
-    display: grid;
-    grid-template-columns: 9px 1fr auto;
-    gap: var(--space-3);
-    align-items: center;
-    min-height: 60px;
-    padding: var(--space-3) 0;
-    border-top: var(--border);
-    color: inherit;
-    text-decoration: none;
-    transition: background-color var(--dur) var(--ease);
-  }
-  .materia:hover {
-    background: linear-gradient(90deg, var(--color-surface-muted), transparent);
-  }
-  .materia__nome {
-    display: grid;
-    min-width: 0;
-  }
-  .materia__nome b {
-    font-family: var(--font-serif);
-    font-size: var(--text-lg);
-    font-weight: var(--weight-semibold);
-    line-height: 1.2;
-  }
-  .materia__nome small {
-    font-size: var(--text-xs);
-    color: var(--color-ink-muted);
-  }
-  .materia__esito {
-    display: grid;
-    gap: var(--space-1);
-    justify-items: end;
-  }
-  .inchiostro {
-    width: 64px;
-    height: 4px;
-    border-radius: 2px;
-    background: var(--color-raised);
-    overflow: hidden;
-  }
-  .inchiostro i {
-    display: block;
-    height: 100%;
-    background: var(--color-ink);
-  }
-  .mossa__altro {
     margin: 0;
   }
-  .mossa__altro button {
+  .ordine__altro {
+    margin: 0;
+  }
+  .ordine__altro button {
     padding: var(--space-1) 0;
     border: 0;
     background: none;
     font: inherit;
     font-size: var(--text-sm);
-    color: var(--color-ink-muted);
+    font-weight: var(--weight-semibold);
+    color: var(--color-accent);
     text-decoration: underline;
     text-underline-offset: 0.2em;
     cursor: pointer;
   }
-  .mossa__altro button:hover {
-    color: var(--color-ink);
-  }
-  .materia__deboli {
-    font-size: var(--text-xs);
-    color: var(--color-danger);
-  }
-  .materia__voto {
-    font-size: var(--text-xs);
-    color: var(--color-ink-faint);
-    white-space: nowrap;
-  }
 
-  @media (min-width: 760px) {
-    .cruscotto {
-      grid-template-columns: minmax(0, 2fr) minmax(15rem, 1fr);
-      align-items: stretch;
-    }
-    .strumenti {
-      grid-template-columns: 1fr;
-      border-block: 0;
-      border-left: var(--border);
-      padding-left: var(--space-5);
-    }
-    .strumento,
-    .strumento + .strumento {
-      padding: var(--space-3) 0;
-      border-left: 0;
-    }
-    .strumento + .strumento {
-      border-top: var(--border);
-    }
-    .cruscotto:not(:has(.mossa)) {
-      grid-template-columns: 1fr;
-    }
+  .altre {
+    display: grid;
+    gap: var(--space-3);
+  }
+  .altre__lista {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: grid;
+    gap: 1px;
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    border: var(--border);
+    background: var(--color-rule);
+  }
+  .altra {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: var(--space-3);
+    align-items: center;
+    padding: var(--space-3) var(--space-4);
+    background: var(--color-surface);
+    color: inherit;
+    text-decoration: none;
+  }
+  .altra:hover {
+    background: var(--color-surface-muted);
+  }
+  .altra__nome {
+    display: grid;
+    min-width: 0;
+  }
+  .altra__nome b {
+    font-weight: var(--weight-semibold);
+    line-height: 1.2;
+  }
+  .altra__nome small {
+    font-size: var(--text-xs);
+    color: var(--color-ink-muted);
+  }
+  .barretta {
+    display: flex;
+    width: 76px;
+    height: 8px;
+    border-radius: 4px;
+    overflow: hidden;
+    background: var(--color-raised);
+  }
+  .b-si { background: var(--voto-si); }
+  .b-forse { background: var(--voto-forse); }
+  .b-no { background: var(--voto-no); }
+  .numeri {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 1px;
+    margin: 0;
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    border: var(--border);
+    background: var(--color-rule);
+  }
+  .numeri > div {
+    display: grid;
+    gap: 2px;
+    align-content: start;
+    padding: var(--space-3) var(--space-4);
+    background: var(--color-surface);
+  }
+  .numeri dt {
+    font-size: var(--text-xs);
+    color: var(--color-ink-muted);
+  }
+  .numeri dd {
+    margin: 0;
+    font-size: var(--text-sm);
+    color: var(--color-ink-muted);
+    font-variant-numeric: tabular-nums;
+  }
+  .numeri dd a {
+    color: inherit;
+    text-decoration: none;
+  }
+  .numeri strong {
+    font-size: var(--text-xl);
+    font-weight: var(--weight-bold);
+    color: var(--color-ink);
   }
 </style>

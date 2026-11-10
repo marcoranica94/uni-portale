@@ -193,3 +193,37 @@ test('prossimoCapitolo: prima il debole, poi il mai provato, poi la crescita, sa
   assert.equal(prossimoCapitolo([c('a', 'solido', 0.95, true, '2026-11-09'), c('b', 'solido', 0.92, true, '2026-11-01')])?.capitolo.file, 'b');
   assert.equal(prossimoCapitolo([c('a', 'debole', 0.2, false)]), null);
 });
+
+import { padronanzaArgomenti, maggioranza, postiEmiciclo } from '../src/lib/calcoli.ts';
+
+test('padronanzaArgomenti raggruppa per nucleo del kit', () => {
+  const ora = new Date('2026-11-10T12:00:00Z');
+  const p = padronanzaArgomenti(
+    [
+      { file: 'a.html', nucleo: 'N01', punti: 4, massimo: 4, data: '2026-11-10T10:00:00Z' },
+      { file: 'a.html', nucleo: 'N01', punti: 4, massimo: 4, data: '2026-11-10T10:00:00Z' },
+      { file: 'a.html', nucleo: 'N02', punti: 1, massimo: 4, data: '2026-11-10T10:00:00Z' },
+      { file: 'b.html', punti: 1, massimo: 1, data: '2026-11-10T10:00:00Z' },
+    ],
+    ora,
+  );
+  assert.equal(p.get('N01')!.stato, 'solido');
+  assert.equal(p.get('N02')!.stato, 'debole');
+  assert.equal(p.size, 2);
+});
+
+test('maggioranza: metà più uno dei seggi', () => {
+  assert.deepEqual(maggioranza(71, 21), { soglia: 36, raggiunta: false, mancano: 15 });
+  assert.equal(maggioranza(42, 22).raggiunta, true);
+  assert.equal(maggioranza(0, 0).raggiunta, false);
+});
+
+test('postiEmiciclo: un posto per seggio, tutti sopra il centro, ordinati da sinistra', () => {
+  for (const n of [1, 13, 42, 71]) {
+    const posti = postiEmiciclo(n, { cx: 170, cy: 170, raggio: 60, passo: 20 });
+    assert.equal(posti.length, n);
+    assert.ok(posti.every((p) => p.y <= 170.01));
+  }
+  const p = postiEmiciclo(71, { cx: 170, cy: 170, raggio: 60, passo: 20 });
+  assert.ok(p[0].x < 100 && p[70].x > 240);
+});

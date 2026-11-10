@@ -2,7 +2,7 @@ import { env } from 'cloudflare:workers';
 import type { D1PreparedStatement } from '@cloudflare/workers-types';
 import type { DomandaCompleta, RichiestaApprofondimento, RichiestaCorrezione, RichiestaDomande, RisultatoCorrezione } from '../shared/schemi';
 import { accoda, getKit, ultimoLavoro } from './coda';
-import { votoDa, padronanzaCapitoli, capitoliDi, MAI_PROVATO, type Padronanza, type EsitoRisposta } from './calcoli';
+import { votoDa, padronanzaCapitoli, padronanzaArgomenti, capitoliDi, MAI_PROVATO, type Padronanza, type EsitoRisposta } from './calcoli';
 import { getMaterie } from './percorso';
 export { domandaValida, votoDa } from './calcoli';
 
@@ -80,7 +80,7 @@ export async function richiestaRifornimento(codice: string): Promise<RichiestaDo
     .all<{ nucleo: string; n: number }>();
   const [profilo, materie] = await Promise.all([getProfilo(codice), getMaterie()]);
   const soloAperte = materie.find((m) => m.codice === codice)?.esame.tipo === 'Orale';
-  return { nuclei: 6, presenti: Object.fromEntries(results.map((r) => [r.nucleo, r.n])), istruzioni: profilo.istruzioni, soloAperte, capitolo: '' };
+  return { nuclei: 6, presenti: Object.fromEntries(results.map((r) => [r.nucleo, r.n])), istruzioni: profilo.istruzioni, soloAperte, capitolo: '', nucleo: '' };
 }
 
 /** Se le domande mai uscite non bastano per altre due simulazioni, chiede all'agente un rifornimento. */
@@ -165,81 +165,101 @@ const daRiga = (r: RigaDomanda): Domanda => ({
   pagine: r.pagine,
 });
 
-/** Crea una simulazione pescando le domande meno usate della banca attiva. */
 /**
- * Simulazione su un capitolo ("Allena solo questo"): domande dei soli nuclei di quel capitolo.
+ * Simulazione mirata ("Allena"): domande dei soli nuclei di un capitolo, o di un solo argomento del kit.
  * Orale: le domande dell'orale; scritto: tre multiple e un'aperta, una decina di minuti.
  */
 export const CAPITOLO = { scritto: { multiple: 3, aperte: 1, minuti: 8 }, minimo: 3, minimoOrale: 2 } as const;
 
-/** Filtro SQL sul campo file della domanda: vale anche per i nuclei che stanno su più capitoli ("a.html; b.html"). */
-const NEL_CAPITOLO = "instr(' ' || file || ';', ?) > 0";
-const chiaveCapitolo = (capitolo: string) => ` ${capitolo};`;
+/** Bersaglio di una simulazione mirata: un capitolo (file degli appunti) o un argomento del kit (es. "N07"). */
+export type Bersaglio = { tipo: 'capitolo'; valore: string } | { tipo: 'argomento'; valore: string };
 
+/** Filtro SQL sulle domande del bersaglio; per il capitolo vale anche per i nuclei su più capitoli ("a.html; b.html"). */
+const filtro = (b: Bersaglio) =>
+  b.tipo === 'capitolo' ? { sql: "instr(' ' || file || ';', ?) > 0", valore: ` ${b.valore};` } : { sql: 'nucleo = ?', valore: b.valore };
+const chiaveBersaglio = (b: Bersaglio) => `${b.tipo}:${b.valore}`;
+
+/** Crea una simulazione pescando le domande meno usate della banca attiva (del bersaglio, se c'è). */
 export async function creaSimulazione(
   codice: string,
   formato: Formato,
   modalita: Modalita = 'scritto',
   dalVivo = false,
-  capitolo: string | null = null,
+  bersaglio: Bersaglio | null = null,
 ): Promise<string | null> {
   const p = await getProfilo(codice);
   const f =
     modalita === 'orale'
       ? { multiple: 0, aperte: p.domandeOrale, minuti: ORALE.minuti }
-      : capitolo
+      : bersaglio
         ? CAPITOLO.scritto
         : formato === 'completo'
           ? { multiple: p.multipleScritto, aperte: p.aperteScritto, minuti: FORMATI.completo.minuti }
           : FORMATI.breve;
+  const filt = bersaglio ? filtro(bersaglio) : null;
   const pesca = async (tipo: 'multipla' | 'aperta', n: number) =>
     n <= 0
       ? []
       : (
-          await env.DB.prepare(
-            `SELECT id FROM domande WHERE codice = ? AND tipo = ? AND archiviata = 0${capitolo ? ` AND ${NEL_CAPITOLO}` : ''} ORDER BY usata ASC, RANDOM() LIMIT ?`,
-          )
-            .bind(...(capitolo ? [codice, tipo, chiaveCapitolo(capitolo), n] : [codice, tipo, n]))
+          await env.DB.prepare(`SELECT id FROM domande WHERE codice = ? AND tipo = ? AND archiviata = 0${filt ? ` AND ${filt.sql}` : ''} ORDER BY usata ASC, RANDOM() LIMIT ?`)
+            .bind(...(filt ? [codice, tipo, filt.valore, n] : [codice, tipo, n]))
             .all<{ id: string }>()
         ).results.map((r) => r.id);
-  const scelte = [...(await pesca('multipla', f.multiple)).map((id) => ({ id, tipo: 'multipla' as const })), ...(await pesca('aperta', f.aperte)).map((id) => ({ id, tipo: 'aperta' as const }))];
+  // Scritto mirato: se mancano multiple, completa con aperte (e viceversa) pur di restare sul bersaglio.
+  let multiple = await pesca('multipla', f.multiple);
+  let aperte = await pesca('aperta', f.aperte + (bersaglio && modalita === 'scritto' ? f.multiple - multiple.length : 0));
+  if (bersaglio && modalita === 'scritto' && aperte.length < f.aperte) multiple = await pesca('multipla', f.multiple + f.aperte - aperte.length);
+  const scelte = [...multiple.map((id) => ({ id, tipo: 'multipla' as const })), ...aperte.map((id) => ({ id, tipo: 'aperta' as const }))];
   if (!scelte.length) return null;
-  if (capitolo && scelte.length < (modalita === 'orale' ? CAPITOLO.minimoOrale : CAPITOLO.minimo)) return null;
+  if (bersaglio && scelte.length < (modalita === 'orale' ? CAPITOLO.minimoOrale : CAPITOLO.minimo)) return null;
 
   const id = crypto.randomUUID();
-  const minuti = modalita === 'orale' && capitolo ? Math.max(8, Math.round((ORALE.minuti * scelte.length) / Math.max(1, p.domandeOrale))) : f.minuti;
+  const minuti = modalita === 'orale' && bersaglio ? Math.max(8, Math.round((ORALE.minuti * scelte.length) / Math.max(1, p.domandeOrale))) : f.minuti;
   await env.DB.batch([
-    env.DB.prepare('INSERT INTO simulazioni (id, codice, formato, minuti, modalita, dal_vivo, capitolo) VALUES (?, ?, ?, ?, ?, ?, ?)').bind(
+    env.DB.prepare('INSERT INTO simulazioni (id, codice, formato, minuti, modalita, dal_vivo, capitolo, argomento) VALUES (?, ?, ?, ?, ?, ?, ?, ?)').bind(
       id,
       codice,
       formato,
       minuti,
       modalita,
       modalita === 'orale' && dalVivo ? 1 : 0,
-      capitolo,
+      bersaglio?.tipo === 'capitolo' ? bersaglio.valore : null,
+      bersaglio?.tipo === 'argomento' ? bersaglio.valore : null,
     ),
     ...scelte.map((s, i) => env.DB.prepare('INSERT INTO risposte (simulazione, ordine, domanda, massimo) VALUES (?, ?, ?, ?)').bind(id, i + 1, s.id, PUNTI[s.tipo])),
     ...scelte.map((s) => env.DB.prepare('UPDATE domande SET usata = usata + 1 WHERE id = ?').bind(s.id)),
   ]);
-  if (capitolo) await riforniscoCapitoloSeServe(codice, capitolo, modalita);
+  if (bersaglio) await riforniscoBersaglioSeServe(codice, bersaglio, modalita);
   else await riforniscoSeServe(codice, modalita);
   return id;
 }
 
-// ---------- Padronanza per capitolo e rifornimento mirato ----------
+// ---------- Padronanza (capitoli e argomenti) e rifornimento mirato ----------
+
+export interface Argomento {
+  id: string;
+  titolo: string;
+  /** Capitoli (file degli appunti) in cui sta l'argomento. */
+  capitoli: string[];
+}
+
+/** Argomenti (nuclei) del kit di una materia, nell'ordine del kit. */
+export async function argomentiKit(codice: string): Promise<Argomento[]> {
+  const { results } = await env.DB.prepare('SELECT id, titolo, file FROM nuclei WHERE codice = ? ORDER BY id').bind(codice).all<{ id: string; titolo: string; file: string }>();
+  return results.map((n) => ({ id: n.id, titolo: n.titolo, capitoli: capitoliDi(n.file) }));
+}
 
 /** Nuclei del kit per capitolo (file degli appunti -> id dei nuclei). */
 export async function nucleiPerCapitolo(codice: string): Promise<Map<string, string[]>> {
-  const { results } = await env.DB.prepare('SELECT id, file FROM nuclei WHERE codice = ?').bind(codice).all<{ id: string; file: string }>();
   const mappa = new Map<string, string[]>();
-  for (const n of results) for (const c of capitoliDi(n.file)) mappa.set(c, [...(mappa.get(c) ?? []), n.id]);
+  for (const a of await argomentiKit(codice)) for (const c of a.capitoli) mappa.set(c, [...(mappa.get(c) ?? []), a.id]);
   return mappa;
 }
 
 /** Esiti delle risposte già corrette di una materia (o di tutte), per la padronanza. */
 async function esitiRisposte(codice: string | null): Promise<(EsitoRisposta & { codice: string })[]> {
   const { results } = await env.DB.prepare(
-    `SELECT s.codice, d.file, r.punti, r.massimo, s.creata AS data
+    `SELECT s.codice, d.file, d.nucleo, r.punti, r.massimo, s.creata AS data
        FROM risposte r JOIN simulazioni s ON s.id = r.simulazione JOIN domande d ON d.id = r.domanda
       WHERE r.punti IS NOT NULL${codice ? ' AND s.codice = ?' : ''}`,
   )
@@ -258,77 +278,114 @@ export interface CapitoloPadronanza extends Padronanza {
   inPreparazione: boolean;
 }
 
-/** Padronanza di ogni capitolo che ha nuclei nel kit; i capitoli senza nuclei (indice, mappe) non compaiono. */
-export async function padronanzaMateria(codice: string, modalita: Modalita): Promise<Map<string, CapitoloPadronanza>> {
-  const tipo = modalita === 'orale' ? "AND tipo = 'aperta'" : '';
-  const [nuclei, esiti, banca, pendenti] = await Promise.all([
-    nucleiPerCapitolo(codice),
-    esitiRisposte(codice),
-    env.DB.prepare(`SELECT file, usata FROM domande WHERE codice = ? AND archiviata = 0 ${tipo}`).bind(codice).all<{ file: string; usata: number }>(),
-    capitoliInPreparazione(codice),
-  ]);
-  const p = padronanzaCapitoli(esiti);
+export interface ArgomentoPadronanza extends Padronanza, Argomento {
+  domande: number;
+  nuove: number;
+  inPreparazione: boolean;
+}
+
+/** Domande in banca per chiave (capitolo o argomento): totale e mai uscite. */
+function contaBancaPer(banca: { file: string; nucleo: string; usata: number }[], chiavi: (d: { file: string; nucleo: string }) => string[]) {
   const conta = new Map<string, { domande: number; nuove: number }>();
-  for (const d of banca.results)
-    for (const c of capitoliDi(d.file)) {
+  for (const d of banca)
+    for (const c of chiavi(d)) {
       const x = conta.get(c) ?? { domande: 0, nuove: 0 };
       x.domande += 1;
       if (d.usata === 0) x.nuove += 1;
       conta.set(c, x);
     }
-  const esito = new Map<string, CapitoloPadronanza>();
-  for (const [file, ids] of nuclei) {
-    esito.set(file, {
-      ...(p.get(file) ?? MAI_PROVATO),
-      file,
-      nuclei: ids.length,
-      domande: conta.get(file)?.domande ?? 0,
-      nuove: conta.get(file)?.nuove ?? 0,
-      inPreparazione: pendenti.has(file),
-    });
-  }
-  return esito;
+  return conta;
 }
 
-/** Padronanza di tutte le materie in una volta (pagina Oggi): codice -> capitolo -> padronanza. */
+/** Tutto ciò che serve alla scheda materia e a Oggi: padronanza per argomento e per capitolo, banca, rifornimenti. */
+export async function padronanzaCompleta(codice: string, modalita: Modalita) {
+  const tipo = modalita === 'orale' ? "AND tipo = 'aperta'" : '';
+  const [argomenti, esiti, banca, pendenti] = await Promise.all([
+    argomentiKit(codice),
+    esitiRisposte(codice),
+    env.DB.prepare(`SELECT file, nucleo, usata FROM domande WHERE codice = ? AND archiviata = 0 ${tipo}`).bind(codice).all<{ file: string; nucleo: string; usata: number }>(),
+    bersagliInPreparazione(codice),
+  ]);
+  const perArgomento = padronanzaArgomenti(esiti);
+  const perCapitolo = padronanzaCapitoli(esiti);
+  const bancaArg = contaBancaPer(banca.results, (d) => [d.nucleo]);
+  const bancaCap = contaBancaPer(banca.results, (d) => capitoliDi(d.file));
+  const lista: ArgomentoPadronanza[] = argomenti.map((a) => ({
+    ...(perArgomento.get(a.id) ?? MAI_PROVATO),
+    ...a,
+    domande: bancaArg.get(a.id)?.domande ?? 0,
+    nuove: bancaArg.get(a.id)?.nuove ?? 0,
+    inPreparazione: pendenti.has(`argomento:${a.id}`) || a.capitoli.some((c) => pendenti.has(`capitolo:${c}`)),
+  }));
+  const capitoli = new Map<string, CapitoloPadronanza>();
+  for (const a of argomenti)
+    for (const file of a.capitoli) {
+      const prima = capitoli.get(file);
+      capitoli.set(file, {
+        ...(perCapitolo.get(file) ?? MAI_PROVATO),
+        file,
+        nuclei: (prima?.nuclei ?? 0) + 1,
+        domande: bancaCap.get(file)?.domande ?? 0,
+        nuove: bancaCap.get(file)?.nuove ?? 0,
+        inPreparazione: pendenti.has(`capitolo:${file}`) || (prima?.inPreparazione ?? false) || pendenti.has(`argomento:${a.id}`),
+      });
+    }
+  return { argomenti: lista, capitoli };
+}
+
+/** Compatibilità: padronanza per capitolo. */
+export async function padronanzaMateria(codice: string, modalita: Modalita): Promise<Map<string, CapitoloPadronanza>> {
+  return (await padronanzaCompleta(codice, modalita)).capitoli;
+}
+
+/** Padronanza per argomento di tutte le materie (pagina Oggi): codice -> argomento -> padronanza. */
 export async function padronanzaTutte(): Promise<Map<string, Map<string, Padronanza>>> {
   const esiti = await esitiRisposte(null);
   const perMateria = new Map<string, EsitoRisposta[]>();
   for (const e of esiti) perMateria.set(e.codice, [...(perMateria.get(e.codice) ?? []), e]);
-  return new Map([...perMateria].map(([codice, lista]) => [codice, padronanzaCapitoli(lista)]));
+  return new Map([...perMateria].map(([codice, lista]) => [codice, padronanzaArgomenti(lista)]));
 }
 
-/** Capitoli con un rifornimento mirato in coda o in corso. */
-async function capitoliInPreparazione(codice: string): Promise<Set<string>> {
+/** Numero di argomenti del kit per materia (seggi dell'emiciclo). */
+export async function seggiPerMateria(): Promise<Map<string, number>> {
+  const { results } = await env.DB.prepare('SELECT codice, COUNT(*) AS n FROM nuclei GROUP BY codice').all<{ codice: string; n: number }>();
+  return new Map(results.map((r) => [r.codice, r.n]));
+}
+
+/** Bersagli (capitoli e argomenti) con un rifornimento mirato in coda o in corso, come "capitolo:file" e "argomento:N07". */
+async function bersagliInPreparazione(codice: string): Promise<Set<string>> {
   const { results } = await env.DB.prepare("SELECT richiesta FROM lavori WHERE tipo = 'domande' AND codice = ? AND stato IN ('in_coda', 'in_corso')")
     .bind(codice)
     .all<{ richiesta: string }>();
   const insieme = new Set<string>();
   for (const r of results) {
     try {
-      const c = (JSON.parse(r.richiesta) as { capitolo?: string }).capitolo;
-      if (c) insieme.add(c);
+      const q = JSON.parse(r.richiesta) as { capitolo?: string; nucleo?: string };
+      if (q.capitolo) insieme.add(`capitolo:${q.capitolo}`);
+      if (q.nucleo) insieme.add(`argomento:${q.nucleo}`);
     } catch {}
   }
   return insieme;
 }
 
-/** Chiede all'agente domande sui soli nuclei di un capitolo, se non è già in preparazione. */
-export async function riforniscoCapitolo(codice: string, capitolo: string): Promise<boolean> {
-  const [kit, pendenti] = await Promise.all([getKit(codice), capitoliInPreparazione(codice)]);
-  if (!kit || pendenti.has(capitolo)) return false;
-  await accoda('domande', codice, { ...(await richiestaRifornimento(codice)), capitolo });
+/** Chiede all'agente domande solo sul bersaglio (capitolo o argomento), se non sono già in preparazione. */
+export async function riforniscoBersaglio(codice: string, b: Bersaglio): Promise<boolean> {
+  const [kit, pendenti] = await Promise.all([getKit(codice), bersagliInPreparazione(codice)]);
+  if (!kit || pendenti.has(chiaveBersaglio(b))) return false;
+  const base = await richiestaRifornimento(codice);
+  await accoda('domande', codice, b.tipo === 'capitolo' ? { ...base, capitolo: b.valore } : { ...base, nucleo: b.valore, nuclei: 1 });
   return true;
 }
 
-/** Dopo una simulazione su un capitolo: se le domande mai uscite non bastano per un'altra, ne chiede altre. */
-async function riforniscoCapitoloSeServe(codice: string, capitolo: string, modalita: Modalita) {
+/** Dopo una simulazione mirata: se le domande mai uscite non bastano per un'altra, ne chiede altre. */
+async function riforniscoBersaglioSeServe(codice: string, b: Bersaglio, modalita: Modalita) {
   const tipo = modalita === 'orale' ? "AND tipo = 'aperta'" : '';
-  const r = await env.DB.prepare(`SELECT COUNT(*) AS n FROM domande WHERE codice = ? AND archiviata = 0 AND usata = 0 ${tipo} AND ${NEL_CAPITOLO}`)
-    .bind(codice, chiaveCapitolo(capitolo))
+  const filt = filtro(b);
+  const r = await env.DB.prepare(`SELECT COUNT(*) AS n FROM domande WHERE codice = ? AND archiviata = 0 AND usata = 0 ${tipo} AND ${filt.sql}`)
+    .bind(codice, filt.valore)
     .first<{ n: number }>();
   const servono = modalita === 'orale' ? (await getProfilo(codice)).domandeOrale : CAPITOLO.scritto.multiple + CAPITOLO.scritto.aperte;
-  if ((r?.n ?? 0) < servono) await riforniscoCapitolo(codice, capitolo);
+  if ((r?.n ?? 0) < servono) await riforniscoBersaglio(codice, b);
 }
 
 export interface Simulazione {
@@ -348,6 +405,7 @@ export interface Simulazione {
   esposizione: string | null;
   dal_vivo: number;
   capitolo: string | null;
+  argomento: string | null;
 }
 
 export interface Esito {
@@ -399,9 +457,9 @@ export async function getSimulazione(id: string): Promise<{ sim: Simulazione; ri
 }
 
 export async function storico(codice: string, limite = 5) {
-  const { results } = await env.DB.prepare('SELECT id, formato, modalita, stato, creata, voto, punti, massimo, capitolo FROM simulazioni WHERE codice = ? ORDER BY creata DESC LIMIT ?')
+  const { results } = await env.DB.prepare('SELECT id, formato, modalita, stato, creata, voto, punti, massimo, capitolo, argomento FROM simulazioni WHERE codice = ? ORDER BY creata DESC LIMIT ?')
     .bind(codice, limite)
-    .all<Pick<Simulazione, 'id' | 'formato' | 'modalita' | 'stato' | 'creata' | 'voto' | 'punti' | 'massimo' | 'capitolo'>>();
+    .all<Pick<Simulazione, 'id' | 'formato' | 'modalita' | 'stato' | 'creata' | 'voto' | 'punti' | 'massimo' | 'capitolo' | 'argomento'>>();
   return results;
 }
 

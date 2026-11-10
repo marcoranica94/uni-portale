@@ -123,6 +123,8 @@ export const RichiestaDomande = z.object({
   soloAperte: z.boolean().default(false),
   /** Rifornimento mirato ("Allena solo questo"): solo i nuclei di questo file degli appunti. */
   capitolo: z.string().default(''),
+  /** Rifornimento mirato su un solo argomento del kit (es. "N07"). */
+  nucleo: z.string().default(''),
 });
 export type RichiestaDomande = z.infer<typeof RichiestaDomande>;
 

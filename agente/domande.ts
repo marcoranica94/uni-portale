@@ -34,8 +34,13 @@ export async function generaDomande(
   const richiesta = RichiestaDomande.parse(richiestaGrezza ?? {});
   const kit = await leggiKit(codice);
   const nelCapitolo = (file: string) => file.split(';').some((f) => f.trim() === richiesta.capitolo);
-  const candidati = kit.nuclei.filter((n) => n.puntiChiave.length > 0 && (!richiesta.capitolo || nelCapitolo(n.file)));
-  if (!candidati.length) throw new Error(richiesta.capitolo ? `Nessun nucleo del kit nel capitolo ${richiesta.capitolo}.` : 'Il kit non ha nuclei con rubrica.');
+  const candidati = kit.nuclei.filter(
+    (n) => n.puntiChiave.length > 0 && (!richiesta.capitolo || nelCapitolo(n.file)) && (!richiesta.nucleo || n.id === richiesta.nucleo),
+  );
+  if (!candidati.length)
+    throw new Error(
+      richiesta.nucleo ? `Argomento ${richiesta.nucleo} non trovato nel kit.` : richiesta.capitolo ? `Nessun nucleo del kit nel capitolo ${richiesta.capitolo}.` : 'Il kit non ha nuclei con rubrica.',
+    );
   const nuclei = candidati
     .map((n) => ({ n, presenti: richiesta.presenti[n.id] ?? 0, caso: Math.random() }))
     .sort((a, b) => a.presenti - b.presenti || a.caso - b.caso)

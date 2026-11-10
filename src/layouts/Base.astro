@@ -1,9 +1,8 @@
 ---
-import '@fontsource-variable/newsreader/opsz.css';
-import '@fontsource-variable/newsreader/opsz-italic.css';
-import '@fontsource/ibm-plex-mono/latin-400.css';
-import '@fontsource/ibm-plex-mono/latin-500.css';
-import '@fontsource-variable/ibm-plex-sans';
+import '@fontsource/titillium-web/latin-400.css';
+import '@fontsource/titillium-web/latin-600.css';
+import '@fontsource/titillium-web/latin-700.css';
+import '@fontsource/titillium-web/latin-900.css';
 import '../styles/global.css';
 import Nav from '../components/Nav.astro';
 import SceltaTema from '../components/SceltaTema.astro';
@@ -23,8 +22,8 @@ const { title, description = 'Portale di studio personale - Scienze politiche e 
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="description" content={description} />
     <meta name="robots" content="noindex, nofollow" />
-    <meta name="theme-color" content="#f4f1ea" media="(prefers-color-scheme: light)" />
-    <meta name="theme-color" content="#121316" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#f3f5f2" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0e1a15" media="(prefers-color-scheme: dark)" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <title>{title === 'Uni' ? 'Uni' : `${title} · Uni`}</title>
     <script is:inline>

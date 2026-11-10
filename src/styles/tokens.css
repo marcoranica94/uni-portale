@@ -1,46 +1,61 @@
 /*
-  Token del portale Uni — direzione "taccuino notturno" (seconda passata, novembre 2026).
-  Neutri caldi come carta e inchiostro; giallo evidenziatore solo per l'azione principale,
-  la selezione e "dove sei ora"; righe e filetti più che riquadri. Chiaro e scuro progettati insieme.
+  Token del portale Uni — direzione "Emiciclo" (10/11/2026).
+  L'aula parlamentare: il verde d'aula è la superficie che si ricorda (emiciclo, barra laterale),
+  i colori del tabellone di voto dicono la padronanza (favorevole = solido, astenuto = in crescita,
+  contrario = debole, assente = mai provato) e non si usano per altro. Carattere unico: Titillium Web,
+  quello dei siti della Pubblica amministrazione italiana. Chiaro e scuro progettati insieme.
   I componenti usano solo questi token, mai colori letterali.
 */
 :root {
-  /* Superfici: fondo, carta, incassata, in rilievo, navigazione */
-  --color-paper: #f4f1ea;
-  --color-surface: #fbfaf6;
-  --color-surface-muted: #ece8de;
-  --color-raised: #e6e1d4;
-  --color-nav: #efebe2;
+  /* Superfici: fondo verde-grigio freddo, carta bianca, incassata, in rilievo, navigazione */
+  --color-paper: #f3f5f2;
+  --color-surface: #ffffff;
+  --color-surface-muted: #e9eeea;
+  --color-raised: #dfe6e1;
+  --color-nav: #ffffff;
 
-  /* Testo */
-  --color-ink: #1a1a1a;
-  --color-ink-muted: #57534b;
-  --color-ink-faint: #69645a;
+  /* Aula: il pannello dell'emiciclo e la barra laterale */
+  --color-aula: #0f3d2e;
+  --color-aula-scuro: #0a2c21;
+  --color-on-aula: #e9f2ec;
+  --color-aula-tenue: #a9c4b5;
+  --color-aula-filo: rgb(255 255 255 / 0.14);
+
+  /* Testo: inchiostro verde scuro */
+  --color-ink: #10261c;
+  --color-ink-muted: #4c5d54;
+  --color-ink-faint: #5b6c63;
 
   /* Filetti: decorativo, controlli (>= 3:1) */
-  --color-rule: #dcd5c6;
-  --color-rule-strong: #8f897b;
+  --color-rule: #d6ddd8;
+  --color-rule-strong: #7a8a80;
 
-  /* Accento di testo (link, voce attiva, focus): seppia in chiaro, giallo in scuro */
-  --color-accent: #7a5600;
-  --color-accent-hover: #5c4000;
-  --color-accent-soft: #f6e6a4;
-  --color-on-accent: #1b1a14;
+  /* Accento di testo (link, voce attiva, focus) */
+  --color-accent: #17663f;
+  --color-accent-hover: #0f3d2e;
+  --color-accent-soft: #dcebe1;
+  --color-on-accent: #ffffff;
 
-  /* Evidenziatore: riempimento dell'azione principale */
-  --color-primary: #f2c744;
-  --color-primary-hover: #e9b92a;
-  --color-primary-edge: #c99a1a;
-  --color-on-primary: #1b1a14;
-  --color-highlight: rgb(242 199 68 / 0.55);
-  --color-rec: #c8402d;
+  /* Azione principale: verde d'aula pieno */
+  --color-primary: #0f3d2e;
+  --color-primary-hover: #0a2c21;
+  --color-primary-edge: #0f3d2e;
+  --color-on-primary: #ffffff;
+  --color-highlight: rgb(31 157 85 / 0.22);
+  --color-rec: #c8352a;
 
-  /* Stati (sempre con testo o icona) */
-  --color-success: #2f6f43; --color-success-soft: #dcebdc;
-  --color-warning: #8a5a00; --color-warning-soft: #f3e4c4;
-  --color-danger: #b23a26; --color-danger-soft: #f6dcd5;
-  --color-info: #23675e; --color-info-soft: #d7eae6;
-  --color-lode: #845a00;
+  /* Tabellone di voto: riempimenti dei seggi e degli stati di padronanza */
+  --voto-si: #1f9d55;
+  --voto-forse: #e8a317;
+  --voto-no: #d33a2c;
+  --voto-vuoto: #9db0a5;
+
+  /* Stati come testo (sempre con forma o parola) */
+  --color-success: #17773f; --color-success-soft: #dcf0e3;
+  --color-warning: #8a5a00; --color-warning-soft: #f8ebcc;
+  --color-danger: #b3261a; --color-danger-soft: #f8dcd8;
+  --color-info: #1f6476; --color-info-soft: #d9edf2;
+  --color-lode: #855c00;
 
   /* Materie: colore d'identità, sempre accanto al nome */
   --materia-1: #b4472c; --materia-1-soft: #f4ddd5;
@@ -53,26 +68,26 @@
   --materia-8: #22708c; --materia-8-soft: #d6e9f0;
 
   /* Elevazione: solo per elementi sopraelevati (barra in basso, menu) */
-  --shadow-raised: 0 1px 0 rgb(40 30 10 / 0.06), 0 8px 24px rgb(40 30 10 / 0.08);
+  --shadow-raised: 0 1px 0 rgb(16 38 28 / 0.06), 0 8px 24px rgb(16 38 28 / 0.1);
 
-  /* Tipografia: serif da libro per titoli e domande, Plex per interfaccia, Plex Mono per le cifre */
-  --font-serif: 'Newsreader Variable', 'Iowan Old Style', Georgia, serif;
-  --font-sans: 'IBM Plex Sans Variable', 'Helvetica Neue', Arial, system-ui, sans-serif;
-  --font-mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+  /* Tipografia: un solo carattere, Titillium Web; il peso fa la gerarchia (900 per le frasi d'aula) */
+  --font-serif: 'Titillium Web', 'Segoe UI', Arial, sans-serif;
+  --font-sans: 'Titillium Web', 'Segoe UI', Arial, sans-serif;
+  --font-mono: 'Titillium Web', 'Segoe UI', Arial, sans-serif;
 
   --text-xs: 0.8125rem;   /* 13: solo metadati */
   --text-sm: 0.875rem;    /* 14 */
   --text-base: 1rem;      /* 16: corpo */
   --text-lg: 1.125rem;    /* 18 */
   --text-xl: 1.375rem;    /* 22 */
-  --text-2xl: 2.125rem;   /* 34: titoli di pagina */
-  --text-3xl: 2.5rem;     /* 40: titolo di Oggi, cifre monumentali */
-  --leading-tight: 1.15;
+  --text-2xl: 2rem;       /* 32: titoli di pagina */
+  --text-3xl: 2.75rem;    /* 44: frasi d'aula, cifre */
+  --leading-tight: 1.1;
   --leading-normal: 1.5;
   --weight-regular: 400;
-  --weight-medium: 500;
-  --weight-semibold: 600;
-  --weight-bold: 700;
+  --weight-medium: 600;
+  --weight-semibold: 700;
+  --weight-bold: 900;
 
   /* Spazi: base 4 */
   --space-1: 0.25rem;
@@ -83,10 +98,11 @@
   --space-6: 2rem;
   --space-7: 3rem;
 
-  /* Forme */
-  --radius-sm: 4px;
+  /* Forme: piccoli per i controlli, grandi solo per l'aula */
+  --radius-sm: 6px;
   --radius-md: 10px;
-  --radius-lg: 16px;
+  --radius-lg: 14px;
+  --radius-aula: 20px;
   --radius-pill: 999px;
   --border: 1px solid var(--color-rule);
   --tap-min: 44px;
@@ -96,88 +112,106 @@
   --dur: 140ms;
 
   /* Layout */
-  --content-max: 70rem;
+  --content-max: 72rem;
   --nav-width: 14rem;
   --nav-bottom-height: 4rem;
 
   color-scheme: light;
 }
 
-/* Tema scuro: stessi ruoli. Ripetuto per la scelta esplicita. */
+/* Tema scuro: l'aula di sera. Stessi ruoli; ripetuto per la scelta esplicita. */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
-    --color-paper: #121316;
-    --color-surface: #1a1b1f;
-    --color-surface-muted: #17181b;
-    --color-raised: #212328;
-    --color-nav: #0f1012;
-    --color-ink: #ece9e2;
-    --color-ink-muted: #a29e96;
-    --color-ink-faint: #8f8b83;
-    --color-rule: #2b2d33;
-    --color-rule-strong: #6a6c74;
-    --color-accent: #f3cf55;
-    --color-accent-hover: #f8dc80;
-    --color-accent-soft: #352f1c;
-    --color-on-accent: #1b1a14;
-    --color-primary: #f3cf55;
-    --color-primary-hover: #f8dc80;
-    --color-primary-edge: #f3cf55;
-    --color-on-primary: #1b1a14;
-    --color-highlight: rgb(243 207 85 / 0.38);
-    --color-rec: #e5604d;
-    --color-success: #74d095; --color-success-soft: #1b2b21;
-    --color-warning: #e2b462; --color-warning-soft: #30281a;
-    --color-danger: #ee8b76; --color-danger-soft: #36211c;
-    --color-info: #6fc4b7; --color-info-soft: #172b28;
-    --color-lode: #e9c46a;
-    --materia-1: #e07a5f; --materia-1-soft: #35221d;
-    --materia-2: #5fb3a6; --materia-2-soft: #172b28;
-    --materia-3: #d1a75a; --materia-3-soft: #30281a;
-    --materia-4: #a38bd9; --materia-4-soft: #262036;
-    --materia-5: #9cc56b; --materia-5-soft: #212a18;
-    --materia-6: #7fa2d6; --materia-6-soft: #1b2333;
-    --materia-7: #d9809f; --materia-7-soft: #33202a;
-    --materia-8: #6db3cf; --materia-8-soft: #172830;
-    --shadow-raised: 0 1px 0 rgb(0 0 0 / 0.4), 0 10px 30px rgb(0 0 0 / 0.45);
+    --color-paper: #0e1a15;
+    --color-surface: #152620;
+    --color-surface-muted: #12211b;
+    --color-raised: #1d3229;
+    --color-nav: #101e18;
+    --color-aula: #134a38;
+    --color-aula-scuro: #0c3326;
+    --color-on-aula: #e9f2ec;
+    --color-aula-tenue: #a9c4b5;
+    --color-aula-filo: rgb(255 255 255 / 0.14);
+    --color-ink: #e6efe9;
+    --color-ink-muted: #a7baaf;
+    --color-ink-faint: #8fa398;
+    --color-rule: #24392f;
+    --color-rule-strong: #577064;
+    --color-accent: #7fd8a5;
+    --color-accent-hover: #a3e6bf;
+    --color-accent-soft: #1d3a2e;
+    --color-on-accent: #06170f;
+    --color-primary: #3cba74;
+    --color-primary-hover: #57c98a;
+    --color-primary-edge: #3cba74;
+    --color-on-primary: #06170f;
+    --color-highlight: rgb(60 186 116 / 0.3);
+    --color-rec: #f07a6c;
+    --voto-si: #3cba74;
+    --voto-forse: #f0b73e;
+    --voto-no: #f07a6c;
+    --voto-vuoto: #6f877b;
+    --color-success: #74d39c; --color-success-soft: #173326;
+    --color-warning: #f0bd52; --color-warning-soft: #33290f;
+    --color-danger: #f38a7d; --color-danger-soft: #3a1d18;
+    --color-info: #7cc9d6; --color-info-soft: #13303a;
+    --color-lode: #e8c35a;
+    --materia-1: #e8866c; --materia-1-soft: #3a241d;
+    --materia-2: #5fc0b2; --materia-2-soft: #163330;
+    --materia-3: #d9b064; --materia-3-soft: #33291a;
+    --materia-4: #ad97e0; --materia-4-soft: #29233b;
+    --materia-5: #9ccc6b; --materia-5-soft: #21301a;
+    --materia-6: #86a9dc; --materia-6-soft: #1c2637;
+    --materia-7: #df89a7; --materia-7-soft: #37212c;
+    --materia-8: #73bad6; --materia-8-soft: #182c34;
+    --shadow-raised: 0 1px 0 rgb(0 0 0 / 0.35), 0 10px 28px rgb(0 0 0 / 0.4);
     color-scheme: dark;
   }
 }
 :root[data-theme='dark'] {
-  --color-paper: #121316;
-  --color-surface: #1a1b1f;
-  --color-surface-muted: #17181b;
-  --color-raised: #212328;
-  --color-nav: #0f1012;
-  --color-ink: #ece9e2;
-  --color-ink-muted: #a29e96;
-  --color-ink-faint: #8f8b83;
-  --color-rule: #2b2d33;
-  --color-rule-strong: #6a6c74;
-  --color-accent: #f3cf55;
-  --color-accent-hover: #f8dc80;
-  --color-accent-soft: #352f1c;
-  --color-on-accent: #1b1a14;
-  --color-primary: #f3cf55;
-  --color-primary-hover: #f8dc80;
-  --color-primary-edge: #f3cf55;
-  --color-on-primary: #1b1a14;
-  --color-highlight: rgb(243 207 85 / 0.38);
-  --color-rec: #e5604d;
-  --color-success: #74d095; --color-success-soft: #1b2b21;
-  --color-warning: #e2b462; --color-warning-soft: #30281a;
-  --color-danger: #ee8b76; --color-danger-soft: #36211c;
-  --color-info: #6fc4b7; --color-info-soft: #172b28;
-  --color-lode: #e9c46a;
-  --materia-1: #e07a5f; --materia-1-soft: #35221d;
-  --materia-2: #5fb3a6; --materia-2-soft: #172b28;
-  --materia-3: #d1a75a; --materia-3-soft: #30281a;
-  --materia-4: #a38bd9; --materia-4-soft: #262036;
-  --materia-5: #9cc56b; --materia-5-soft: #212a18;
-  --materia-6: #7fa2d6; --materia-6-soft: #1b2333;
-  --materia-7: #d9809f; --materia-7-soft: #33202a;
-  --materia-8: #6db3cf; --materia-8-soft: #172830;
-  --shadow-raised: 0 1px 0 rgb(0 0 0 / 0.4), 0 10px 30px rgb(0 0 0 / 0.45);
+  --color-paper: #0e1a15;
+  --color-surface: #152620;
+  --color-surface-muted: #12211b;
+  --color-raised: #1d3229;
+  --color-nav: #101e18;
+  --color-aula: #134a38;
+  --color-aula-scuro: #0c3326;
+  --color-on-aula: #e9f2ec;
+  --color-aula-tenue: #a9c4b5;
+  --color-aula-filo: rgb(255 255 255 / 0.14);
+  --color-ink: #e6efe9;
+  --color-ink-muted: #a7baaf;
+  --color-ink-faint: #8fa398;
+  --color-rule: #24392f;
+  --color-rule-strong: #577064;
+  --color-accent: #7fd8a5;
+  --color-accent-hover: #a3e6bf;
+  --color-accent-soft: #1d3a2e;
+  --color-on-accent: #06170f;
+  --color-primary: #3cba74;
+  --color-primary-hover: #57c98a;
+  --color-primary-edge: #3cba74;
+  --color-on-primary: #06170f;
+  --color-highlight: rgb(60 186 116 / 0.3);
+  --color-rec: #f07a6c;
+  --voto-si: #3cba74;
+  --voto-forse: #f0b73e;
+  --voto-no: #f07a6c;
+  --voto-vuoto: #6f877b;
+  --color-success: #74d39c; --color-success-soft: #173326;
+  --color-warning: #f0bd52; --color-warning-soft: #33290f;
+  --color-danger: #f38a7d; --color-danger-soft: #3a1d18;
+  --color-info: #7cc9d6; --color-info-soft: #13303a;
+  --color-lode: #e8c35a;
+  --materia-1: #e8866c; --materia-1-soft: #3a241d;
+  --materia-2: #5fc0b2; --materia-2-soft: #163330;
+  --materia-3: #d9b064; --materia-3-soft: #33291a;
+  --materia-4: #ad97e0; --materia-4-soft: #29233b;
+  --materia-5: #9ccc6b; --materia-5-soft: #21301a;
+  --materia-6: #86a9dc; --materia-6-soft: #1c2637;
+  --materia-7: #df89a7; --materia-7-soft: #37212c;
+  --materia-8: #73bad6; --materia-8-soft: #182c34;
+  --shadow-raised: 0 1px 0 rgb(0 0 0 / 0.35), 0 10px 28px rgb(0 0 0 / 0.4);
   color-scheme: dark;
 }
 :root[data-theme='light'] {

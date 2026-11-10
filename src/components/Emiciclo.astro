@@ -1,0 +1,84 @@
+---
+/**
+ * Emiciclo: un seggio per argomento del kit, colorato come sul tabellone di voto.
+ * I seggi si riempiono da sinistra per gruppi (solidi, in crescita, deboli, mai provati):
+ * la linea tratteggiata al centro segna la maggioranza, quindi chi la supera con i solidi è pronto.
+ * Forma oltre al colore: solido = pieno, in crescita = mezzo, debole = quadrato, mai provato = anello.
+ */
+import { postiEmiciclo, type StatoPadronanza } from '../lib/calcoli';
+
+interface Props {
+  seggi: { stato: StatoPadronanza; titolo: string }[];
+  /** Più piccolo, per le righe delle materie. */
+  compatto?: boolean;
+}
+
+const { seggi, compatto = false } = Astro.props;
+const ORDINE: StatoPadronanza[] = ['solido', 'in-crescita', 'debole', 'mai-provato'];
+const ordinati = [...seggi].sort((a, b) => ORDINE.indexOf(a.stato) - ORDINE.indexOf(b.stato));
+const n = ordinati.length;
+const L = 340;
+const cx = L / 2;
+const cy = 176;
+const passo = n > 60 ? 19 : n > 30 ? 23 : 28;
+const raggio = n > 60 ? 64 : n > 30 ? 70 : 78;
+const posti = postiEmiciclo(n, { cx, cy, raggio, passo });
+const r = n > 60 ? 6 : n > 30 ? 7.5 : 9;
+const conta = Object.fromEntries(ORDINE.map((s) => [s, seggi.filter((x) => x.stato === s).length])) as Record<StatoPadronanza, number>;
+const PAROLE: Record<StatoPadronanza, string> = { solido: 'solido', 'in-crescita': 'in crescita', debole: 'debole', 'mai-provato': 'mai provato' };
+const etichetta = `${n} argomenti: ${conta.solido} solidi, ${conta['in-crescita']} in crescita, ${conta.debole} deboli, ${conta['mai-provato']} mai provati`;
+const alto = posti.length ? Math.max(0, Math.min(...posti.map((p) => p.y)) - r - 6) : 0;
+---
+
+<svg class:list={['emiciclo', { 'emiciclo--compatto': compatto }]} viewBox={`0 ${alto} ${L} ${cy + r + 4 - alto}`} role="img" aria-label={etichetta}>
+  {posti.map((p, i) => {
+    const s = ordinati[i];
+    const titolo = `${s.titolo}: ${PAROLE[s.stato]}`;
+    if (s.stato === 'debole')
+      return <rect class="seggio seggio--no" x={p.x - r * 0.85} y={p.y - r * 0.85} width={r * 1.7} height={r * 1.7} rx="1.5"><title>{titolo}</title></rect>;
+    if (s.stato === 'in-crescita')
+      return (
+        <g class="seggio seggio--forse">
+          <title>{titolo}</title>
+          <circle cx={p.x} cy={p.y} r={r - 1} />
+          <path d={`M${p.x} ${p.y - r + 1}a${r - 1} ${r - 1} 0 0 1 0 ${2 * (r - 1)}z`} />
+        </g>
+      );
+    return <circle class:list={['seggio', s.stato === 'solido' ? 'seggio--si' : 'seggio--vuoto']} cx={p.x} cy={p.y} r={s.stato === 'solido' ? r : r - 1.2}><title>{titolo}</title></circle>;
+  })}
+  {n > 1 && <line class="maggioranza" x1={cx} y1={cy - raggio + r + 6} x2={cx} y2={alto + 2} />}
+</svg>
+
+<style>
+  .emiciclo {
+    display: block;
+    width: 100%;
+    height: auto;
+    overflow: visible;
+  }
+  .seggio--si {
+    fill: var(--voto-si);
+  }
+  .seggio--forse circle {
+    fill: none;
+    stroke: var(--voto-forse);
+    stroke-width: 2;
+  }
+  .seggio--forse path {
+    fill: var(--voto-forse);
+  }
+  .seggio--no {
+    fill: var(--voto-no);
+  }
+  .seggio--vuoto {
+    fill: none;
+    stroke: var(--emiciclo-vuoto, var(--color-aula-tenue));
+    stroke-width: 1.6;
+  }
+  .maggioranza {
+    stroke: var(--emiciclo-linea, var(--color-on-aula));
+    stroke-width: 1.5;
+    stroke-dasharray: 3 3;
+    opacity: 0.8;
+  }
+</style>

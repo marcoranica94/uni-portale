@@ -5,8 +5,9 @@ import TipoEsame from '../../components/TipoEsame.astro';
 import { getMaterie } from '../../lib/percorso';
 import { getVoti, statoMateria, votoTesto } from '../../lib/voti';
 import { getKit, ultimoLavoro, statoAgenti } from '../../lib/coda';
-import { contaBanca, storico, FORMATI, ORALE, CAPITOLO, getProfilo, padronanzaMateria } from '../../lib/simulazioni';
-import { prossimoCapitolo, type StatoPadronanza, type MotivoCapitolo } from '../../lib/calcoli';
+import { contaBanca, storico, FORMATI, ORALE, CAPITOLO, getProfilo, padronanzaCompleta } from '../../lib/simulazioni';
+import { prossimoCapitolo, maggioranza, type StatoPadronanza, type MotivoCapitolo } from '../../lib/calcoli';
+import Emiciclo from '../../components/Emiciclo.astro';
 import StatoCapitolo from '../../components/StatoCapitolo.astro';
 
 export const prerender = false;
@@ -42,32 +43,41 @@ const ESITI: Record<string, string> = {
   'senza-domande': 'La banca di domande è vuota: preparala prima.',
   'simulazione-eliminata': 'Simulazione eliminata dallo storico.',
 };
-// Padronanza per capitolo: solo i capitoli con nuclei nel kit (indice e mappe restano senza stato).
+// Aula della materia: un seggio per argomento del kit; i capitoli sono i gruppi.
 const allenabile = !!(m.codice && kit && (scritto || oraleEsame));
-const padronanza = allenabile ? await padronanzaMateria(m.codice!, oraleEsame ? 'orale' : 'scritto') : new Map();
+const aula = allenabile ? await padronanzaCompleta(m.codice!, oraleEsame ? 'orale' : 'scritto') : null;
+const argomenti = aula?.argomenti ?? [];
 const minimo = oraleEsame ? CAPITOLO.minimoOrale : CAPITOLO.minimo;
-const capitoliP = (m.appunti?.capitoli ?? []).flatMap((c) => {
-  const p = padronanza.get(c.file);
-  return p ? [{ ...p, titolo: c.titolo, pronto: true }] : [];
-});
 const ORDINE_STATI: StatoPadronanza[] = ['solido', 'in-crescita', 'debole', 'mai-provato'];
-const conteggi = Object.fromEntries(ORDINE_STATI.map((st) => [st, capitoliP.filter((c) => c.stato === st).length])) as Record<StatoPadronanza, number>;
-const prossimo = prossimoCapitolo(capitoliP);
+const conteggi = Object.fromEntries(ORDINE_STATI.map((st) => [st, argomenti.filter((a) => a.stato === st).length])) as Record<StatoPadronanza, number>;
+const magg = maggioranza(argomenti.length, conteggi.solido);
+const haProvato = argomenti.some((a) => a.risposte > 0);
+const prossimo = prossimoCapitolo(argomenti.map((a) => ({ ...a, file: a.id, pronto: true })));
 const MOTIVI: Record<MotivoCapitolo, string> = {
-  debole: 'è il capitolo più debole',
-  'mai-provato': 'non l\'hai ancora mai provato',
+  debole: "è l'argomento più debole",
+  'mai-provato': 'non è ancora uscito in nessuna simulazione',
   'in-crescita': 'è il meno sicuro tra quelli in crescita',
   'da-rinfrescare': 'è il solido che non ripassi da più tempo',
 };
 const percento = (q: number | null) => (q === null ? '' : `${Math.round(q * 100)}%`);
 const dettaglio = (c: { stato: StatoPadronanza; quota: number | null; risposte: number; ultima: string | null }) =>
-  c.stato === 'mai-provato' ? 'Nessuna risposta ancora' : `${percento(c.quota)} dei punti · ${c.risposte} ${c.risposte === 1 ? 'risposta' : 'risposte'} · ultima ${giorno(c.ultima!)}`;
+  c.stato === 'mai-provato' ? 'Nessuna risposta ancora' : `${percento(c.quota)} dei punti, ${c.risposte} ${c.risposte === 1 ? 'risposta' : 'risposte'}, ultima il ${giorno(c.ultima!)}`;
+const PAROLE: Record<StatoPadronanza, string> = { solido: 'solido', 'in-crescita': 'in crescita', debole: 'debole', 'mai-provato': 'mai provato' };
+// Gruppi: un capitolo degli appunti con i suoi argomenti (un argomento su due capitoli compare in entrambi).
+const gruppi = (m.appunti?.capitoli ?? []).map((c) => ({
+  ...c,
+  argomenti: argomenti.filter((a) => a.capitoli.includes(c.file)),
+  padronanza: aula?.capitoli.get(c.file) ?? null,
+}));
+const titoloAula = !haProvato ? "L'aula è ancora vuota" : magg.raggiunta ? 'Hai la maggioranza' : 'Non hai ancora la maggioranza';
 
 const esitoCodice = Astro.url.searchParams.get('esito') ?? '';
 const capitoloInAttesa = m.appunti?.capitoli.find((c) => c.file === Astro.url.searchParams.get('capitolo'));
+const argomentoInAttesa = argomenti.find((a) => a.id === Astro.url.searchParams.get('argomento'));
+const nomeAttesa = argomentoInAttesa?.titolo ?? capitoloInAttesa?.titolo;
 const esito =
-  esitoCodice === 'capitolo-in-preparazione' && capitoloInAttesa
-    ? `Su «${capitoloInAttesa.titolo}» ci sono ancora poche domande: le ho chieste all'agente. ${agente.online ? 'Ci vogliono uno o due minuti; la pagina si aggiorna da sola.' : 'Partiranno quando accendi l\'agente sul PC.'}`
+  esitoCodice === 'in-preparazione' && nomeAttesa
+    ? `Su «${nomeAttesa}» ci sono ancora poche domande: le ho chieste all'agente. ${agente.online ? 'Ci vogliono uno o due minuti; la pagina si aggiorna da sola.' : "Partiranno quando accendi l'agente sul PC."}`
     : ESITI[esitoCodice];
 ---
 
@@ -95,79 +105,109 @@ const esito =
   </header>
 
   <div class="colonne">
-    <section class="stack capitoli-sez" id="padronanza" aria-labelledby="appunti">
-      <h2 id="appunti">{capitoliP.length ? 'Capitoli e padronanza' : 'Appunti'}</h2>
-      {esitoCodice === 'capitolo-in-preparazione' && esito && <p class="avviso-attesa" role="status">{esito}</p>}
-      {capitoliP.length > 0 && (
-        <div class="padronanza">
-          <div class="padronanza__barra" role="img" aria-label={ORDINE_STATI.map((st) => `${conteggi[st]} ${st.replace('-', ' ')}`).join(', ')}>
-            {ORDINE_STATI.map((st) => conteggi[st] > 0 && <i class={`p-${st}`} style={`flex-grow: ${conteggi[st]}`}></i>)}
+    <div class="principale">
+      {aula && (
+        <section class="aula" id="aula" aria-labelledby="aula-titolo">
+          <h2 id="aula-titolo" class="aula__titolo">{titoloAula}</h2>
+          {esitoCodice === 'in-preparazione' && esito && <p class="aula__attesa" role="status">{esito}</p>}
+          <Emiciclo seggi={argomenti.map((a) => ({ stato: a.stato, titolo: a.titolo }))} />
+          <div class="aula__esito">
+            <p class="aula__numero"><strong>{conteggi.solido}</strong> su {magg.soglia} per la maggioranza</p>
+            <p class="aula__nota">Ogni seggio è un argomento del kit d'esame ({argomenti.length}). {magg.raggiunta ? 'Sei pronto: tieni i seggi allenandoli.' : `Te ne mancano ${magg.mancano} solidi.`}</p>
           </div>
-          <ul class="padronanza__legenda">
-            {ORDINE_STATI.map((st) => (
-              <li><StatoCapitolo stato={st} breve /> <span class="num">{conteggi[st]}</span></li>
-            ))}
+          <ul class="aula__legenda">
+            {ORDINE_STATI.map((st) => <li><StatoCapitolo stato={st} /> <span class="num">{conteggi[st]}</span></li>)}
           </ul>
           {prossimo && (
-            <form method="post" action="/api/simulazioni" class="prossimo">
+            <form method="post" action="/api/simulazioni" class="aula__ordine">
               <input type="hidden" name="codice" value={m.codice!} />
               <input type="hidden" name="formato" value="breve" />
-              <input type="hidden" name="capitolo" value={prossimo.capitolo.file} />
+              <input type="hidden" name="argomento" value={prossimo.capitolo.id} />
               {oraleEsame && <input type="hidden" name="modalita" value="orale" />}
               {oraleEsame && agente.online && <input type="hidden" name="dal_vivo" value="1" />}
               <p>
-                <span class="prossimo__etichetta">Da allenare adesso</span>
-                <strong>{prossimo.capitolo.titolo}</strong><span class="muted">: {MOTIVI[prossimo.motivo]}{prossimo.capitolo.quota !== null && ` (${percento(prossimo.capitolo.quota)} dei punti)`}.</span>
+                <span class="aula__ordine-etichetta">Ordine del giorno</span>
+                <strong>{prossimo.capitolo.titolo}</strong>
+                <span>Lo alleni perché {MOTIVI[prossimo.motivo]}{prossimo.capitolo.quota !== null && ` (${percento(prossimo.capitolo.quota)} dei punti)`}.</span>
               </p>
-              <button class="btn" type="submit" disabled={prossimo.capitolo.inPreparazione}>Allena questo</button>
+              <button class="btn btn--aula" type="submit" disabled={prossimo.capitolo.inPreparazione}>{prossimo.capitolo.inPreparazione ? 'Domande in preparazione' : 'Allena questo argomento'}</button>
             </form>
           )}
-        </div>
+        </section>
       )}
-      {m.appunti && base ? (
-        <ol class="capitoli">
-          {m.appunti.capitoli.map((c, i) => {
-            const p = padronanza.get(c.file);
-            return (
-              <li class:list={['capitolo', { 'capitolo--attesa': p?.inPreparazione }]} data-attesa={p?.inPreparazione ? '1' : undefined}>
-                <span class="capitolo__n cifra">{String(i + 1).padStart(2, '0')}</span>
-                <a class="capitolo__titolo" href={`${base}/${c.file}`}>{c.titolo}</a>
-                {p && (
-                  <span class="capitolo__stato" title={dettaglio(p)}>
-                    {p.inPreparazione ? <span class="attesa">domande in preparazione</span> : <StatoCapitolo stato={p.stato} />}
-                    {p.quota !== null && !p.inPreparazione && <span class="capitolo__quota num">{percento(p.quota)}</span>}
-                  </span>
-                )}
-                {p && allenabile && (
-                  <form method="post" action="/api/simulazioni" class="capitolo__allena">
-                    <input type="hidden" name="codice" value={m.codice!} />
-                    <input type="hidden" name="formato" value="breve" />
-                    <input type="hidden" name="capitolo" value={c.file} />
-                    {oraleEsame && <input type="hidden" name="modalita" value="orale" />}
-                    {oraleEsame && agente.online && <input type="hidden" name="dal_vivo" value="1" />}
-                    <button class="allena" type="submit" disabled={p.inPreparazione} aria-label={`Allena solo: ${c.titolo}`} title={p.domande < minimo ? 'Poche domande: le chiedo all\'agente' : `${p.nuove} domande mai uscite`}>
-                      Allena
-                    </button>
-                  </form>
-                )}
-              </li>
-            );
-          })}
-        </ol>
-      ) : (
-        <p class="vuoto pannello">Gli appunti di questa materia non sono ancora pronti.</p>
-      )}
-      {capitoliP.length > 0 && (
-        <p class="nota-padronanza">
-          Il livello viene dalle risposte corrette delle simulazioni: sotto il 60% dei punti è debole, dal 90% è solido (servono almeno due domande aperte o equivalenti). Le risposte più vecchie pesano meno. "Allena" fa {oraleEsame ? `un orale di ${profilo?.domandeOrale ?? ORALE.aperte} domande` : `${CAPITOLO.scritto.multiple} multiple e ${CAPITOLO.scritto.aperte} aperta`} solo su quel capitolo.
-        </p>
-      )}
-    </section>
+
+      <section class="stack gruppi-sez" aria-labelledby="appunti">
+        <h2 id="appunti">{aula ? 'Capitoli e argomenti' : 'Appunti'}</h2>
+        {m.appunti && base ? (
+          <ol class="gruppi">
+            {gruppi.map((g) =>
+              g.argomenti.length === 0 ? (
+                <li class="gruppo gruppo--semplice">
+                  <a class="gruppo__titolo" href={`${base}/${g.file}`}>{g.titolo}</a>
+                </li>
+              ) : (
+                <li class:list={['gruppo', { 'gruppo--attesa': g.padronanza?.inPreparazione }]} data-attesa={g.argomenti.some((a) => a.inPreparazione) ? '1' : undefined}>
+                  <details>
+                    <summary>
+                      <span class="gruppo__testa">
+                        <span class="gruppo__titolo-testo">{g.titolo}</span>
+                        <span class="gruppo__seggi" role="img" aria-label={`${g.argomenti.length} argomenti: ${ORDINE_STATI.map((st) => `${g.argomenti.filter((a) => a.stato === st).length} ${PAROLE[st]}`).join(', ')}`}>
+                          {g.argomenti.map((a) => <i class={`s s-${a.stato}`} title={`${a.titolo}: ${PAROLE[a.stato]}`}></i>)}
+                        </span>
+                      </span>
+                    </summary>
+                    <div class="gruppo__corpo">
+                      <div class="gruppo__azioni">
+                        <a href={`${base}/${g.file}`}>Leggi il capitolo</a>
+                        <form method="post" action="/api/simulazioni" class="allena-form">
+                      <input type="hidden" name="codice" value={m.codice!} />
+                      <input type="hidden" name="formato" value="breve" />
+                      <input type="hidden" name="capitolo" value={g.file} />
+                      {oraleEsame && <input type="hidden" name="modalita" value="orale" />}
+                      {oraleEsame && agente.online && <input type="hidden" name="dal_vivo" value="1" />}
+                          <button class="allena allena--capitolo" type="submit" disabled={g.padronanza?.inPreparazione}>Allena tutto il capitolo</button>
+                        </form>
+                      </div>
+                      <ul class="argomenti">
+                        {g.argomenti.map((a) => (
+                          <li class="argomento">
+                            <span class="argomento__titolo">{a.titolo}</span>
+                            <span class="argomento__stato" title={dettaglio(a)}>
+                              {a.inPreparazione ? <span class="attesa">domande in preparazione</span> : <StatoCapitolo stato={a.stato} />}
+                              {a.quota !== null && !a.inPreparazione && <span class="argomento__quota num">{percento(a.quota)}</span>}
+                            </span>
+                            <form method="post" action="/api/simulazioni" class="allena-form">
+                      <input type="hidden" name="codice" value={m.codice!} />
+                      <input type="hidden" name="formato" value="breve" />
+                      <input type="hidden" name="argomento" value={a.id} />
+                      {oraleEsame && <input type="hidden" name="modalita" value="orale" />}
+                      {oraleEsame && agente.online && <input type="hidden" name="dal_vivo" value="1" />}
+                              <button class="allena" type="submit" disabled={a.inPreparazione} aria-label={`Allena: ${a.titolo}`} title={a.domande < minimo ? "Poche domande: le chiedo all'agente" : `${a.nuove} domande mai uscite`}>Allena</button>
+                            </form>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </details>
+                </li>
+              ),
+            )}
+          </ol>
+        ) : (
+          <p class="vuoto pannello">Gli appunti di questa materia non sono ancora pronti.</p>
+        )}
+        {aula && (
+          <p class="nota-padronanza">
+            Il livello viene dalle risposte corrette delle simulazioni: sotto il 60% dei punti l'argomento è debole, dal 90% è solido (servono almeno due domande aperte o equivalenti); le risposte più vecchie pesano meno. "Allena" fa {oraleEsame ? `un orale di ${profilo?.domandeOrale ?? ORALE.aperte} domande` : `${CAPITOLO.scritto.multiple} multiple e ${CAPITOLO.scritto.aperte} aperta`} solo su quell'argomento o capitolo.
+          </p>
+        )}
+      </section>
+    </div>
 
     <aside class="stack laterale">
       <section class="pannello kit" id="kit" aria-labelledby="kit-titolo">
         <h2 id="kit-titolo">Kit d'esame</h2>
-        {esito && esitoCodice !== 'capitolo-in-preparazione' && <p class="kit__esito" role="status">{esito}</p>}
+        {esito && esitoCodice !== 'in-preparazione' && <p class="kit__esito" role="status">{esito}</p>}
         {!m.appunti ? (
           <p class="muted">Si prepara dagli appunti: per ora non ci sono.</p>
         ) : (
@@ -328,7 +368,7 @@ const esito =
       if (t && /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName)) return;
       const u = new URL(location.href);
       u.searchParams.delete('esito');
-      u.hash = 'padronanza';
+      u.hash = 'aula';
       history.replaceState(null, '', u);
       location.reload();
     };
@@ -348,36 +388,32 @@ const esito =
 </script>
 
 <style>
-  /* Un filo del colore della materia in cima, come il segnalibro di un quaderno */
   .testata {
-    position: relative;
     display: grid;
     gap: var(--space-3);
-    padding-top: var(--space-4);
-  }
-  .testata::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: min(100%, 12rem);
-    height: 3px;
-    border-radius: 2px;
-    background: var(--c);
   }
   .etichetta {
-    font-family: var(--font-serif);
-    font-style: italic;
-    font-size: var(--text-lg);
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-size: var(--text-sm);
+    font-weight: var(--weight-semibold);
     color: var(--color-ink-muted);
   }
+  .etichetta::before {
+    content: '';
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--c);
+  }
   .etichetta__date {
-    font-family: var(--font-mono);
-    font-style: normal;
-    font-size: var(--text-xs);
+    font-weight: var(--weight-regular);
   }
   .testata h1 {
-    font-size: clamp(var(--text-2xl), 4.5vw, 2.75rem);
+    font-size: clamp(var(--text-2xl), 4.5vw, var(--text-3xl));
+    font-weight: var(--weight-bold);
+    line-height: 1;
   }
   .azione-principale {
     min-width: min(100%, 16rem);
@@ -412,71 +448,276 @@ const esito =
       grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
     }
   }
-  /* Capitoli come righe di un indice: numero, titolo (link agli appunti), stato, "Allena" */
-  .capitoli {
+  .principale {
+    display: grid;
+    gap: var(--space-5);
+    min-width: 0;
+  }
+
+  /* Aula della materia: emiciclo, esito, legenda, ordine del giorno */
+  .aula {
+    display: grid;
+    gap: var(--space-3);
+    padding: var(--space-5) var(--space-4) var(--space-4);
+    border-radius: var(--radius-aula);
+    background: var(--color-aula);
+    color: var(--color-on-aula);
+    scroll-margin-top: var(--space-4);
+  }
+  .aula__titolo {
+    font-size: clamp(1.625rem, 4.5vw, 2.5rem);
+    font-weight: var(--weight-bold);
+    line-height: 1;
+    letter-spacing: -0.015em;
+  }
+  .aula__attesa {
+    padding: var(--space-2) var(--space-3);
+    border: 1px dashed var(--color-aula-tenue);
+    border-radius: var(--radius-md);
+    font-size: var(--text-sm);
+    color: var(--color-on-aula);
+  }
+  .aula__esito {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: var(--space-2) var(--space-4);
+  }
+  .aula__numero {
+    font-size: var(--text-lg);
+    font-weight: var(--weight-semibold);
+    color: var(--color-aula-tenue);
+    font-variant-numeric: tabular-nums;
+  }
+  .aula__numero strong {
+    font-size: var(--text-3xl);
+    font-weight: var(--weight-bold);
+    line-height: 1;
+    color: var(--color-on-aula);
+  }
+  .aula__nota {
+    max-width: 34ch;
+    font-size: var(--text-sm);
+    color: var(--color-aula-tenue);
+  }
+  .aula__legenda {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-1) var(--space-4);
+    margin: 0;
+    padding: var(--space-3) 0 0;
+    border-top: 1px solid var(--color-aula-filo);
     list-style: none;
+    font-size: var(--text-sm);
+    font-weight: var(--weight-semibold);
+  }
+  .aula__legenda li {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+  }
+  /* Sul verde d'aula gli stati usano i colori pieni del tabellone */
+  .aula__legenda :global(.stato--solido) { color: var(--voto-si); }
+  .aula__legenda :global(.stato--in-crescita) { color: var(--voto-forse); }
+  .aula__legenda :global(.stato--debole) { color: var(--voto-no); }
+  .aula__legenda :global(.stato--mai-provato) { color: var(--color-aula-tenue); }
+  .aula__ordine {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3) var(--space-4);
+    margin: var(--space-1) 0 0;
+    padding: var(--space-4);
+    border-radius: var(--radius-lg);
+    background: var(--color-aula-scuro);
+  }
+  .aula__ordine p {
+    flex: 1 1 18rem;
+    display: grid;
+    gap: 2px;
+    font-size: var(--text-sm);
+    color: var(--color-aula-tenue);
+  }
+  .aula__ordine-etichetta {
+    font-weight: var(--weight-semibold);
+    color: var(--voto-no);
+  }
+  .aula__ordine strong {
+    font-size: var(--text-lg);
+    line-height: 1.2;
+    color: var(--color-on-aula);
+  }
+  .btn--aula {
+    background: var(--color-on-aula);
+    border-color: var(--color-on-aula);
+    color: var(--color-aula);
+  }
+  .btn--aula:hover {
+    background: #ffffff;
+    color: var(--color-aula);
+  }
+
+  /* Capitoli come gruppi parlamentari: titolo, i loro seggi, argomenti apribili */
+  .gruppi {
     margin: 0;
     padding: 0;
-    border-bottom: var(--border);
-  }
-  .capitolo {
+    list-style: none;
     display: grid;
-    grid-template-columns: 1.75rem minmax(0, 1fr) auto auto;
-    grid-template-areas: 'n titolo stato allena';
+    gap: var(--space-2);
+  }
+  .gruppo {
+    border-radius: var(--radius-lg);
+    background: var(--color-surface);
+    border: var(--border);
+  }
+  .gruppo--semplice {
+    background: transparent;
+    border-style: dashed;
+  }
+  .gruppo__titolo {
+    display: block;
+    padding: var(--space-3) var(--space-4);
+    color: var(--color-ink-muted);
+    text-decoration: none;
+    font-weight: var(--weight-semibold);
+  }
+  .gruppo__titolo:hover {
+    color: var(--color-accent);
+  }
+  .gruppo summary {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-3) var(--space-4);
+    min-height: 56px;
+    cursor: pointer;
+    list-style: none;
+  }
+  .gruppo summary::-webkit-details-marker {
+    display: none;
+  }
+  .gruppo summary::after {
+    content: '';
+    flex: none;
+    width: 8px;
+    height: 8px;
+    margin-left: auto;
+    border-right: 2px solid var(--color-ink-faint);
+    border-bottom: 2px solid var(--color-ink-faint);
+    transform: rotate(45deg);
+    transition: transform var(--dur) var(--ease);
+  }
+  .gruppo details[open] summary::after {
+    transform: rotate(225deg);
+  }
+  .gruppo__testa {
+    display: grid;
+    gap: var(--space-2);
+    min-width: 0;
+  }
+  .gruppo__titolo-testo {
+    font-weight: var(--weight-semibold);
+    line-height: 1.25;
+  }
+  .gruppo__seggi {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+  .s {
+    width: 11px;
+    height: 11px;
+    border-radius: 50%;
+  }
+  .s-solido { background: var(--voto-si); }
+  .s-in-crescita { background: linear-gradient(90deg, transparent 50%, var(--voto-forse) 50%); box-shadow: inset 0 0 0 2px var(--voto-forse); }
+  .s-debole { background: var(--voto-no); border-radius: 2px; }
+  .s-mai-provato { box-shadow: inset 0 0 0 1.5px var(--voto-vuoto); }
+  .gruppo__corpo {
+    display: grid;
+    gap: var(--space-2);
+    padding: 0 var(--space-4) var(--space-3);
+  }
+  .gruppo__azioni {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-2) var(--space-4);
+    padding-bottom: var(--space-2);
+    border-bottom: var(--border);
+    font-size: var(--text-sm);
+    font-weight: var(--weight-semibold);
+  }
+  .allena-form {
+    margin: 0;
+  }
+  .argomenti {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .argomento {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    grid-template-areas: 'titolo stato allena';
     gap: var(--space-1) var(--space-3);
     align-items: center;
     min-height: 52px;
     padding: var(--space-2) 0;
+  }
+  .argomento + .argomento {
     border-top: var(--border);
   }
-  .capitolo__n {
-    grid-area: n;
-    color: var(--color-ink-faint);
-    font-size: var(--text-xs);
-  }
-  .capitolo__titolo {
+  .argomento__titolo {
     grid-area: titolo;
-    padding: var(--space-1) 0;
-    color: var(--color-ink);
-    text-decoration: none;
-    transition: color var(--dur) var(--ease);
+    font-size: var(--text-sm);
+    line-height: 1.3;
   }
-  .capitolo__titolo:hover {
-    color: var(--color-accent);
-    text-decoration: underline;
-  }
-  .capitolo__stato {
+  .argomento__stato {
     grid-area: stato;
     display: inline-flex;
     align-items: center;
     gap: var(--space-2);
   }
-  .capitolo__quota {
-    min-width: 2.5rem;
+  .argomento__quota {
+    min-width: 2.25rem;
     font-size: var(--text-xs);
+    font-weight: var(--weight-semibold);
     color: var(--color-ink-muted);
     text-align: right;
   }
-  .capitolo__allena {
+  .argomento .allena-form {
     grid-area: allena;
-    margin: 0;
+  }
+  @media (max-width: 560px) {
+    .argomento {
+      grid-template-columns: minmax(0, 1fr) auto;
+      grid-template-areas:
+        'titolo allena'
+        'stato allena';
+    }
+    .argomento__stato {
+      justify-self: start;
+    }
   }
   .allena {
     min-height: 36px;
     padding: 0 var(--space-3);
-    border: 1px solid var(--color-rule-strong);
+    border: 1.5px solid var(--color-primary);
     border-radius: var(--radius-md);
     background: transparent;
-    color: var(--color-ink);
+    color: var(--color-accent);
     font: inherit;
     font-size: var(--text-sm);
     font-weight: var(--weight-semibold);
     cursor: pointer;
-    transition: background-color var(--dur) var(--ease), border-color var(--dur) var(--ease);
+    transition: background-color var(--dur) var(--ease), color var(--dur) var(--ease);
   }
   .allena:hover:not(:disabled) {
     background: var(--color-primary);
-    border-color: var(--color-primary-edge);
     color: var(--color-on-primary);
   }
   .allena:disabled {
@@ -488,93 +729,19 @@ const esito =
     color: var(--color-ink-muted);
     font-style: italic;
   }
-  .capitolo--attesa .attesa::before {
+  .attesa::before {
     content: '';
     display: inline-block;
     width: 6px;
     height: 6px;
     margin-right: 6px;
     border-radius: 50%;
-    background: var(--color-primary);
+    background: var(--voto-forse);
     vertical-align: middle;
     animation: respira 1.4s ease-in-out infinite;
   }
   @keyframes respira {
     50% { opacity: 0.25; }
-  }
-  @media (max-width: 560px) {
-    .capitolo {
-      grid-template-columns: 1.75rem minmax(0, 1fr) auto;
-      grid-template-areas:
-        'n titolo allena'
-        '. stato allena';
-    }
-    .capitolo__stato {
-      justify-self: start;
-    }
-  }
-
-  /* Riepilogo della padronanza: barra divisa per stati, legenda, capitolo da allenare */
-  .padronanza {
-    display: grid;
-    gap: var(--space-3);
-    padding-bottom: var(--space-2);
-  }
-  .padronanza__barra {
-    display: flex;
-    gap: 3px;
-    height: 10px;
-  }
-  .padronanza__barra i {
-    flex-basis: 0;
-    border-radius: 2px;
-  }
-  .p-solido { background: var(--color-success); }
-  .p-in-crescita { background: var(--color-warning); }
-  .p-debole { background: var(--color-danger); }
-  .p-mai-provato { background: var(--color-raised); box-shadow: inset 0 0 0 1px var(--color-rule-strong); }
-  .padronanza__legenda {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-1) var(--space-4);
-    margin: 0;
-    padding: 0;
-    list-style: none;
-    font-size: var(--text-xs);
-  }
-  .padronanza__legenda li {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--space-1);
-  }
-  .prossimo {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--space-2) var(--space-4);
-    margin: 0;
-    padding: var(--space-3) var(--space-4);
-    border-left: 3px solid var(--color-primary);
-    background: var(--color-surface);
-  }
-  .prossimo p {
-    flex: 1 1 16rem;
-  }
-  .prossimo__etichetta {
-    display: block;
-    font-size: var(--text-xs);
-    color: var(--color-ink-muted);
-  }
-  .prossimo strong {
-    font-family: var(--font-serif);
-    font-size: var(--text-lg);
-  }
-  .avviso-attesa {
-    padding: var(--space-3) var(--space-4);
-    border: 1px dashed var(--color-rule-strong);
-    border-radius: var(--radius-md);
-    color: var(--color-ink-muted);
   }
   .nota-padronanza {
     font-size: var(--text-xs);
