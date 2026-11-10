@@ -212,9 +212,9 @@ code {
 
 .punto {
   display: inline-block;
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
+  width: 9px;
+  height: 9px;
+  border-radius: 2px;
   flex: none;
   background: var(--c, var(--color-ink-muted));
 }
@@ -235,4 +235,12 @@ code {
     transition: none !important;
     animation: none !important;
   }
+}
+
+/* Elenchi a righe: filetti come in un registro, non riquadri chiusi */
+.righe.pannello {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  border-block: var(--border);
 }

@@ -50,7 +50,7 @@ const esito = ESITI[Astro.url.searchParams.get('esito') ?? ''];
     <div class="cluster meta">
       {voto ? <Badge stato="superato" label={`Superato · ${votoTesto(voto)}`} /> : <Badge stato={statoMateria(m, voti)} />}
       <TipoEsame tipo={m.esame.tipo} dalCatalogo={m.esame.dalCatalogo} />
-      <span class="cifra">{m.cfu}&nbsp;CFU</span>
+      <span class="num">{m.cfu}&nbsp;CFU</span>
       {m.docenti.length > 0 && <span>{m.docenti.join(', ')}</span>}
     </div>
     {m.appunti && (
@@ -288,6 +288,14 @@ const esito = ESITI[Astro.url.searchParams.get('esito') ?? ''];
   }
   .azione-principale {
     min-width: min(100%, 16rem);
+  }
+  @media (max-width: 640px) {
+    .azioni .btn {
+      flex: 1 1 auto;
+    }
+    .azione-principale {
+      flex-basis: 100% !important;
+    }
   }
   .meta {
     gap: var(--space-2) var(--space-4);

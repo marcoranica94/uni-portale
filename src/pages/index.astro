@@ -63,7 +63,7 @@ const giornoSettimana = (indietro: number) => nomiGiorni[(new Date(ora.getTime()
             <i class:list={{ fatta: i + 1 < semestre.corrente, ora: i + 1 === semestre.corrente }}></i>
           ))}
         </div>
-        <p class="semestre__testo">Settimana <span class="cifra">{semestre.corrente}</span> di <span class="cifra">{semestre.settimane}</span> del {semestre.nome} · lezioni fino al {semestre.fineLezioni}</p>
+        <p class="semestre__testo">Settimana {semestre.corrente} di {semestre.settimane} del {semestre.nome} · lezioni fino al {semestre.fineLezioni}</p>
       </div>
     )}
   </header>
@@ -73,7 +73,7 @@ const giornoSettimana = (indietro: number) => nomiGiorni[(new Date(ora.getTime()
       <section class="mossa" aria-labelledby="mossa-titolo" style={`--c: var(--materia-${adesso.m.colore})`}>
         <p class="mossa__chi">
           <span class="quadro" aria-hidden="true"></span>
-          {adesso.m.breve}{simulabile && <> · {orale ? 'orale' : 'scritto'} · circa <span class="cifra">{minuti}</span> minuti</>}
+          {adesso.m.breve}{simulabile && <> · {orale ? 'orale' : 'scritto'} · circa {minuti} minuti</>}
         </p>
         <h2 id="mossa-titolo" class="mossa__titolo">
           {simulabile ? (
@@ -144,13 +144,13 @@ const giornoSettimana = (indietro: number) => nomiGiorni[(new Date(ora.getTime()
               <span class="quadro" aria-hidden="true"></span>
               <span class="materia__nome">
                 <b>{m.nome}</b>
-                <small>{m.esame.tipo === 'Da definire' ? 'esame da definire' : m.esame.tipo.toLowerCase()} · <span class="cifra">{m.cfu}</span> CFU</small>
+                <small>{m.esame.tipo === 'Da definire' ? 'esame da definire' : m.esame.tipo.toLowerCase()} · {m.cfu} CFU</small>
               </span>
               <span class="materia__esito">
                 {e && e.voto !== null ? (
                   <>
                     <span class="inchiostro" aria-hidden="true"><i style={`width: ${Math.round((e.voto / 30) * 100)}%`}></i></span>
-                    <span class="materia__voto"><span class="cifra">{e.voto}</span>/30 · {e.n === 1 ? '1 simulazione' : `${e.n} simulazioni`}</span>
+                    <span class="materia__voto">{e.voto}/30 · {e.n === 1 ? '1 simulazione' : `${e.n} simulazioni`}</span>
                   </>
                 ) : (
                   <span class="materia__voto">mai simulata</span>
