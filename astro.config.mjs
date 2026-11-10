@@ -8,5 +8,7 @@ export default defineConfig({
   adapter: cloudflare({
     // Le pagine statiche si generano con Node: workerd non gira su macOS 12.
     prerenderEnvironment: 'node',
+    // Nessuna trasformazione di immagini: evita il binding Cloudflare Images.
+    imageService: 'passthrough',
   }),
 });

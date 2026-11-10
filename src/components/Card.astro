@@ -126,4 +126,10 @@ const style = materia
   .card__link:focus-visible {
     outline: none;
   }
+  /* Link e pulsanti secondari restano cliccabili sopra il link esteso del titolo */
+  .card__body :is(a, button, input, select, textarea, summary),
+  .card__foot :is(a, button, input, select, textarea, summary) {
+    position: relative;
+    z-index: 1;
+  }
 </style>

@@ -43,12 +43,13 @@ const { title, description = 'Portale di studio personale - Scienze politiche e 
     display: grid;
     gap: var(--space-6);
   }
+  /* Desktop: il contenuto si centra nello spazio a destra della barra laterale fissa */
   @media (min-width: 900px) {
+    body {
+      padding-left: var(--nav-width);
+    }
     .page {
-      max-width: calc(var(--content-max) + var(--nav-width));
-      padding-left: calc(var(--nav-width) + var(--space-6));
-      padding-right: var(--space-6);
-      padding-block: var(--space-6);
+      padding: var(--space-6);
     }
   }
 </style>
