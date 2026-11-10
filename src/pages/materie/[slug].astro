@@ -32,7 +32,7 @@ const esito = ESITI[Astro.url.searchParams.get('esito') ?? ''];
 
 <Base title={m.breve}>
   <header class="testata" style={`--c: var(--materia-${m.colore})`}>
-    <p class="etichetta"><span class="punto"></span>{m.anno}º anno · {m.periodo}{m.date && <span class="muted"> · {m.date}</span>}</p>
+    <p class="etichetta"><span class="punto"></span><span>{m.anno}º anno · {m.periodo}{m.date && <span class="muted"> · {m.date}</span>}</span></p>
     <h1>{m.nome}</h1>
     <div class="cluster meta">
       {voto ? <Badge stato="superato" label={`Superato · ${votoTesto(voto)}`} /> : <Badge stato={statoMateria(m, voti)} />}
