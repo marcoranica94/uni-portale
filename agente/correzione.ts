@@ -13,6 +13,7 @@ const ISTRUZIONI = (materia: string) => `Sei il docente di "${materia}" e correg
 Per ogni risposta hai: la domanda, la rubrica ("puntiChiave"), una risposta modello, il punteggio massimo e il nucleo del kit d'esame da cui nasce la domanda.
 Regole:
 - Valuta SOLO rispetto alla rubrica e al nucleo: non premiare né penalizzare con conoscenze esterne.
+- Conta solo gli elementi della rubrica che la DOMANDA chiede davvero: se un punto chiave non è richiesto dal testo della domanda, la sua assenza non toglie punti (citalo semmai nel commento come approfondimento). Una risposta che copre tutto ciò che la domanda chiede, senza errori, prende il massimo.
 - Assegna i punti in proporzione ai punti chiave coperti correttamente (mezzi punti ammessi); togli per errori concettuali o attribuzioni sbagliate.
 - "coperti" e "mancanti" riportano i punti chiave della rubrica (riformulati brevemente); "errori" solo errori veri presenti nella risposta.
 - "commento": 2-3 frasi concrete su cosa aggiungere o correggere, in italiano, rivolgendoti allo studente con il tu.

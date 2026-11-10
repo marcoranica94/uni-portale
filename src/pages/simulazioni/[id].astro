@@ -22,6 +22,7 @@ const agente = sim.stato === 'in_correzione' ? await statoAgenti() : null;
 const appunti = m?.appunti ? `/appunti/${m.appunti.slug}` : null;
 const titoloPagina = (file: string) => m?.appunti?.capitoli.find((c) => c.file === file)?.titolo ?? file;
 const lettera = (i: number) => String.fromCharCode(65 + i);
+const n = (x: number | null) => (x === null ? '–' : x.toLocaleString('it-IT', { maximumFractionDigits: 1 }));
 const sufficiente = (sim.voto ?? 0) >= 18;
 ---
 
@@ -85,7 +86,7 @@ const sufficiente = (sim.voto ?? 0) >= 18;
         {sim.stato === 'in_correzione' ? (
           <>
             <p class="esito__voto esito__voto--attesa">In correzione</p>
-            <p>{orale ? "Le risposte sono trascritte: l'agente locale sta valutando contenuto ed esposizione." : <>Scelta multipla: <strong class="num">{sim.punti} su {risposte.filter((r) => r.domanda.tipo === 'multipla').length}</strong>. Le risposte aperte le sta correggendo l'agente locale.</>}</p>
+            <p>{orale ? "Le risposte sono trascritte: l'agente locale sta valutando contenuto ed esposizione." : <>Scelta multipla: <strong class="num">{n(sim.punti)} su {risposte.filter((r) => r.domanda.tipo === 'multipla').length}</strong>. Le risposte aperte le sta correggendo l'agente locale.</>}</p>
             <p class="cluster">
               <Badge stato={agente?.online ? 'online' : 'offline'} label={agente?.online ? 'Agente online: ricarica tra qualche minuto' : 'Agente offline: la correzione parte quando lo avvii'} />
               <a href="/agente">Come avviarlo</a>
@@ -96,7 +97,7 @@ const sufficiente = (sim.voto ?? 0) >= 18;
             <p class:list={['esito__voto num', sufficiente ? 'esito__voto--ok' : 'esito__voto--ko']}>
               {sim.voto}<small>/30</small>
             </p>
-            <p class="num"><strong>{sim.punti} punti su {sim.massimo}</strong> · {sufficiente ? 'sufficiente' : 'non sufficiente'} · stima: multipla 1 punto, aperta 4 punti</p>
+            <p class="num"><strong>{n(sim.punti)} punti su {n(sim.massimo)}</strong> · {sufficiente ? 'sufficiente' : 'non sufficiente'} · {orale ? 'stima: 4 punti per domanda' : 'stima: multipla 1 punto, aperta 4 punti'}</p>
             {sim.giudizio && <p class="esito__giudizio">{sim.giudizio}</p>}
             {esposizione && (
               <div class="esposizione">
@@ -121,7 +122,7 @@ const sufficiente = (sim.voto ?? 0) >= 18;
                 <span class="muted num">Domanda {r.ordine}</span>
                 {r.punti !== null ? (
                   <span class:list={['punti num', r.punti >= r.massimo ? 'punti--ok' : r.punti > 0 ? 'punti--parziale' : 'punti--ko']}>
-                    {r.punti >= r.massimo ? '✓' : r.punti > 0 ? '◐' : '✕'} {r.punti}/{r.massimo}
+                    {r.punti >= r.massimo ? '✓' : r.punti > 0 ? '◐' : '✕'} {n(r.punti)}/{n(r.massimo)}
                   </span>
                 ) : (
                   <Badge stato="in-coda" label="In correzione" />
