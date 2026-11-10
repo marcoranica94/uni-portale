@@ -1,6 +1,6 @@
 import type { APIRoute } from 'astro';
 import { RichiestaCompleta, RisultatoKit } from '../../../shared/schemi';
-import { completa, getLavoro, salvaKit } from '../../../lib/coda';
+import { completa, getLavoro, registraBattito, salvaKit } from '../../../lib/coda';
 import { soloAgente, leggi, json } from './_comune';
 
 export const prerender = false;
@@ -15,6 +15,7 @@ export const POST: APIRoute = async (ctx) => {
   const lavoro = await getLavoro(dati.id);
   if (!lavoro) return json({ errore: 'Lavoro inesistente.' }, 404);
   if (lavoro.stato !== 'in_corso') return json({ errore: `Lavoro nello stato "${lavoro.stato}".` }, 409);
+  if (lavoro.agente) await registraBattito(lavoro.agente, 'consegna');
 
   if (lavoro.tipo === 'kit') {
     const r = RisultatoKit.safeParse(dati.risultato);

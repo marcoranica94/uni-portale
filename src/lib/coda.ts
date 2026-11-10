@@ -49,9 +49,9 @@ export async function preleva(agente: string, tipi: TipoLavoro[]): Promise<Lavor
 }
 
 export async function getLavoro(id: string) {
-  return env.DB.prepare('SELECT id, tipo, codice, stato FROM lavori WHERE id = ?')
+  return env.DB.prepare('SELECT id, tipo, codice, stato, agente FROM lavori WHERE id = ?')
     .bind(id)
-    .first<{ id: string; tipo: TipoLavoro; codice: string | null; stato: string }>();
+    .first<{ id: string; tipo: TipoLavoro; codice: string | null; stato: string; agente: string | null }>();
 }
 
 export async function completa(id: string, risultato: unknown) {

@@ -43,6 +43,10 @@ async function giro(): Promise<boolean> {
   const { lavoro } = await post<{ lavoro: Lavoro | null }>('/api/agente/preleva', { agente, host: HOST, versione: VERSIONE, tipi: TIPI });
   if (!lavoro) return false;
   log(`lavoro ${lavoro.id.slice(0, 8)} · ${lavoro.tipo} · ${lavoro.codice ?? '-'} (tentativo ${lavoro.tentativi})`);
+  // Durante i lavori lunghi il portale deve continuare a vedere l'agente online.
+  const battito = setInterval(() => {
+    post('/api/agente/battito', { agente, host: HOST, versione: VERSIONE }).catch(() => {});
+  }, 60_000);
   try {
     if (lavoro.tipo === 'kit' && lavoro.codice) {
       const risultato = await generaKit(lavoro.codice, { agente, modello: values.modello, push, log });
@@ -55,6 +59,8 @@ async function giro(): Promise<boolean> {
     const messaggio = e instanceof Error ? e.message : String(e);
     log(`errore: ${messaggio}`);
     await post('/api/agente/errore', { id: lavoro.id, messaggio: messaggio.slice(0, 2000), ritenta: true }).catch(() => {});
+  } finally {
+    clearInterval(battito);
   }
   return true;
 }

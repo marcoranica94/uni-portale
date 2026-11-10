@@ -13,7 +13,7 @@ export const PROGETTO = path.resolve(qui, '..');
 export const REPO = path.resolve(PROGETTO, '..');
 
 export const BASE_URL = process.env.UNI_BASE_URL ?? 'https://uni.marcoranica.com';
-export const HOST = os.hostname().replace(/\.local$/, '');
+export const HOST = os.hostname().split('.')[0];
 
 /** Legge il service token di Access da ~/.config/uni-agent/access.env (mai stampato). */
 export function credenziali(): { id: string; secret: string } {

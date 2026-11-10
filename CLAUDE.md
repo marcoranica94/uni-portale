@@ -75,6 +75,23 @@ Progetto in `piattaforma/`: Astro 7, adapter `@astrojs/cloudflare` 14, Wrangler 
 - `claude`, `codex` e `agy` sono installati; `gh` no.
 - Bash di sistema è la 3.2: niente array, niente `$(...)` annidati complessi; per logica articolata usa uno script.
 
+## Agente locale (uni-agent)
+
+Il telefono e il sito non parlano mai con il PC: il sito tiene una coda in D1 e `uni-agent`, sul PC, la svuota.
+
+```
+cd piattaforma
+pnpm agente watch --agente claude     # oppure codex / agy; Ctrl+C per uscire
+pnpm agente once                      # un solo giro di coda
+pnpm agente kit sociologia            # kit senza passare dalla coda (il portale non lo registra)
+pnpm agente verifica                  # credenziali e collegamento
+```
+
+- Usa `claude -p`, `codex exec`, `agy -p` con output JSON vincolato agli schemi di `src/shared/schemi.ts` (formato rigido: campi tutti obbligatori, `nullable` al posto di `optional`).
+- Il kit d'esame va in `<corso>/esame/kit-esame.json` (fonte per domande e correzioni) e `.md` (lettura); l'agente committa e pusha solo quei file. L'impronta degli appunti (`scripts/impronta-appunti.mjs`) dice se il kit è aggiornato.
+- Requisiti su un altro PC: repository clonato, Node 24 + pnpm (`pnpm install`), almeno una CLI tra claude/codex/agy con login fatto, `~/.config/uni-agent/access.env`.
+- Primo kit: Sociologia, 42 nuclei, ~12 minuti con Claude (10/11/2026).
+
 ## Provare il sito online
 
 Il sito è dietro Cloudflare Access. Per provarlo da qui si usa il service token `uni-agent` (policy "Agente locale", azione Service Auth):
