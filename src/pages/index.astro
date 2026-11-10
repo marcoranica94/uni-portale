@@ -5,6 +5,7 @@ import TipoEsame from '../components/TipoEsame.astro';
 import { getMaterie, CFU_TOTALI } from '../lib/percorso';
 import { getVoti, riepilogo, statoMateria } from '../lib/voti';
 import { statoAgenti, getKit } from '../lib/coda';
+import { contaBanca } from '../lib/simulazioni';
 
 export const prerender = false;
 
@@ -18,6 +19,9 @@ const agente = await statoAgenti();
 const conKit = await Promise.all(inCorso.map(async (m) => ({ m, kit: m.codice ? await getKit(m.codice) : null })));
 const adesso = conKit.find((x) => x.kit) ?? conKit.find((x) => x.m.appunti) ?? null;
 const primoCapitolo = adesso?.m.appunti?.capitoli.find((c) => !/indice|mappa/i.test(c.titolo)) ?? adesso?.m.appunti?.capitoli[0];
+const banca = adesso?.m.codice ? await contaBanca(adesso.m.codice) : null;
+const orale = adesso?.m.esame.tipo === 'Orale';
+const simulabile = !!(adesso && banca && banca.totale > 0 && (orale || adesso.m.esame.tipo === 'Scritto'));
 ---
 
 <Base title="Uni">
@@ -29,18 +33,33 @@ const primoCapitolo = adesso?.m.appunti?.capitoli.find((c) => !/indice|mappa/i.t
   {adesso && (
     <section class="adesso" aria-labelledby="adesso-titolo" style={`--c: var(--materia-${adesso.m.colore})`}>
       <p class="adesso__etichetta"><span class="punto"></span> Adesso</p>
-      <h2 id="adesso-titolo" class="adesso__titolo">Ripassa {adesso.m.breve}</h2>
+      <h2 id="adesso-titolo" class="adesso__titolo">{simulabile ? `Simula ${orale ? "l'orale" : 'lo scritto'} di ${adesso.m.breve}` : `Ripassa ${adesso.m.breve}`}</h2>
       <p class="adesso__testo">
-        Esame {adesso.m.esame.tipo.toLowerCase()}.
-        {adesso.kit
-          ? ` Il kit d'esame è pronto (${adesso.kit.nuclei} nuclei): le simulazioni arrivano a dicembre, intanto ripassa dagli appunti.`
-          : " Riparti dagli appunti: dal kit d'esame nasceranno le simulazioni."}
+        {simulabile
+          ? orale
+            ? `Tre domande: le ascolti e rispondi a voce${agente.online ? ', il docente ti fa domande di approfondimento' : ''}. Poi rileggi i punti mancanti negli appunti.`
+            : 'Sei domande in dieci minuti: la scelta multipla si corregge subito, le aperte le corregge l\'agente.'
+          : adesso.kit
+            ? `Il kit d'esame è pronto (${adesso.kit.nuclei} nuclei): prepara le domande dalla scheda della materia, intanto ripassa dagli appunti.`
+            : "Riparti dagli appunti: dal kit d'esame nasceranno le simulazioni."}
       </p>
       <div class="adesso__azioni">
-        {primoCapitolo && adesso.m.appunti && (
-          <a class="btn btn--primary" href={`/appunti/${adesso.m.appunti.slug}/${primoCapitolo.file}`}>Apri gli appunti</a>
+        {simulabile ? (
+          <form method="post" action="/api/simulazioni">
+            <input type="hidden" name="codice" value={adesso.m.codice!} />
+            <input type="hidden" name="formato" value="breve" />
+            {orale && <input type="hidden" name="modalita" value="orale" />}
+            {orale && agente.online && <input type="hidden" name="dal_vivo" value="1" />}
+            <button class="btn btn--primary" type="submit">Inizia la simulazione</button>
+          </form>
+        ) : (
+          primoCapitolo && adesso.m.appunti && <a class="btn btn--primary" href={`/appunti/${adesso.m.appunti.slug}/${primoCapitolo.file}`}>Apri gli appunti</a>
         )}
-        <a class="btn" href={`/materie/${adesso.m.slug}`}>Scheda della materia</a>
+        {simulabile && primoCapitolo && adesso.m.appunti ? (
+          <a class="btn" href={`/appunti/${adesso.m.appunti.slug}/${primoCapitolo.file}`}>Apri gli appunti</a>
+        ) : (
+          <a class="btn" href={`/materie/${adesso.m.slug}`}>Scheda della materia</a>
+        )}
       </div>
     </section>
   )}
@@ -108,6 +127,9 @@ const primoCapitolo = adesso?.m.appunti?.capitoli.find((c) => !/indice|mappa/i.t
   .adesso__testo {
     color: var(--color-ink-muted);
     max-width: 60ch;
+  }
+  .adesso__azioni form {
+    margin: 0;
   }
   .adesso__azioni {
     display: flex;

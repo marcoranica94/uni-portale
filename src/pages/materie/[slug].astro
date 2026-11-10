@@ -55,7 +55,8 @@ const esito = ESITI[Astro.url.searchParams.get('esito') ?? ''];
     </div>
     {m.appunti && (
       <div class="azioni">
-        {primoCapitolo && <a class="btn btn--primary" href={`${base}/${primoCapitolo.file}`}>Apri gli appunti</a>}
+        {banca && banca.totale > 0 && (scritto || oraleEsame) && <a class="btn btn--primary" href="#simula">Simula l'esame</a>}
+        {primoCapitolo && <a class:list={['btn', { 'btn--primary': !(banca && banca.totale > 0 && (scritto || oraleEsame)) }]} href={`${base}/${primoCapitolo.file}`}>Apri gli appunti</a>}
         {m.appunti.pdf && (
           <a class="btn" href={`${base}/${m.appunti.pdf.file}`} download>
             Scarica PDF <span class="muted num">{mb}&nbsp;MB</span>
