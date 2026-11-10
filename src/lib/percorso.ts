@@ -1,6 +1,8 @@
 import { getCollection, type CollectionEntry } from 'astro:content';
 import configMaterie from '../data/materie.json';
 import appuntiGenerati from '../data/appunti.generated.json';
+import { nomeLeggibile, testoLeggibile, slugDa } from './calcoli';
+export { nomeLeggibile, testoLeggibile, slugDa, statoDidattico } from './calcoli';
 
 type Voce = CollectionEntry<'insegnamenti'>['data'];
 type Colore = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
@@ -29,41 +31,6 @@ export interface Materia {
   obiettivi: string | null;
   url: string | null;
   appunti: Appunti | null;
-}
-
-const ACCENTI: Record<string, string> = { a: 'à', e: 'è', i: 'ì', o: 'ò', u: 'ù' };
-
-/** "SVILUPPO DEI SISTEMI ECONOMICI E DELLA SOCIETA'" -> "Sviluppo dei sistemi economici e della società" */
-export function nomeLeggibile(maiuscolo: string): string {
-  const minuscolo = maiuscolo
-    .toLowerCase()
-    .replace(/([aeiou])'(?=\s|$)/g, (_, v: string) => ACCENTI[v] ?? v)
-    .replace(/\s+/g, ' ')
-    .trim();
-  return minuscolo.charAt(0).toUpperCase() + minuscolo.slice(1);
-}
-
-/** Accenti scritti con l'apostrofo nel piano ("liberta'", "piu'") -> lettere accentate. */
-export function testoLeggibile(testo: string): string {
-  return testo
-    .replace(/(\p{L}{2,}t)a'(?=[^\p{L}]|$)/gu, '$1à')
-    .replace(/(\p{L}{2,}t)u'(?=[^\p{L}]|$)/gu, '$1ù')
-    .replace(/\b([Pp])iu'/g, '$1iù')
-    .replace(/\b([Gg])ia'/g, '$1ià')
-    .replace(/\b([Pp])uo'/g, '$1uò')
-    .replace(/\b(perch|poich|affinch|bench|finch)e'/gi, '$1é')
-    .replace(/\b([Cc])ioe'/g, '$1ioè')
-    .replace(/(^|\s)e'(?=\s)/g, '$1è')
-    .replace(/(^|\s)E'(?=\s)/g, '$1È');
-}
-
-export function slugDa(testo: string): string {
-  return testo
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-|-$/g, '');
 }
 
 function periodo(semestre: string | null): { periodo: Periodo; date: string | null } {
@@ -122,13 +89,5 @@ export async function getMaterie(): Promise<Materia[]> {
 }
 
 export const ORDINE_PERIODI: Periodo[] = ['I semestre', 'II semestre', 'Annuale', 'Da definire'];
-
-/** Stato didattico provvisorio, finché i voti non arrivano dal database (task t009). */
-export function statoDidattico(m: Materia, oggi = new Date()): 'in-corso' | 'da-seguire' {
-  if (!m.date) return 'da-seguire';
-  const [inizio] = m.date.split(' - ');
-  const [g, mm, a] = inizio.split('/').map(Number);
-  return new Date(a, mm - 1, g) <= oggi ? 'in-corso' : 'da-seguire';
-}
 
 export const CFU_TOTALI = 180;

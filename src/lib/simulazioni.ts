@@ -2,6 +2,8 @@ import { env } from 'cloudflare:workers';
 import type { D1PreparedStatement } from '@cloudflare/workers-types';
 import type { DomandaCompleta, RichiestaCorrezione, RisultatoCorrezione } from '../shared/schemi';
 import { accoda } from './coda';
+import { votoDa } from './calcoli';
+export { domandaValida, votoDa } from './calcoli';
 
 /** Formati della simulazione scritta: numero di domande per tipo e durata. */
 export const FORMATI = {
@@ -55,12 +57,6 @@ export async function salvaBanca(codice: string, lotto: string, domande: Domanda
     ),
   );
   for (let i = 0; i < istruzioni.length; i += 50) await env.DB.batch(istruzioni.slice(i, i + 50));
-}
-
-/** Una multipla è valida se ha almeno 3 opzioni e l'indice giusto cade tra quelle. */
-export function domandaValida(d: DomandaCompleta): boolean {
-  if (d.tipo === 'multipla') return d.opzioni.length >= 3 && d.corretta !== null && d.corretta >= 0 && d.corretta < d.opzioni.length;
-  return d.puntiChiave.length > 0;
 }
 
 // ---------- Simulazioni ----------
@@ -191,9 +187,6 @@ export async function storico(codice: string, limite = 5) {
   return results;
 }
 
-/** Voto in trentesimi stimato dalla percentuale di punti. */
-export const votoDa = (punti: number, massimo: number) => (massimo > 0 ? Math.round((punti / massimo) * 30) : 0);
-
 /**
  * Consegna: corregge subito le multiple; se ci sono aperte con testo, accoda la correzione all'agente.
  * `valori` contiene la risposta per ordine (indice come stringa per la multipla, testo per l'aperta).
@@ -285,5 +278,6 @@ export async function applicaCorrezione(id: string, c: RisultatoCorrezione) {
 }
 
 export async function eliminaSimulazione(id: string) {
-  await env.DB.batch([env.DB.prepare('DELETE FROM risposte WHERE simulazione = ?').bind(id), env.DB.prepare('DELETE FROM simulazioni WHERE id = ?').bind(id)]);
+  await env.DB.batch([
+    env.DB.prepare('UPDATE domande SET usata = MAX(usata - 1, 0) WHERE id IN (SELECT domanda FROM risposte WHERE simulazione = ?)').bind(id),env.DB.prepare('DELETE FROM risposte WHERE simulazione = ?').bind(id), env.DB.prepare('DELETE FROM simulazioni WHERE id = ?').bind(id)]);
 }

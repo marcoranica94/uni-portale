@@ -1,4 +1,5 @@
 import type { APIRoute } from 'astro';
+import { controllaOrigine } from '../../lib/origine';
 import { env } from 'cloudflare:workers';
 import { getMaterie } from '../../lib/percorso';
 
@@ -8,12 +9,9 @@ const torna = (esito: string) =>
   new Response(null, { status: 303, headers: { Location: `/libretto?esito=${encodeURIComponent(esito)}` } });
 
 /** Registra, modifica o elimina un voto. Riceve il modulo della pagina Libretto. */
-export const POST: APIRoute = async ({ request, url }) => {
-  // Solo richieste dalla stessa origine (il sito è comunque dietro Cloudflare Access).
-  const origine = request.headers.get('Origin');
-  if (origine && origine !== url.origin) {
-    return new Response('Origine non consentita', { status: 403 });
-  }
+export const POST: APIRoute = async ({ request, url, locals }) => {
+  const bloccata = controllaOrigine({ request, url, locals });
+  if (bloccata) return bloccata;
 
   const dati = await request.formData();
   const azione = String(dati.get('azione') ?? 'salva');

@@ -13,7 +13,8 @@
     "preview": "astro preview",
     "check": "astro check",
     "astro": "astro",
-    "agente": "node agente/uni-agent.ts"
+    "agente": "node agente/uni-agent.ts",
+    "test": "node --test \"tests/**/*.test.ts\""
   },
   "dependencies": {
     "@astrojs/cloudflare": "^14.0.0",

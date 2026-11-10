@@ -88,7 +88,10 @@ export async function genera<T extends z.ZodType>(r: Richiesta<T>): Promise<z.in
       if (out.is_error || out.structured_output === undefined) throw new Error(`claude: ${String(out.result ?? 'nessun output strutturato').slice(0, 300)}`);
       grezzo = out.structured_output;
     } else if (r.agente === 'agy') {
-      const args = ['-p', `${r.istruzioni}\n\nNon usare strumenti: rispondi solo con il JSON richiesto.\n\n${r.contenuto}`, '--output-format', 'json', '--json-schema', schemaJson, '--print-timeout', '0s'];
+      const testo = `${r.istruzioni}\n\nNon usare strumenti: rispondi solo con il JSON richiesto.\n\n${r.contenuto}`;
+      // agy riceve tutto come argomento: macOS limita argomenti + ambiente a circa 1 MB.
+      if (Buffer.byteLength(testo) > 700_000) throw new Error(`agy: contenuto troppo lungo (${Math.round(Buffer.byteLength(testo) / 1000)} kB) per un argomento; usa --agente claude o codex.`);
+      const args = ['-p', testo, '--output-format', 'json', '--json-schema', schemaJson, '--print-timeout', '0s'];
       if (r.modello) args.push('--model', r.modello);
       const e = await esegui('agy', args, null, cartella);
       const out = analizza(e, 'agy') as { status?: string; structured_output?: unknown; response?: string };

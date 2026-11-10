@@ -56,6 +56,9 @@ jobs:
       - name: Dipendenze
         run: pnpm install --frozen-lockfile
 
+      - name: Test unitari
+        run: pnpm test
+
       - name: Build (appunti + controllo tipi + build)
         run: pnpm build
 

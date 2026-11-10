@@ -20,8 +20,8 @@ export const onRequest = defineMiddleware(async (ctx, next) => {
   try {
     const { payload } = await jwtVerify(token, chiavi, { issuer: env.ACCESS_TEAM_DOMAIN, audience: env.ACCESS_AUD });
     const email = typeof payload.email === 'string' ? payload.email : null;
-    // Il token di un service token non ha email: ha common_name (il Client ID).
-    ctx.locals.access = { email, servizio: !email && typeof payload.common_name === 'string' };
+    // Il token di un service token non ha email: ha common_name (il Client ID), che deve essere quello di uni-agent.
+    ctx.locals.access = { email, servizio: !email && payload.common_name === env.ACCESS_SERVICE_CLIENT_ID };
   } catch {
     return new Response('Accesso non autorizzato.', { status: 403 });
   }

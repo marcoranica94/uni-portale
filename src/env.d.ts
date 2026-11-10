@@ -6,6 +6,8 @@ declare module 'cloudflare:workers' {
     DB: import('@cloudflare/workers-types').D1Database;
     ACCESS_TEAM_DOMAIN: string;
     ACCESS_AUD: string;
+    /** Client ID del service token di uni-agent (non è il secret). */
+    ACCESS_SERVICE_CLIENT_ID: string;
   };
 }
 
