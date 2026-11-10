@@ -1,16 +1,77 @@
 ---
+import Base from '../layouts/Base.astro';
+import Card from '../components/Card.astro';
+import Badge from '../components/Badge.astro';
+
+// Dati provvisori dal piano di studi (percorso/piano-di-studi.yaml); dallo Sprint 1 arrivano dal file.
+const inCorso = [
+  { nome: 'Istituzioni di diritto pubblico', cfu: 9, esame: 'Orale', periodo: 'I semestre', materia: 1 },
+  { nome: 'Fondamenti di sociologia generale', cfu: 9, esame: 'Scritto', periodo: 'I semestre', materia: 2 },
+  { nome: 'Storia delle dottrine e delle istituzioni politiche', cfu: 12, esame: 'Orale', periodo: 'Annuale', materia: 3 },
+  { nome: 'Lingua inglese', cfu: 6, esame: 'Orale', periodo: 'Annuale', materia: 4 },
+] as const;
 ---
 
-<html lang="en">
-	<head>
-		<meta charset="utf-8" />
-		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-		<link rel="icon" href="/favicon.ico" />
-		<meta name="viewport" content="width=device-width" />
-		<meta name="generator" content={Astro.generator} />
-		<title>Astro</title>
-	</head>
-	<body>
-		<h1>Astro</h1>
-	</body>
-</html>
+<Base title="Uni">
+  <header class="stack intro">
+    <p class="eyebrow">1º anno · Scienze politiche e strategie globali</p>
+    <h1>Oggi</h1>
+    <p class="muted">Il ripasso quotidiano arriva con lo Sprint 6; per ora qui trovi le materie in corso.</p>
+  </header>
+
+  <section class="summary" aria-label="Riepilogo del percorso">
+    <Card tone="accent" title="Ripasso di oggi" eyebrow="Prossima azione">
+      <p>Le simulazioni d'esame saranno disponibili da fine dicembre: prima lo scritto di Sociologia, poi l'orale di Diritto pubblico.</p>
+    </Card>
+    <Card tone="muted" title="CFU conseguiti" eyebrow="Percorso">
+      <p class="figure num">0 <span class="muted">/ 180</span></p>
+      <div class="bar" role="img" aria-label="0 CFU conseguiti su 180"><span style="width: 0%"></span></div>
+    </Card>
+  </section>
+
+  <section class="stack" aria-labelledby="in-corso">
+    <h2 id="in-corso">Materie in corso</h2>
+    <div class="grid">
+      {inCorso.map((m) => (
+        <Card title={m.nome} eyebrow={m.periodo} materia={m.materia} href="/materie">
+          <div class="cluster">
+            <Badge stato="in-corso" />
+            <span class="muted num">{m.cfu} CFU · {m.esame}</span>
+          </div>
+        </Card>
+      ))}
+    </div>
+  </section>
+</Base>
+
+<style>
+  .intro {
+    gap: var(--space-2);
+  }
+  .summary,
+  .grid {
+    display: grid;
+    gap: var(--space-4);
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
+  }
+  .figure {
+    font-family: var(--font-serif);
+    font-size: var(--text-3xl);
+    font-weight: var(--weight-semibold);
+    line-height: 1;
+  }
+  .figure .muted {
+    font-size: var(--text-xl);
+  }
+  .bar {
+    height: 8px;
+    border-radius: var(--radius-pill);
+    background: var(--color-rule);
+    overflow: hidden;
+  }
+  .bar span {
+    display: block;
+    height: 100%;
+    background: var(--color-success);
+  }
+</style>

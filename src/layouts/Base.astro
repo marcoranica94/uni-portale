@@ -1,0 +1,54 @@
+---
+import '@fontsource-variable/source-serif-4';
+import '@fontsource-variable/source-sans-3';
+import '../styles/global.css';
+import Nav from '../components/Nav.astro';
+
+interface Props {
+  title: string;
+  description?: string;
+}
+
+const { title, description = 'Portale di studio personale - Scienze politiche e strategie globali, UniBg.' } = Astro.props;
+---
+
+<!doctype html>
+<html lang="it">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="description" content={description} />
+    <meta name="robots" content="noindex, nofollow" />
+    <meta name="theme-color" content="#fafaf7" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#15171a" media="(prefers-color-scheme: dark)" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <title>{title === 'Uni' ? 'Uni' : `${title} · Uni`}</title>
+  </head>
+  <body>
+    <Nav />
+    <main class="page">
+      <slot />
+    </main>
+  </body>
+</html>
+
+<style>
+  .page {
+    width: 100%;
+    max-width: var(--content-max);
+    margin: 0 auto;
+    padding-block: var(--space-5) calc(var(--nav-bottom-height) + var(--space-6) + env(safe-area-inset-bottom, 0px));
+    padding-left: max(var(--space-4), env(safe-area-inset-left, 0px));
+    padding-right: max(var(--space-4), env(safe-area-inset-right, 0px));
+    display: grid;
+    gap: var(--space-6);
+  }
+  @media (min-width: 900px) {
+    .page {
+      max-width: calc(var(--content-max) + var(--nav-width));
+      padding-left: calc(var(--nav-width) + var(--space-6));
+      padding-right: var(--space-6);
+      padding-block: var(--space-6);
+    }
+  }
+</style>

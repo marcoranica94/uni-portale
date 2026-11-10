@@ -1,0 +1,164 @@
+---
+import Base from '../layouts/Base.astro';
+import Card from '../components/Card.astro';
+import Badge, { type Stato } from '../components/Badge.astro';
+
+const superfici = ['paper', 'surface', 'surface-muted', 'rule', 'ink-muted', 'ink'];
+const significato = [
+  { token: 'accent', nome: 'Azione, link' },
+  { token: 'success', nome: 'Superato, solido' },
+  { token: 'warning', nome: 'Da sostenere, in crescita' },
+  { token: 'danger', nome: 'Debole, errore' },
+  { token: 'info', nome: 'Definizioni' },
+];
+const materie = [1, 2, 3, 4, 5, 6, 7, 8] as const;
+const stati: Stato[] = ['da-seguire', 'in-corso', 'superato', 'da-sostenere', 'debole', 'in-crescita', 'solido', 'in-coda', 'online', 'offline'];
+const scala = [
+  { token: '3xl', esempio: '27,5', serif: true },
+  { token: '2xl', esempio: 'Titolo di pagina', serif: true },
+  { token: 'xl', esempio: 'Titolo di card', serif: true },
+  { token: 'lg', esempio: 'Sottotitolo', serif: true },
+  { token: 'base', esempio: 'Testo di base, 16 px: il corpo minimo su telefono.', serif: false },
+  { token: 'sm', esempio: 'Metadati: 9 CFU · Orale', serif: false },
+  { token: 'xs', esempio: 'ETICHETTA', serif: false },
+];
+---
+
+<Base title="Design system">
+  <header class="stack intro">
+    <p class="eyebrow">Sprint 0 · pagina di prova</p>
+    <h1>Design system</h1>
+    <p class="muted">Token e componenti di base. Prova a cambiare tema del sistema: ogni colore ha la sua variante scura.</p>
+  </header>
+
+  <section class="stack" aria-labelledby="colori">
+    <h2 id="colori">Colori</h2>
+    <h3>Superfici e testo</h3>
+    <div class="swatches">
+      {superfici.map((t) => (
+        <figure class="swatch">
+          <span class="swatch__chip" style={`background: var(--color-${t})`}></span>
+          <figcaption><code>--color-{t}</code></figcaption>
+        </figure>
+      ))}
+    </div>
+    <h3>Colori con significato</h3>
+    <div class="swatches">
+      {significato.map((s) => (
+        <figure class="swatch">
+          <span class="swatch__chip swatch__chip--pair" style={`background: var(--color-${s.token}-soft); color: var(--color-${s.token})`}>Aa</span>
+          <figcaption><code>--color-{s.token}</code><br /><span class="muted">{s.nome}</span></figcaption>
+        </figure>
+      ))}
+    </div>
+    <h3>Materie</h3>
+    <div class="swatches">
+      {materie.map((n) => (
+        <figure class="swatch">
+          <span class="swatch__chip swatch__chip--pair" style={`background: var(--materia-${n}-soft); color: var(--materia-${n})`}>M{n}</span>
+          <figcaption><code>--materia-{n}</code></figcaption>
+        </figure>
+      ))}
+    </div>
+  </section>
+
+  <section class="stack" aria-labelledby="tipografia">
+    <h2 id="tipografia">Tipografia</h2>
+    <dl class="type">
+      {scala.map((r) => (
+        <div class="type__row">
+          <dt><code>--text-{r.token}</code></dt>
+          <dd style={`font-size: var(--text-${r.token}); font-family: var(--font-${r.serif ? 'serif' : 'sans'})`}>{r.esempio}</dd>
+        </div>
+      ))}
+    </dl>
+  </section>
+
+  <section class="stack" aria-labelledby="badge">
+    <h2 id="badge">Badge di stato</h2>
+    <p class="muted">Icona e testo portano il significato; il colore lo rinforza soltanto.</p>
+    <div class="cluster">
+      {stati.map((s) => <Badge stato={s} />)}
+    </div>
+  </section>
+
+  <section class="stack" aria-labelledby="card">
+    <h2 id="card">Card</h2>
+    <div class="grid">
+      <Card title="Card semplice" eyebrow="Plain">
+        <p>Contenitore di base per un'unità di contenuto.</p>
+      </Card>
+      <Card tone="muted" title="Card secondaria" eyebrow="Muted">
+        <p>Per riepiloghi e informazioni di contorno.</p>
+      </Card>
+      <Card tone="accent" title="Azione principale" eyebrow="Accent">
+        <p>Una sola per schermata: è ciò che fai adesso.</p>
+      </Card>
+      <Card title="Istituzioni di diritto pubblico" eyebrow="I semestre" materia={1} href="/prova">
+        <div class="cluster">
+          <Badge stato="in-corso" />
+          <span class="muted num">9 CFU · Orale</span>
+        </div>
+        <Fragment slot="footer">
+          <span class="muted">Tutta la card è cliccabile</span>
+        </Fragment>
+      </Card>
+    </div>
+  </section>
+</Base>
+
+<style>
+  .intro {
+    gap: var(--space-2);
+  }
+  .swatches {
+    display: grid;
+    gap: var(--space-3);
+    grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr));
+  }
+  .swatch {
+    margin: 0;
+    display: grid;
+    gap: var(--space-2);
+    font-size: var(--text-sm);
+  }
+  .swatch__chip {
+    display: grid;
+    place-items: center;
+    height: 3.5rem;
+    border-radius: var(--radius-md);
+    border: var(--border);
+  }
+  .swatch__chip--pair {
+    font-family: var(--font-serif);
+    font-size: var(--text-xl);
+    font-weight: var(--weight-semibold);
+  }
+  code {
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+  }
+  .type {
+    margin: 0;
+    display: grid;
+    gap: var(--space-3);
+  }
+  .type__row {
+    display: grid;
+    grid-template-columns: 7rem minmax(0, 1fr);
+    gap: var(--space-4);
+    align-items: baseline;
+    padding-bottom: var(--space-3);
+    border-bottom: var(--border);
+  }
+  .type dd {
+    margin: 0;
+    line-height: var(--leading-tight);
+    overflow-wrap: anywhere;
+  }
+  .grid {
+    display: grid;
+    gap: var(--space-4);
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
+  }
+</style>
