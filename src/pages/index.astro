@@ -2,14 +2,10 @@
 import Base from '../layouts/Base.astro';
 import Card from '../components/Card.astro';
 import Badge from '../components/Badge.astro';
+import TipoEsame from '../components/TipoEsame.astro';
+import { getMaterie, statoDidattico } from '../lib/percorso';
 
-// Dati provvisori dal piano di studi (percorso/piano-di-studi.yaml); dallo Sprint 1 arrivano dal file.
-const inCorso = [
-  { nome: 'Istituzioni di diritto pubblico', cfu: 9, esame: 'Orale', periodo: 'I semestre', materia: 1 },
-  { nome: 'Fondamenti di sociologia generale', cfu: 9, esame: 'Scritto', periodo: 'I semestre', materia: 2 },
-  { nome: 'Storia delle dottrine e delle istituzioni politiche', cfu: 12, esame: 'Orale', periodo: 'Annuale', materia: 3 },
-  { nome: 'Lingua inglese', cfu: 6, esame: 'Orale', periodo: 'Annuale', materia: 4 },
-] as const;
+const inCorso = (await getMaterie()).filter((m) => statoDidattico(m) === 'in-corso');
 ---
 
 <Base title="Uni">
@@ -33,10 +29,11 @@ const inCorso = [
     <h2 id="in-corso">Materie in corso</h2>
     <div class="grid">
       {inCorso.map((m) => (
-        <Card title={m.nome} eyebrow={m.periodo} materia={m.materia} href="/materie">
+        <Card title={m.nome} eyebrow={m.periodo} materia={m.colore} href={`/materie/${m.slug}`}>
           <div class="cluster">
             <Badge stato="in-corso" />
-            <span class="muted num">{m.cfu} CFU · {m.esame}</span>
+            <TipoEsame tipo={m.esame.tipo} />
+            <span class="muted num">{m.cfu} CFU</span>
           </div>
         </Card>
       ))}

@@ -1,0 +1,162 @@
+---
+import Base from '../../layouts/Base.astro';
+import Badge from '../../components/Badge.astro';
+import TipoEsame from '../../components/TipoEsame.astro';
+import { getMaterie, statoDidattico, type Materia } from '../../lib/percorso';
+
+export async function getStaticPaths() {
+  const materie = await getMaterie();
+  return materie.map((m) => ({ params: { slug: m.slug }, props: { m } }));
+}
+
+interface Props {
+  m: Materia;
+}
+const { m } = Astro.props;
+const base = m.appunti ? `/appunti/${m.appunti.slug}` : null;
+const mb = m.appunti?.pdf ? (m.appunti.pdf.bytes / 1024 / 1024).toLocaleString('it-IT', { maximumFractionDigits: 1 }) : null;
+---
+
+<Base title={m.breve}>
+  <header class="testata" style={`--c: var(--materia-${m.colore}); --c-soft: var(--materia-${m.colore}-soft)`}>
+    <p class="etichetta">{m.anno}º anno · {m.periodo}{m.date && ` · ${m.date}`}</p>
+    <h1>{m.nome}</h1>
+    <div class="cluster">
+      <Badge stato={statoDidattico(m)} />
+      <TipoEsame tipo={m.esame.tipo} dalCatalogo={m.esame.dalCatalogo} />
+      <span class="muted num">{m.cfu} CFU{m.codice && ` · ${m.codice}`}</span>
+    </div>
+    {m.docenti.length > 0 && <p class="muted">Docenti: {m.docenti.join(', ')}</p>}
+  </header>
+
+  <section class="azioni" aria-label="Azioni">
+    <button class="btn btn--primary" type="button" disabled aria-describedby="simula-nota">Simula l'esame</button>
+    {m.appunti?.pdf ? (
+      <a class="btn" href={`${base}/${m.appunti.pdf.file}`} download>
+        Scarica PDF completo <span class="muted num">({mb} MB)</span>
+      </a>
+    ) : (
+      <span class="btn btn--off" aria-disabled="true">PDF non ancora disponibile</span>
+    )}
+    <p id="simula-nota" class="muted nota">Le simulazioni arrivano con lo Sprint 3.</p>
+  </section>
+
+  <div class="colonne">
+    <section class="stack" aria-labelledby="esame">
+      <h2 id="esame">Come si svolge l'esame</h2>
+      {m.esame.dettagli ? (
+        <p>{m.esame.dettagli}</p>
+      ) : (
+        <p class="muted">
+          {m.esame.dalCatalogo
+            ? "Il catalogo indica solo il tipo d'esame: il programma dettagliato non è ancora pubblicato."
+            : "Dettagli non disponibili nella scheda dell'insegnamento."}
+        </p>
+      )}
+      {m.programma.length > 0 && (
+        <>
+          <h3>Programma</h3>
+          <ul class="programma">
+            {m.programma.map((voce) => <li>{voce}</li>)}
+          </ul>
+        </>
+      )}
+      {m.obiettivi && (
+        <>
+          <h3>Obiettivi</h3>
+          <p>{m.obiettivi}</p>
+        </>
+      )}
+      {m.url && <p><a href={m.url} rel="noopener" target="_blank">Scheda ufficiale UniBg</a></p>}
+    </section>
+
+    <section class="stack" aria-labelledby="appunti">
+      <h2 id="appunti">Appunti</h2>
+      {m.appunti && base ? (
+        <ol class="capitoli">
+          {m.appunti.capitoli.map((c) => (
+            <li>
+              <a href={`${base}/${c.file}`}>{c.titolo}</a>
+            </li>
+          ))}
+        </ol>
+      ) : (
+        <p class="muted">Appunti non ancora disponibili per questa materia.</p>
+      )}
+    </section>
+  </div>
+</Base>
+
+<style>
+  .testata {
+    display: grid;
+    gap: var(--space-3);
+    padding: var(--space-5);
+    background: var(--c-soft);
+    border-radius: var(--radius-md);
+    border-left: 6px solid var(--c);
+  }
+  .etichetta {
+    font-size: var(--text-sm);
+    font-weight: var(--weight-semibold);
+    color: var(--c);
+  }
+  .azioni {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-3);
+    align-items: center;
+  }
+  .nota {
+    flex-basis: 100%;
+    font-size: var(--text-sm);
+  }
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    min-height: var(--tap-min);
+    padding: 0 var(--space-5);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--color-rule-strong);
+    background: var(--color-surface);
+    color: var(--color-ink);
+    font: inherit;
+    font-weight: var(--weight-semibold);
+    text-decoration: none;
+    cursor: pointer;
+  }
+  .btn:hover {
+    border-color: var(--color-ink-muted);
+    color: var(--color-ink);
+  }
+  .btn--primary {
+    background: var(--color-accent);
+    border-color: var(--color-accent);
+    color: var(--color-on-accent);
+  }
+  .btn:disabled,
+  .btn--off {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+  .colonne {
+    display: grid;
+    gap: var(--space-6);
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr));
+    align-items: start;
+  }
+  .programma,
+  .capitoli {
+    margin: 0;
+    padding-left: var(--space-5);
+    display: grid;
+    gap: var(--space-2);
+  }
+  .capitoli a {
+    color: var(--color-ink);
+  }
+  .capitoli a:hover {
+    color: var(--color-accent);
+  }
+</style>

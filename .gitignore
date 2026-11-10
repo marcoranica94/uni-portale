@@ -26,3 +26,7 @@ pnpm-debug.log*
 # wrangler
 .wrangler/
 .dev.vars*
+
+# generati da scripts/sync-appunti.mjs
+public/appunti/
+src/data/appunti.generated.json

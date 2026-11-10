@@ -1,0 +1,82 @@
+---
+import Base from '../../layouts/Base.astro';
+import Card from '../../components/Card.astro';
+import Badge from '../../components/Badge.astro';
+import TipoEsame from '../../components/TipoEsame.astro';
+import { getMaterie, statoDidattico } from '../../lib/percorso';
+
+const materie = await getMaterie();
+const conAppunti = materie.filter((m) => m.appunti);
+const altre = materie.filter((m) => !m.appunti);
+---
+
+<Base title="Materie">
+  <header class="stack intro">
+    <p class="eyebrow">Studio</p>
+    <h1>Materie</h1>
+    <p class="muted">Prima le materie con appunti pronti; poi tutte le altre del piano di studi.</p>
+  </header>
+
+  <section class="stack" aria-labelledby="con-appunti">
+    <h2 id="con-appunti">Con appunti</h2>
+    <div class="grid">
+      {conAppunti.map((m) => (
+        <Card title={m.nome} eyebrow={`${m.anno}º anno · ${m.periodo}`} materia={m.colore} href={`/materie/${m.slug}`}>
+          <div class="cluster">
+            <Badge stato={statoDidattico(m)} />
+            <TipoEsame tipo={m.esame.tipo} />
+            <span class="muted num">{m.cfu} CFU</span>
+          </div>
+          <p class="muted num">{m.appunti!.capitoli.length} pagine di appunti{m.appunti!.pdf && ' · PDF completo'}</p>
+        </Card>
+      ))}
+    </div>
+  </section>
+
+  <section class="stack" aria-labelledby="altre">
+    <h2 id="altre">Altre materie</h2>
+    <ul class="lista">
+      {altre.map((m) => (
+        <li>
+          <a href={`/materie/${m.slug}`}>{m.nome}</a>
+          <span class="muted num">{m.anno}º anno · {m.cfu} CFU</span>
+        </li>
+      ))}
+    </ul>
+  </section>
+</Base>
+
+<style>
+  .intro {
+    gap: var(--space-2);
+  }
+  .grid {
+    display: grid;
+    gap: var(--space-4);
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
+  }
+  .lista {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    border-top: var(--border);
+  }
+  .lista li {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: var(--space-1) var(--space-4);
+    padding: var(--space-3) 0;
+    border-bottom: var(--border);
+  }
+  .lista a {
+    color: var(--color-ink);
+    text-decoration: none;
+    font-weight: var(--weight-medium);
+  }
+  .lista a:hover {
+    color: var(--color-accent);
+    text-decoration: underline;
+  }
+</style>

@@ -1,0 +1,178 @@
+---
+import Base from '../layouts/Base.astro';
+import Badge from '../components/Badge.astro';
+import TipoEsame from '../components/TipoEsame.astro';
+import { getMaterie, CFU_TOTALI } from '../lib/percorso';
+
+// I voti arriveranno dal database D1 (task t009): per ora tutti gli esami risultano da sostenere.
+const materie = (await getMaterie()).filter((m) => m.codice !== null || m.cfu > 0);
+const superati = 0;
+const cfuConseguiti = 0;
+---
+
+<Base title="Libretto">
+  <header class="stack intro">
+    <p class="eyebrow">Carriera</p>
+    <h1>Libretto</h1>
+  </header>
+
+  <section class="riepilogo" aria-label="Riepilogo">
+    <div><span class="eyebrow">Esami superati</span><span class="valore num">{superati}</span></div>
+    <div><span class="eyebrow">CFU</span><span class="valore num">{cfuConseguiti} <small>/ {CFU_TOTALI}</small></span></div>
+    <div><span class="eyebrow">Media ponderata</span><span class="valore num">–</span></div>
+    <div><span class="eyebrow">Base di laurea</span><span class="valore num">–</span></div>
+  </section>
+
+  <p class="nota">La registrazione dei voti arriva con il collegamento al database, in questo stesso sprint.</p>
+
+  <div class="tabella-wrap">
+    <table class="tabella">
+      <caption class="visually-hidden">Esami del piano di studi</caption>
+      <thead>
+        <tr>
+          <th scope="col">Insegnamento</th>
+          <th scope="col">Anno</th>
+          <th scope="col" class="num">CFU</th>
+          <th scope="col">Esame</th>
+          <th scope="col">Voto</th>
+          <th scope="col">Stato</th>
+        </tr>
+      </thead>
+      <tbody>
+        {materie.map((m) => (
+          <tr>
+            <th scope="row">
+              <a href={`/materie/${m.slug}`}>{m.nome}</a>
+              {m.sceltaVincolata && <span class="muted scelta"> · uno a scelta</span>}
+            </th>
+            <td class="num" data-label="Anno">{m.anno}º</td>
+            <td class="num" data-label="CFU">{m.cfu}</td>
+            <td data-label="Esame"><TipoEsame tipo={m.esame.tipo} dalCatalogo={m.esame.dalCatalogo} /></td>
+            <td class="num" data-label="Voto">–</td>
+            <td data-label="Stato"><Badge stato="da-sostenere" /></td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+</Base>
+
+<style>
+  .intro {
+    gap: var(--space-2);
+  }
+  .riepilogo {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+    gap: var(--space-3);
+  }
+  .riepilogo > div {
+    display: grid;
+    gap: var(--space-1);
+    padding: var(--space-3) var(--space-4);
+    background: var(--color-surface);
+    border: var(--border);
+    border-radius: var(--radius-md);
+  }
+  .valore {
+    font-family: var(--font-serif);
+    font-size: var(--text-2xl);
+    font-weight: var(--weight-semibold);
+  }
+  .valore small {
+    font-size: var(--text-base);
+    color: var(--color-ink-muted);
+  }
+  .nota {
+    color: var(--color-ink-muted);
+    font-size: var(--text-sm);
+  }
+  .tabella-wrap {
+    overflow-x: auto;
+    background: var(--color-surface);
+    border: var(--border);
+    border-radius: var(--radius-md);
+  }
+  .tabella {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: var(--text-sm);
+  }
+  .tabella th,
+  .tabella td {
+    padding: var(--space-3) var(--space-4);
+    text-align: left;
+    border-bottom: var(--border);
+    vertical-align: middle;
+  }
+  .tabella thead th {
+    font-size: var(--text-xs);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--color-ink-faint);
+    background: var(--color-surface-muted);
+  }
+  .tabella tbody th {
+    font-weight: var(--weight-medium);
+    font-size: var(--text-base);
+  }
+  .tabella tbody th a {
+    color: var(--color-ink);
+    text-decoration: none;
+  }
+  .tabella tbody th a:hover {
+    color: var(--color-accent);
+    text-decoration: underline;
+  }
+  .tabella tbody tr:last-child > * {
+    border-bottom: none;
+  }
+  .scelta {
+    font-size: var(--text-sm);
+    font-weight: var(--weight-regular);
+  }
+
+  /* Telefono: ogni riga diventa una scheda */
+  @media (max-width: 640px) {
+    .tabella-wrap {
+      background: none;
+      border: none;
+    }
+    .tabella thead {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip: rect(0 0 0 0);
+    }
+    .tabella,
+    .tabella tbody,
+    .tabella tr {
+      display: grid;
+      gap: var(--space-2);
+    }
+    .tabella tr {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      padding: var(--space-3) var(--space-4);
+      background: var(--color-surface);
+      border: var(--border);
+      border-radius: var(--radius-md);
+    }
+    .tabella th,
+    .tabella td {
+      padding: 0;
+      border: none;
+    }
+    .tabella tbody th {
+      grid-column: 1 / -1;
+    }
+    .tabella td::before {
+      content: attr(data-label);
+      display: block;
+      font-size: var(--text-xs);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--color-ink-faint);
+    }
+  }
+</style>

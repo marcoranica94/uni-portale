@@ -1,0 +1,22 @@
+{
+  "$commento": "Configurazione del portale per materia, indicizzata per codice UniBg. 'appunti' è il percorso dalla radice del repository; 'pdf' il file completo dentro quella cartella. Le materie non elencate ricevono slug e colore automatici.",
+  "SP-70001": {
+    "slug": "diritto-pubblico",
+    "breve": "Diritto pubblico",
+    "colore": 1,
+    "appunti": "scienze-politiche/diritto pubblico/appunti",
+    "pdf": "diritto-pubblico-appunti.pdf"
+  },
+  "SP-70011": {
+    "slug": "sociologia",
+    "breve": "Sociologia",
+    "colore": 2,
+    "appunti": "scienze-politiche/sociologia/appunti",
+    "pdf": "sociologia-appunti-completi.pdf"
+  },
+  "SP-70056": { "slug": "storia-dottrine", "breve": "Storia delle dottrine", "colore": 3 },
+  "SP-70005": { "slug": "inglese", "breve": "Inglese", "colore": 4 },
+  "SP-70004": { "slug": "scienza-politica", "breve": "Scienza politica", "colore": 5 },
+  "SP-70003": { "slug": "statistica", "breve": "Statistica", "colore": 6 },
+  "SP-70060": { "slug": "sviluppo-sistemi-economici", "breve": "Sviluppo dei sistemi economici", "colore": 7 }
+}
