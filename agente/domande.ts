@@ -14,7 +14,7 @@ const ISTRUZIONI = (materia: string, formato: string) => `Prepari domande per si
 
 Per OGNI nucleo produci:
 - 2 domande "multipla": 4 opzioni plausibili, una sola giusta ("corretta" = indice da 0); le opzioni sbagliate devono sfruttare gli "erroriTipici" del nucleo o confusioni realistiche, non assurdità; varia la posizione della risposta giusta; "spiegazione" dice perché è giusta e perché le altre no; "puntiChiave" e "rispostaModello" vuoti.
-- 1 domanda "aperta" nello stile dell'esame: "puntiChiave" = 3-6 elementi verificabili presi dalla rubrica del nucleo, e SOLO quelli che la domanda chiede esplicitamente (se vuoi valutare un elemento, chiedilo nella domanda; se non lo chiedi, non metterlo nella rubrica); "rispostaModello" = risposta completa ma concisa (6-10 righe); "opzioni" vuoto, "corretta" null, "spiegazione" vuota.
+- 1 domanda "aperta" formulata come la farebbe il docente: UNA o DUE frasi, al massimo due richieste (niente elenchi di sotto-domande: l'approfondimento lo fa il docente dopo, a voce o in correzione); "puntiChiave" = 3-6 elementi verificabili presi dalla rubrica del nucleo, e SOLO quelli che la domanda chiede esplicitamente (se vuoi valutare un elemento, chiedilo nella domanda; se non lo chiedi, non metterlo nella rubrica); "rispostaModello" = risposta completa ma concisa (6-10 righe); "opzioni" vuoto, "corretta" null, "spiegazione" vuota.
 
 Regole: italiano corretto; niente fatti, date o autori che non siano nel nucleo; ogni domanda indica il proprio "nucleo" (es. "N07"); niente domande su indici, legende o convenzioni grafiche.
 Formato dell'esame reale: ${formato}`;
