@@ -1,6 +1,5 @@
 ---
 import Base from '../layouts/Base.astro';
-import Badge from '../components/Badge.astro';
 import TipoEsame from '../components/TipoEsame.astro';
 import { getMaterie, CFU_TOTALI } from '../lib/percorso';
 import { getVoti, riepilogo, votoTesto, formatoMedia, dataLeggibile } from '../lib/voti';
@@ -12,6 +11,7 @@ const voti = await getVoti();
 const r = riepilogo(materie, voti);
 const daRegistrare = materie.filter((m) => !voti.has(m.codice!));
 const oggi = new Date().toISOString().slice(0, 10);
+const anni = [1, 2, 3].map((anno) => ({ anno, voci: materie.filter((m) => m.anno === anno) }));
 
 const MESSAGGI: Record<string, { testo: string; ok: boolean }> = {
   salvato: { testo: 'Voto salvato.', ok: true },
@@ -25,29 +25,30 @@ const esito = MESSAGGI[Astro.url.searchParams.get('esito') ?? ''];
 ---
 
 <Base title="Libretto">
-  <header class="stack intro">
-    <p class="eyebrow">Carriera</p>
-    <h1>Libretto</h1>
+  <header class="intro">
+    <div>
+      <p class="eyebrow">Carriera</p>
+      <h1>Libretto</h1>
+    </div>
   </header>
 
   {esito && <p class:list={['avviso', esito.ok ? 'avviso--ok' : 'avviso--errore']} role="status">{esito.testo}</p>}
 
-  <section class="riepilogo" aria-label="Riepilogo">
-    <div><span class="eyebrow">Esami superati</span><span class="valore num">{r.superati} <small>/ {materie.length}</small></span></div>
-    <div><span class="eyebrow">CFU</span><span class="valore num">{r.cfu} <small>/ {CFU_TOTALI}</small></span></div>
-    <div><span class="eyebrow">Media ponderata</span><span class="valore num">{formatoMedia(r.media)}</span></div>
-    <div><span class="eyebrow">Base di laurea</span><span class="valore num">{r.baseLaurea ?? '–'} {r.baseLaurea !== null && <small>/ 110</small>}</span></div>
+  <section class="riepilogo pannello" aria-label="Riepilogo">
+    <div><span class="muted">Esami</span><span class="valore num">{r.superati}<small> / {materie.length}</small></span></div>
+    <div><span class="muted">CFU</span><span class="valore num">{r.cfu}<small> / {CFU_TOTALI}</small></span></div>
+    <div><span class="muted">Media ponderata</span><span class="valore num">{formatoMedia(r.media)}</span></div>
+    <div><span class="muted">Base di laurea</span><span class="valore num">{r.baseLaurea ?? '–'}{r.baseLaurea !== null && <small> / 110</small>}</span></div>
   </section>
-  <p class="nota">Stima: la lode vale 30 nella media (il Regolamento non lo specifica). Alla base si aggiungono fino a 5 punti per la tesi e 1 per un periodo all'estero.</p>
 
-  <details class="registra" open={r.superati === 0}>
-    <summary>Registra un voto</summary>
-    <form method="post" action="/api/voti" class="modulo">
+  <details class="registra">
+    <summary class="btn btn--primary">Registra un voto</summary>
+    <form method="post" action="/api/voti" class="modulo pannello">
       <input type="hidden" name="azione" value="salva" />
       <label class="campo campo--largo">
         <span>Insegnamento</span>
         <select name="codice" id="codice" required>
-          {daRegistrare.map((m) => <option value={m.codice!}>{m.nome} ({m.anno}º anno, {m.cfu} CFU)</option>)}
+          {daRegistrare.map((m) => <option value={m.codice!}>{m.nome} · {m.anno}º anno · {m.cfu} CFU</option>)}
         </select>
       </label>
       <label class="campo">
@@ -56,68 +57,67 @@ const esito = MESSAGGI[Astro.url.searchParams.get('esito') ?? ''];
           {Array.from({ length: 13 }, (_, i) => 30 - i).map((v) => <option value={v}>{v}</option>)}
         </select>
       </label>
-      <label class="campo campo--check"><input type="checkbox" name="lode" id="lode" /> <span>Lode</span></label>
-      <label class="campo campo--check"><input type="checkbox" name="idoneo" id="idoneo" /> <span>Idoneità senza voto</span></label>
       <label class="campo">
         <span>Data</span>
         <input type="date" name="data" id="data" value={oggi} max={oggi} required />
       </label>
+      <div class="campo campo--largo spunte">
+        <label><input type="checkbox" name="lode" id="lode" /> Lode</label>
+        <label><input type="checkbox" name="idoneo" id="idoneo" /> Idoneità senza voto</label>
+      </div>
       <label class="campo campo--largo">
         <span>Note (facoltative)</span>
         <input type="text" name="note" id="note" maxlength="500" />
       </label>
-      <button class="btn btn--primary" type="submit">Salva voto</button>
+      <div class="campo--largo">
+        <button class="btn btn--primary" type="submit">Salva voto</button>
+      </div>
     </form>
   </details>
 
-  <div class="tabella-wrap">
-    <table class="tabella">
-      <caption class="visually-hidden">Esami del piano di studi</caption>
-      <thead>
-        <tr>
-          <th scope="col">Insegnamento</th>
-          <th scope="col">Anno</th>
-          <th scope="col" class="num">CFU</th>
-          <th scope="col">Esame</th>
-          <th scope="col">Voto</th>
-          <th scope="col">Data</th>
-          <th scope="col">Stato</th>
-        </tr>
-      </thead>
-      <tbody>
-        {materie.map((m) => {
+  {anni.map((a) => (
+    <section class="stack anno" aria-labelledby={`anno-${a.anno}`}>
+      <h2 id={`anno-${a.anno}`}>{a.anno}º anno</h2>
+      <ul class="righe pannello">
+        {a.voci.map((m) => {
           const v = voti.get(m.codice!);
           return (
-            <tr>
-              <th scope="row">
-                <a href={`/materie/${m.slug}`}>{m.nome}</a>
-                {m.sceltaVincolata && <span class="muted scelta"> · uno a scelta</span>}
-              </th>
-              <td class="num" data-label="Anno">{m.anno}º</td>
-              <td class="num" data-label="CFU">{m.cfu}</td>
-              <td data-label="Esame"><TipoEsame tipo={m.esame.tipo} dalCatalogo={m.esame.dalCatalogo} /></td>
-              <td class="num voto" data-label="Voto">{v ? votoTesto(v) : '–'}</td>
-              <td class="num" data-label="Data">{v ? dataLeggibile(v.data) : '–'}</td>
-              <td data-label="Stato">
+            <li class:list={['esame', { 'esame--fatto': v }]} style={`--c: var(--materia-${m.colore})`}>
+              <span class="punto"></span>
+              <div class="esame__testo">
+                <a class="esame__nome" href={`/materie/${m.slug}`}>{m.nome}</a>
+                <span class="esame__meta">
+                  <TipoEsame tipo={m.esame.tipo} dalCatalogo={m.esame.dalCatalogo} />
+                  <span class="num">{m.cfu}&nbsp;CFU</span>
+                  {m.sceltaVincolata && <span>uno a scelta</span>}
+                  {v && <span class="num">{dataLeggibile(v.data)}</span>}
+                </span>
+              </div>
+              <div class="esame__voto">
                 {v ? (
-                  <div class="stato">
-                    <Badge stato="superato" />
+                  <>
+                    <span class="voto num" aria-label={`Superato con ${votoTesto(v)}`}>
+                      <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.5l3 3 6-7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" /></svg>
+                      {votoTesto(v)}
+                    </span>
                     <form method="post" action="/api/voti" class="elimina" onsubmit="return confirm('Eliminare questo voto?')">
                       <input type="hidden" name="azione" value="elimina" />
                       <input type="hidden" name="codice" value={m.codice!} />
                       <button type="submit" class="link">Elimina</button>
                     </form>
-                  </div>
+                  </>
                 ) : (
-                  <Badge stato="da-sostenere" />
+                  <span class="muted" aria-label="Da sostenere">–</span>
                 )}
-              </td>
-            </tr>
+              </div>
+            </li>
           );
         })}
-      </tbody>
-    </table>
-  </div>
+      </ul>
+    </section>
+  ))}
+
+  <p class="nota">Medie stimate: la lode vale 30 (il Regolamento non lo specifica). Alla base di laurea si aggiungono fino a 5 punti per la tesi e 1 per un periodo all'estero.</p>
 </Base>
 
 <script>
@@ -138,7 +138,11 @@ const esito = MESSAGGI[Astro.url.searchParams.get('esito') ?? ''];
 
 <style>
   .intro {
-    gap: var(--space-2);
+    display: flex;
+    flex-wrap: wrap;
+    align-items: end;
+    justify-content: space-between;
+    gap: var(--space-3);
   }
   .avviso {
     padding: var(--space-3) var(--space-4);
@@ -155,65 +159,82 @@ const esito = MESSAGGI[Astro.url.searchParams.get('esito') ?? ''];
   }
   .riepilogo {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
-    gap: var(--space-3);
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
   .riepilogo > div {
     display: grid;
-    gap: var(--space-1);
-    padding: var(--space-3) var(--space-4);
-    background: var(--color-surface);
-    border: var(--border);
-    border-radius: var(--radius-md);
+    gap: 2px;
+    padding: var(--space-4);
+    font-size: var(--text-sm);
+  }
+  .riepilogo > div + div {
+    border-left: var(--border);
   }
   .valore {
     font-family: var(--font-serif);
     font-size: var(--text-2xl);
     font-weight: var(--weight-semibold);
+    color: var(--color-ink);
+    line-height: 1.1;
   }
   .valore small {
-    font-size: var(--text-base);
-    color: var(--color-ink-muted);
-  }
-  .nota {
-    color: var(--color-ink-muted);
+    font-family: var(--font-sans);
     font-size: var(--text-sm);
+    font-weight: var(--weight-regular);
+    color: var(--color-ink-muted);
   }
-  .registra {
+  @media (max-width: 640px) {
+    .riepilogo {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .riepilogo > div:nth-child(3) {
+      border-left: none;
+    }
+    .riepilogo > div:nth-child(n + 3) {
+      border-top: var(--border);
+    }
+  }
+  .registra > summary {
+    list-style: none;
+    width: max-content;
+  }
+  .registra > summary::-webkit-details-marker {
+    display: none;
+  }
+  .registra[open] > summary {
     background: var(--color-surface);
-    border: var(--border);
-    border-radius: var(--radius-md);
-    padding: var(--space-3) var(--space-4);
-  }
-  .registra summary {
-    cursor: pointer;
-    font-weight: var(--weight-semibold);
-    min-height: var(--tap-min);
-    display: flex;
-    align-items: center;
+    color: var(--color-ink);
+    border-color: var(--color-rule-strong);
   }
   .modulo {
+    margin-top: var(--space-3);
     display: grid;
-    gap: var(--space-3) var(--space-4);
-    grid-template-columns: repeat(auto-fit, minmax(min(100%, 9rem), 1fr));
-    align-items: end;
-    padding-top: var(--space-3);
+    gap: var(--space-4);
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 10rem), 1fr));
+    padding: var(--space-5);
   }
   .campo {
     display: grid;
     gap: var(--space-1);
     font-size: var(--text-sm);
+    font-weight: var(--weight-medium);
     color: var(--color-ink-muted);
     min-width: 0;
   }
   .campo--largo {
     grid-column: 1 / -1;
   }
-  .campo--check {
+  .spunte {
     display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2) var(--space-5);
+  }
+  .spunte label {
+    display: inline-flex;
     align-items: center;
     gap: var(--space-2);
     min-height: var(--tap-min);
+    font-size: var(--text-base);
     color: var(--color-ink);
   }
   .campo select,
@@ -222,83 +243,71 @@ const esito = MESSAGGI[Astro.url.searchParams.get('esito') ?? ''];
     font: inherit;
     font-size: var(--text-base);
     color: var(--color-ink);
-    background: var(--color-paper);
+    background: var(--color-surface-muted);
     border: 1px solid var(--color-rule-strong);
     border-radius: var(--radius-md);
     min-height: var(--tap-min);
     padding: 0 var(--space-3);
     width: 100%;
   }
-  .campo input[type='checkbox'] {
+  input[type='checkbox'] {
     width: 20px;
     height: 20px;
     accent-color: var(--color-accent);
   }
-  .btn {
-    min-height: var(--tap-min);
-    padding: 0 var(--space-5);
-    border-radius: var(--radius-md);
-    font: inherit;
-    font-weight: var(--weight-semibold);
-    cursor: pointer;
+  .anno {
+    gap: var(--space-2);
   }
-  .btn--primary {
-    background: var(--color-accent);
-    border: 1px solid var(--color-accent);
-    color: var(--color-on-accent);
-  }
-  .tabella-wrap {
-    overflow-x: auto;
-    background: var(--color-surface);
-    border: var(--border);
-    border-radius: var(--radius-md);
-  }
-  .tabella {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: var(--text-sm);
-  }
-  .tabella th,
-  .tabella td {
+  .esame {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: var(--space-3);
+    align-items: center;
     padding: var(--space-3) var(--space-4);
-    text-align: left;
-    border-bottom: var(--border);
-    vertical-align: middle;
+    min-height: 60px;
   }
-  .tabella thead th {
-    font-size: var(--text-xs);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: var(--color-ink-faint);
-    background: var(--color-surface-muted);
+  .esame__testo {
+    display: grid;
+    gap: 2px;
+    min-width: 0;
   }
-  .tabella tbody th {
-    font-weight: var(--weight-medium);
-    font-size: var(--text-base);
-  }
-  .tabella tbody th a {
+  .esame__nome {
     color: var(--color-ink);
+    font-weight: var(--weight-semibold);
     text-decoration: none;
+    overflow-wrap: anywhere;
   }
-  .tabella tbody th a:hover {
+  .esame__nome:hover {
     color: var(--color-accent);
     text-decoration: underline;
   }
-  .tabella tbody tr:last-child > * {
-    border-bottom: none;
-  }
-  .voto {
-    font-weight: var(--weight-semibold);
-  }
-  .scelta {
-    font-size: var(--text-sm);
-    font-weight: var(--weight-regular);
-  }
-  .stato {
+  .esame__meta {
     display: flex;
     flex-wrap: wrap;
-    gap: var(--space-2);
+    gap: 0 var(--space-3);
     align-items: center;
+    font-size: var(--text-sm);
+    color: var(--color-ink-muted);
+  }
+  .esame__voto {
+    display: grid;
+    justify-items: end;
+    gap: 2px;
+    min-width: 3rem;
+  }
+  .voto {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+    font-family: var(--font-serif);
+    font-size: var(--text-xl);
+    font-weight: var(--weight-semibold);
+    color: var(--color-success);
+    white-space: nowrap;
+  }
+  .voto svg {
+    width: 16px;
+    height: 16px;
   }
   .elimina {
     margin: 0;
@@ -308,7 +317,7 @@ const esito = MESSAGGI[Astro.url.searchParams.get('esito') ?? ''];
     border: none;
     padding: 0;
     font: inherit;
-    font-size: var(--text-sm);
+    font-size: var(--text-xs);
     color: var(--color-ink-muted);
     text-decoration: underline;
     cursor: pointer;
@@ -316,48 +325,8 @@ const esito = MESSAGGI[Astro.url.searchParams.get('esito') ?? ''];
   .link:hover {
     color: var(--color-danger);
   }
-
-  /* Telefono: ogni riga diventa una scheda */
-  @media (max-width: 640px) {
-    .tabella-wrap {
-      background: none;
-      border: none;
-    }
-    .tabella thead {
-      position: absolute;
-      width: 1px;
-      height: 1px;
-      overflow: hidden;
-      clip: rect(0 0 0 0);
-    }
-    .tabella,
-    .tabella tbody,
-    .tabella tr {
-      display: grid;
-      gap: var(--space-2);
-    }
-    .tabella tr {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      padding: var(--space-3) var(--space-4);
-      background: var(--color-surface);
-      border: var(--border);
-      border-radius: var(--radius-md);
-    }
-    .tabella th,
-    .tabella td {
-      padding: 0;
-      border: none;
-    }
-    .tabella tbody th {
-      grid-column: 1 / -1;
-    }
-    .tabella td::before {
-      content: attr(data-label);
-      display: block;
-      font-size: var(--text-xs);
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      color: var(--color-ink-faint);
-    }
+  .nota {
+    color: var(--color-ink-muted);
+    font-size: var(--text-sm);
   }
 </style>

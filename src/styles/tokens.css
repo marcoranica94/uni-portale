@@ -1,59 +1,66 @@
 /*
-  Token del portale Uni.
-  Palette coerente con gli appunti (stile-appunti.css): carta chiara, inchiostro quasi nero,
-  accento blu inchiostro; i colori con significato riprendono definizioni, esempi,
-  avvertenze ed esame degli appunti. Ogni colore ha sempre un'etichetta o una forma accanto.
-  Regola: i componenti usano solo questi token, mai colori letterali.
+  Token del portale Uni — direzione "quaderno d'inchiostro" (design/redesign-ui.md).
+  Neutri freddi appena tinti verso il blu inchiostro; carta bianca per ciò con cui si interagisce;
+  inchiostro solo per azioni, link, selezione e "corrente". Chiaro e scuro progettati insieme.
+  I componenti usano solo questi token, mai colori letterali.
 */
 :root {
-  /* Superfici e testo */
-  --color-paper: #fafaf7;
-  --color-surface: #ffffff;
-  --color-surface-muted: #f1f1ec;
-  --color-ink: #1a1a1a;
-  --color-ink-muted: #4a4f58;
-  --color-ink-faint: #6b7079;
-  --color-rule: #d9dad3;
-  --color-rule-strong: #b9bbb3;
+  /* Superfici: fondo tinto, carta, incassata, navigazione */
+  --color-paper: oklch(0.968 0.006 255);
+  --color-surface: oklch(1 0 0);
+  --color-surface-muted: oklch(0.945 0.008 255);
+  --color-nav: oklch(0.94 0.01 255);
 
-  /* Accento: azioni primarie, collegamenti, stato attivo */
-  --color-accent: #1f4e8c;
-  --color-accent-hover: #173d6e;
-  --color-accent-soft: #e8eef7;
-  --color-on-accent: #ffffff;
+  /* Testo */
+  --color-ink: oklch(0.22 0.02 260);
+  --color-ink-muted: oklch(0.42 0.02 260);
+  --color-ink-faint: oklch(0.5 0.018 260);
 
-  /* Colori con significato (sempre con icona o testo) */
-  --color-success: #2e6b3f;
-  --color-success-soft: #e7f2ea;
-  --color-warning: #8a5a00;
-  --color-warning-soft: #fbf1dc;
-  --color-danger: #a32020;
-  --color-danger-soft: #fbeaea;
-  --color-info: #0b6b5f;
-  --color-info-soft: #e7f4f1;
+  /* Bordi: decorativo, controlli (>= 3:1) */
+  --color-rule: oklch(0.9 0.008 255);
+  --color-rule-strong: oklch(0.66 0.015 255);
 
-  /* Colori delle materie: tenui, sempre accompagnati dal nome */
-  --materia-1: #8a3b2b; --materia-1-soft: #f7ebe7;
-  --materia-2: #0b6b5f; --materia-2-soft: #e5f3f0;
-  --materia-3: #715121; --materia-3-soft: #f6efe3;
-  --materia-4: #5b3a8a; --materia-4-soft: #f0eaf7;
-  --materia-5: #5b6b12; --materia-5-soft: #f0f3e1;
-  --materia-6: #3f5873; --materia-6-soft: #e9eef4;
-  --materia-7: #8a2b5a; --materia-7-soft: #f7e9f0;
-  --materia-8: #2f6a7a; --materia-8-soft: #e5f1f4;
+  /* Accento inchiostro: azioni, link, selezione, corrente */
+  --color-accent: oklch(0.42 0.13 258);
+  --color-accent-hover: oklch(0.36 0.12 258);
+  --color-accent-soft: oklch(0.93 0.03 255);
+  --color-on-accent: oklch(1 0 0);
+
+  /* Stati (sempre con testo o icona) */
+  --color-success: oklch(0.45 0.1 150);
+  --color-success-soft: oklch(0.94 0.035 150);
+  --color-warning: oklch(0.5 0.11 70);
+  --color-warning-soft: oklch(0.95 0.045 80);
+  --color-danger: oklch(0.5 0.17 25);
+  --color-danger-soft: oklch(0.95 0.03 25);
+  --color-info: oklch(0.46 0.08 185);
+  --color-info-soft: oklch(0.94 0.03 185);
+
+  /* Materie: colore d'identità, sempre accanto al nome */
+  --materia-1: oklch(0.5 0.13 35); --materia-1-soft: oklch(0.94 0.03 35);
+  --materia-2: oklch(0.48 0.09 180); --materia-2-soft: oklch(0.94 0.03 180);
+  --materia-3: oklch(0.5 0.09 75); --materia-3-soft: oklch(0.95 0.035 80);
+  --materia-4: oklch(0.47 0.13 300); --materia-4-soft: oklch(0.94 0.03 300);
+  --materia-5: oklch(0.5 0.1 125); --materia-5-soft: oklch(0.95 0.035 125);
+  --materia-6: oklch(0.47 0.07 240); --materia-6-soft: oklch(0.94 0.02 240);
+  --materia-7: oklch(0.48 0.14 350); --materia-7-soft: oklch(0.95 0.03 350);
+  --materia-8: oklch(0.49 0.08 215); --materia-8-soft: oklch(0.94 0.025 215);
+
+  /* Elevazione: solo per elementi sopraelevati (barra in basso, menu) */
+  --shadow-raised: 0 1px 2px oklch(0.2 0.02 260 / 0.06), 0 6px 20px oklch(0.2 0.02 260 / 0.08);
 
   /* Tipografia */
   --font-serif: 'Source Serif 4 Variable', 'Iowan Old Style', 'Palatino Linotype', Georgia, serif;
   --font-sans: 'Source Sans 3 Variable', 'Helvetica Neue', Arial, system-ui, sans-serif;
   --font-mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
 
-  --text-xs: 0.8125rem;   /* 13px: etichette secondarie */
-  --text-sm: 0.875rem;    /* 14px: metadati */
-  --text-base: 1rem;      /* 16px: corpo minimo */
-  --text-lg: 1.125rem;    /* 18px */
-  --text-xl: 1.375rem;    /* 22px: titoli di card */
-  --text-2xl: 1.75rem;    /* 28px: titoli di pagina */
-  --text-3xl: 2.25rem;    /* 36px: numeri chiave */
+  --text-xs: 0.8125rem;   /* 13: solo metadati */
+  --text-sm: 0.875rem;    /* 14 */
+  --text-base: 1rem;      /* 16: corpo */
+  --text-lg: 1.125rem;    /* 18 */
+  --text-xl: 1.375rem;    /* 22 */
+  --text-2xl: 1.75rem;    /* 28: titoli di pagina */
+  --text-3xl: 2.25rem;    /* 36: numeri chiave */
   --leading-tight: 1.2;
   --leading-normal: 1.5;
   --weight-regular: 400;
@@ -61,7 +68,7 @@
   --weight-semibold: 600;
   --weight-bold: 700;
 
-  /* Spazi: scala da 4px */
+  /* Spazi: base 4 */
   --space-1: 0.25rem;
   --space-2: 0.5rem;
   --space-3: 0.75rem;
@@ -71,74 +78,82 @@
   --space-7: 3rem;
 
   /* Forme */
-  --radius-sm: 4px;
+  --radius-sm: 6px;
   --radius-md: 8px;
+  --radius-lg: 12px;
   --radius-pill: 999px;
   --border: 1px solid var(--color-rule);
   --tap-min: 44px;
 
   /* Layout */
-  --content-max: 72rem;
+  --content-max: 70rem;
   --nav-width: 15rem;
   --nav-bottom-height: 4rem;
 
   color-scheme: light;
 }
 
-/* Tema scuro: stesso significato, contrasto mantenuto. Ripetuto per la scelta esplicita. */
+/* Tema scuro: stessi ruoli, contrasti verificati. Ripetuto per la scelta esplicita. */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
-    --color-paper: #15171a;
-    --color-surface: #1d2024;
-    --color-surface-muted: #24282d;
-    --color-ink: #ecece8;
-    --color-ink-muted: #b4b7bc;
-    --color-ink-faint: #8f949b;
-    --color-rule: #33373d;
-    --color-rule-strong: #4a4f57;
-    --color-accent: #8db2e8;
-    --color-accent-hover: #a9c5ef;
-    --color-accent-soft: #1f2d42;
-    --color-on-accent: #10161f;
-    --color-success: #8ccb9b; --color-success-soft: #1d3024;
-    --color-warning: #e3b866; --color-warning-soft: #362c1a;
-    --color-danger: #f0958d; --color-danger-soft: #3a1f1d;
-    --color-info: #7fcabd; --color-info-soft: #18302c;
-    --materia-1: #e79a82; --materia-1-soft: #33221d;
-    --materia-2: #7fcabd; --materia-2-soft: #18302c;
-    --materia-3: #d6b074; --materia-3-soft: #322a1c;
-    --materia-4: #bfa3e8; --materia-4-soft: #2a2238;
-    --materia-5: #c2cf7e; --materia-5-soft: #2a2e18;
-    --materia-6: #a3b9d6; --materia-6-soft: #1f2833;
-    --materia-7: #e795bd; --materia-7-soft: #33202a;
-    --materia-8: #8fc7d6; --materia-8-soft: #1a2d33;
+    --color-paper: oklch(0.17 0.012 255);
+    --color-surface: oklch(0.215 0.014 255);
+    --color-surface-muted: oklch(0.19 0.012 255);
+    --color-nav: oklch(0.15 0.012 255);
+    --color-ink: oklch(0.94 0.008 255);
+    --color-ink-muted: oklch(0.76 0.015 255);
+    --color-ink-faint: oklch(0.68 0.015 255);
+    --color-rule: oklch(0.3 0.014 255);
+    --color-rule-strong: oklch(0.5 0.015 255);
+    --color-accent: oklch(0.74 0.1 255);
+    --color-accent-hover: oklch(0.8 0.09 255);
+    --color-accent-soft: oklch(0.29 0.05 255);
+    --color-on-accent: oklch(0.17 0.02 260);
+    --color-success: oklch(0.78 0.11 150); --color-success-soft: oklch(0.28 0.04 150);
+    --color-warning: oklch(0.8 0.11 80); --color-warning-soft: oklch(0.3 0.045 75);
+    --color-danger: oklch(0.75 0.13 25); --color-danger-soft: oklch(0.29 0.05 25);
+    --color-info: oklch(0.78 0.08 185); --color-info-soft: oklch(0.28 0.035 185);
+    --materia-1: oklch(0.76 0.11 35); --materia-1-soft: oklch(0.29 0.04 35);
+    --materia-2: oklch(0.78 0.08 180); --materia-2-soft: oklch(0.28 0.035 180);
+    --materia-3: oklch(0.8 0.09 80); --materia-3-soft: oklch(0.3 0.04 80);
+    --materia-4: oklch(0.76 0.11 300); --materia-4-soft: oklch(0.29 0.045 300);
+    --materia-5: oklch(0.8 0.1 125); --materia-5-soft: oklch(0.29 0.04 125);
+    --materia-6: oklch(0.77 0.06 240); --materia-6-soft: oklch(0.28 0.03 240);
+    --materia-7: oklch(0.77 0.11 350); --materia-7-soft: oklch(0.29 0.045 350);
+    --materia-8: oklch(0.78 0.07 215); --materia-8-soft: oklch(0.28 0.035 215);
+    --shadow-raised: 0 1px 2px oklch(0 0 0 / 0.3), 0 8px 24px oklch(0 0 0 / 0.35);
     color-scheme: dark;
   }
 }
 :root[data-theme='dark'] {
-  --color-paper: #15171a;
-  --color-surface: #1d2024;
-  --color-surface-muted: #24282d;
-  --color-ink: #ecece8;
-  --color-ink-muted: #b4b7bc;
-  --color-ink-faint: #8f949b;
-  --color-rule: #33373d;
-  --color-rule-strong: #4a4f57;
-  --color-accent: #8db2e8;
-  --color-accent-hover: #a9c5ef;
-  --color-accent-soft: #1f2d42;
-  --color-on-accent: #10161f;
-  --color-success: #8ccb9b; --color-success-soft: #1d3024;
-  --color-warning: #e3b866; --color-warning-soft: #362c1a;
-  --color-danger: #f0958d; --color-danger-soft: #3a1f1d;
-  --color-info: #7fcabd; --color-info-soft: #18302c;
-  --materia-1: #e79a82; --materia-1-soft: #33221d;
-  --materia-2: #7fcabd; --materia-2-soft: #18302c;
-  --materia-3: #d6b074; --materia-3-soft: #322a1c;
-  --materia-4: #bfa3e8; --materia-4-soft: #2a2238;
-  --materia-5: #c2cf7e; --materia-5-soft: #2a2e18;
-  --materia-6: #a3b9d6; --materia-6-soft: #1f2833;
-  --materia-7: #e795bd; --materia-7-soft: #33202a;
-  --materia-8: #8fc7d6; --materia-8-soft: #1a2d33;
+  --color-paper: oklch(0.17 0.012 255);
+  --color-surface: oklch(0.215 0.014 255);
+  --color-surface-muted: oklch(0.19 0.012 255);
+  --color-nav: oklch(0.15 0.012 255);
+  --color-ink: oklch(0.94 0.008 255);
+  --color-ink-muted: oklch(0.76 0.015 255);
+  --color-ink-faint: oklch(0.68 0.015 255);
+  --color-rule: oklch(0.3 0.014 255);
+  --color-rule-strong: oklch(0.5 0.015 255);
+  --color-accent: oklch(0.74 0.1 255);
+  --color-accent-hover: oklch(0.8 0.09 255);
+  --color-accent-soft: oklch(0.29 0.05 255);
+  --color-on-accent: oklch(0.17 0.02 260);
+  --color-success: oklch(0.78 0.11 150); --color-success-soft: oklch(0.28 0.04 150);
+  --color-warning: oklch(0.8 0.11 80); --color-warning-soft: oklch(0.3 0.045 75);
+  --color-danger: oklch(0.75 0.13 25); --color-danger-soft: oklch(0.29 0.05 25);
+  --color-info: oklch(0.78 0.08 185); --color-info-soft: oklch(0.28 0.035 185);
+  --materia-1: oklch(0.76 0.11 35); --materia-1-soft: oklch(0.29 0.04 35);
+  --materia-2: oklch(0.78 0.08 180); --materia-2-soft: oklch(0.28 0.035 180);
+  --materia-3: oklch(0.8 0.09 80); --materia-3-soft: oklch(0.3 0.04 80);
+  --materia-4: oklch(0.76 0.11 300); --materia-4-soft: oklch(0.29 0.045 300);
+  --materia-5: oklch(0.8 0.1 125); --materia-5-soft: oklch(0.29 0.04 125);
+  --materia-6: oklch(0.77 0.06 240); --materia-6-soft: oklch(0.28 0.03 240);
+  --materia-7: oklch(0.77 0.11 350); --materia-7-soft: oklch(0.29 0.045 350);
+  --materia-8: oklch(0.78 0.07 215); --materia-8-soft: oklch(0.28 0.035 215);
+  --shadow-raised: 0 1px 2px oklch(0 0 0 / 0.3), 0 8px 24px oklch(0 0 0 / 0.35);
   color-scheme: dark;
+}
+:root[data-theme='light'] {
+  color-scheme: light;
 }

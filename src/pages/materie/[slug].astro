@@ -3,7 +3,7 @@ import Base from '../../layouts/Base.astro';
 import Badge from '../../components/Badge.astro';
 import TipoEsame from '../../components/TipoEsame.astro';
 import { getMaterie } from '../../lib/percorso';
-import { getVoti, statoMateria } from '../../lib/voti';
+import { getVoti, statoMateria, votoTesto } from '../../lib/voti';
 import { getKit, ultimoLavoro, statoAgenti } from '../../lib/coda';
 
 export const prerender = false;
@@ -13,15 +13,17 @@ if (!m) return new Response('Materia non trovata', { status: 404 });
 
 const base = m.appunti ? `/appunti/${m.appunti.slug}` : null;
 const mb = m.appunti?.pdf ? (m.appunti.pdf.bytes / 1024 / 1024).toLocaleString('it-IT', { maximumFractionDigits: 1 }) : null;
+const primoCapitolo = m.appunti?.capitoli.find((c) => !/indice|mappa/i.test(c.titolo)) ?? m.appunti?.capitoli[0];
 const voti = await getVoti();
+const voto = m.codice ? voti.get(m.codice) : undefined;
 const kit = m.codice ? await getKit(m.codice) : null;
 const lavoro = m.codice ? await ultimoLavoro('kit', m.codice) : null;
 const agente = await statoAgenti();
 const kitAggiornato = !!(kit && m.appunti && kit.impronta === m.appunti.impronta);
-const inLavorazione = lavoro && (lavoro.stato === 'in_coda' || lavoro.stato === 'in_corso');
-const dataIt = (iso: string) => new Date(iso).toLocaleString('it-IT', { dateStyle: 'short', timeStyle: 'short', timeZone: 'Europe/Rome' });
+const inLavorazione = !!lavoro && (lavoro.stato === 'in_coda' || lavoro.stato === 'in_corso');
+const giorno = (iso: string) => new Date(iso).toLocaleDateString('it-IT', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Europe/Rome' });
 const ESITI: Record<string, string> = {
-  'in-coda': "Richiesta inviata: l'agente locale preparerà il kit alla prossima accensione.",
+  'in-coda': "Richiesta inviata: l'agente locale preparerà il kit appena è acceso.",
   'gia-in-coda': 'Il kit è già in preparazione.',
   'senza-appunti': 'Servono gli appunti per preparare il kit.',
 };
@@ -29,209 +31,258 @@ const esito = ESITI[Astro.url.searchParams.get('esito') ?? ''];
 ---
 
 <Base title={m.breve}>
-  <header class="testata" style={`--c: var(--materia-${m.colore}); --c-soft: var(--materia-${m.colore}-soft)`}>
-    <p class="etichetta">{m.anno}º anno · {m.periodo}{m.date && ` · ${m.date}`}</p>
+  <header class="testata" style={`--c: var(--materia-${m.colore})`}>
+    <p class="etichetta"><span class="punto"></span>{m.anno}º anno · {m.periodo}{m.date && <span class="muted"> · {m.date}</span>}</p>
     <h1>{m.nome}</h1>
-    <div class="cluster">
-      <Badge stato={statoMateria(m, voti)} />
+    <div class="cluster meta">
+      {voto ? <Badge stato="superato" label={`Superato · ${votoTesto(voto)}`} /> : <Badge stato={statoMateria(m, voti)} />}
       <TipoEsame tipo={m.esame.tipo} dalCatalogo={m.esame.dalCatalogo} />
-      <span class="muted num">{m.cfu} CFU{m.codice && ` · ${m.codice}`}</span>
+      <span class="num">{m.cfu}&nbsp;CFU</span>
+      {m.docenti.length > 0 && <span>{m.docenti.join(', ')}</span>}
     </div>
-    {m.docenti.length > 0 && <p class="muted">Docenti: {m.docenti.join(', ')}</p>}
+    {m.appunti && (
+      <div class="azioni">
+        {primoCapitolo && <a class="btn btn--primary" href={`${base}/${primoCapitolo.file}`}>Apri gli appunti</a>}
+        {m.appunti.pdf && (
+          <a class="btn" href={`${base}/${m.appunti.pdf.file}`} download>
+            Scarica PDF <span class="muted num">{mb}&nbsp;MB</span>
+          </a>
+        )}
+      </div>
+    )}
   </header>
 
-  <section class="azioni" aria-label="Azioni">
-    <button class="btn btn--primary" type="button" disabled aria-describedby="simula-nota">Simula l'esame</button>
-    {m.appunti?.pdf ? (
-      <a class="btn" href={`${base}/${m.appunti.pdf.file}`} download>
-        Scarica PDF completo <span class="muted num">({mb} MB)</span>
-      </a>
-    ) : (
-      <span class="btn btn--off" aria-disabled="true">PDF non ancora disponibile</span>
-    )}
-    <p id="simula-nota" class="muted nota">Le simulazioni arrivano con lo Sprint 3.</p>
-  </section>
-
-  <section class="kit" id="kit" aria-labelledby="kit-titolo">
-    <div class="kit__testa">
-      <h2 id="kit-titolo">Kit d'esame</h2>
-      <Badge stato={agente.online ? 'online' : 'offline'} />
-    </div>
-    {esito && <p class="kit__esito" role="status">{esito}</p>}
-    {!m.appunti ? (
-      <p class="muted">Il kit si prepara dagli appunti: per questa materia non ci sono ancora.</p>
-    ) : (
-      <>
-        <p class="muted">
-          {kit
-            ? <>Kit del {dataIt(kit.generato)} · {kit.nuclei} nuclei · {kit.agente}{kitAggiornato ? '' : ' · '}{!kitAggiornato && <strong class="kit__avviso">Appunti cambiati: aggiorna il kit</strong>}</>
-            : "Nessun kit ancora. Il kit raccoglie in un solo file concetti, autori, nessi e rubrica di correzione: da lì nascono domande e correzioni."}
-        </p>
-        {inLavorazione && (
-          <p><Badge stato="in-coda" label={lavoro!.stato === 'in_corso' ? `In preparazione (${lavoro!.agente})` : 'In coda'} /></p>
-        )}
-        {lavoro?.stato === 'errore' && <p class="kit__errore">Ultimo tentativo fallito: {lavoro.errore}</p>}
-        <form method="post" action="/api/lavori">
-          <input type="hidden" name="codice" value={m.codice!} />
-          <button class="btn" type="submit" disabled={!!inLavorazione}>
-            {kit ? 'Aggiorna il kit d\'esame' : 'Prepara kit d\'esame'}
-          </button>
-        </form>
-        {!agente.online && <p class="muted nota">Agente locale offline{agente.ultimo && ` (ultimo contatto ${dataIt(agente.ultimo)})`}: la richiesta resta in coda finché non avvii <code>uni-agent</code> sul PC.</p>}
-        <p class="nota"><a href="/agente">Come avviare l'agente locale</a></p>
-      </>
-    )}
-  </section>
-
   <div class="colonne">
-    <section class="stack" aria-labelledby="esame">
-      <h2 id="esame">Come si svolge l'esame</h2>
-      {m.esame.dettagli ? (
-        <p>{m.esame.dettagli}</p>
-      ) : (
-        <p class="muted">
-          {m.esame.dalCatalogo
-            ? "Il catalogo indica solo il tipo d'esame: il programma dettagliato non è ancora pubblicato."
-            : "Dettagli non disponibili nella scheda dell'insegnamento."}
-        </p>
-      )}
-      {m.programma.length > 0 && (
-        <>
-          <h3>Programma</h3>
-          <ul class="programma">
-            {m.programma.map((voce) => <li>{voce}</li>)}
-          </ul>
-        </>
-      )}
-      {m.obiettivi && (
-        <>
-          <h3>Obiettivi</h3>
-          <p>{m.obiettivi}</p>
-        </>
-      )}
-      {m.url && <p><a href={m.url} rel="noopener" target="_blank">Scheda ufficiale UniBg</a></p>}
-    </section>
-
     <section class="stack" aria-labelledby="appunti">
       <h2 id="appunti">Appunti</h2>
       {m.appunti && base ? (
-        <ol class="capitoli">
-          {m.appunti.capitoli.map((c) => (
+        <ol class="righe pannello capitoli">
+          {m.appunti.capitoli.map((c, i) => (
             <li>
-              <a href={`${base}/${c.file}`}>{c.titolo}</a>
+              <a class="capitolo" href={`${base}/${c.file}`}>
+                <span class="capitolo__n num">{i + 1}</span>
+                <span>{c.titolo}</span>
+              </a>
             </li>
           ))}
         </ol>
       ) : (
-        <p class="muted">Appunti non ancora disponibili per questa materia.</p>
+        <p class="vuoto pannello">Gli appunti di questa materia non sono ancora pronti.</p>
       )}
     </section>
+
+    <aside class="stack laterale">
+      <section class="pannello kit" id="kit" aria-labelledby="kit-titolo">
+        <h2 id="kit-titolo">Kit d'esame</h2>
+        {esito && <p class="kit__esito" role="status">{esito}</p>}
+        {!m.appunti ? (
+          <p class="muted">Si prepara dagli appunti: per ora non ci sono.</p>
+        ) : (
+          <>
+            {inLavorazione ? (
+              <p class="kit__stato"><Badge stato="in-coda" label={lavoro!.stato === 'in_corso' ? 'In preparazione' : 'In coda'} /></p>
+            ) : kit ? (
+              kitAggiornato ? (
+                <p class="kit__stato kit__stato--ok">
+                  <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.5l3 3 6-7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" /></svg>
+                  Pronto: {kit.nuclei} nuclei, del {giorno(kit.generato)}
+                </p>
+              ) : (
+                <p class="kit__stato kit__stato--avviso">Gli appunti sono cambiati dopo il kit del {giorno(kit.generato)}: aggiornalo.</p>
+              )
+            ) : (
+              <p class="muted">Non ancora preparato. Il kit raccoglie concetti, autori, nessi e la rubrica di correzione: da lì nascono le simulazioni.</p>
+            )}
+            {lavoro?.stato === 'errore' && <p class="kit__errore">Ultimo tentativo non riuscito: {lavoro.errore}</p>}
+            <form method="post" action="/api/lavori">
+              <input type="hidden" name="codice" value={m.codice!} />
+              <button class="btn" type="submit" disabled={inLavorazione}>
+                {kit ? 'Aggiorna il kit' : 'Prepara il kit'}
+              </button>
+            </form>
+            <p class="kit__agente">
+              <Badge stato={agente.online ? 'online' : 'offline'} label={agente.online ? 'Agente online' : 'Agente offline'} />
+              <a href="/agente">Come avviarlo</a>
+            </p>
+          </>
+        )}
+      </section>
+
+      <section class="pannello simula" aria-labelledby="simula-titolo">
+        <h2 id="simula-titolo">Simulazione d'esame</h2>
+        <p class="muted">Disponibile da dicembre: prima lo scritto di Sociologia, poi l'orale di Diritto pubblico.</p>
+      </section>
+    </aside>
   </div>
+
+  <section class="stack esame" aria-labelledby="esame">
+    <h2 id="esame">L'esame</h2>
+    <p class="esame__testo">
+      {m.esame.dettagli ?? (m.esame.dalCatalogo
+        ? "Il catalogo indica solo il tipo d'esame: il programma dettagliato non è ancora pubblicato."
+        : "Dettagli non disponibili nella scheda dell'insegnamento.")}
+    </p>
+    {m.programma.length > 0 && (
+      <details class="sezione pannello">
+        <summary>Programma <span class="muted num">{m.programma.length} temi</span></summary>
+        <ul>{m.programma.map((voce) => <li>{voce}</li>)}</ul>
+      </details>
+    )}
+    {m.obiettivi && (
+      <details class="sezione pannello">
+        <summary>Obiettivi</summary>
+        <p>{m.obiettivi}</p>
+      </details>
+    )}
+    {m.url && <p><a href={m.url} rel="noopener" target="_blank">Scheda ufficiale UniBg{m.codice && ` (${m.codice})`}</a></p>}
+  </section>
 </Base>
 
 <style>
   .testata {
     display: grid;
     gap: var(--space-3);
-    padding: var(--space-5);
-    background: var(--c-soft);
-    border-radius: var(--radius-md);
-    border-left: 6px solid var(--c);
   }
   .etichetta {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
     font-size: var(--text-sm);
     font-weight: var(--weight-semibold);
-    color: var(--c);
+    color: var(--color-ink);
+  }
+  .testata h1 {
+    font-size: clamp(var(--text-2xl), 4vw, var(--text-3xl));
+  }
+  .meta {
+    gap: var(--space-2) var(--space-4);
+    font-size: var(--text-sm);
+    color: var(--color-ink-muted);
   }
   .azioni {
     display: flex;
     flex-wrap: wrap;
     gap: var(--space-3);
-    align-items: center;
+    padding-top: var(--space-2);
   }
-  .nota {
-    flex-basis: 100%;
-    font-size: var(--text-sm);
+  .colonne {
+    display: grid;
+    gap: var(--space-6);
+    grid-template-columns: minmax(0, 1fr);
+    align-items: start;
   }
-  .btn {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--space-2);
-    min-height: var(--tap-min);
-    padding: 0 var(--space-5);
-    border-radius: var(--radius-md);
-    border: 1px solid var(--color-rule-strong);
-    background: var(--color-surface);
+  @media (min-width: 900px) {
+    .colonne {
+      grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
+    }
+  }
+  .capitolo {
+    display: flex;
+    gap: var(--space-3);
+    align-items: baseline;
+    padding: var(--space-3) var(--space-4);
+    min-height: 48px;
     color: var(--color-ink);
-    font: inherit;
-    font-weight: var(--weight-semibold);
     text-decoration: none;
-    cursor: pointer;
   }
-  .btn:hover {
-    border-color: var(--color-ink-muted);
-    color: var(--color-ink);
+  .capitolo:hover {
+    background: var(--color-surface-muted);
+    color: var(--color-accent);
   }
-  .btn--primary {
-    background: var(--color-accent);
-    border-color: var(--color-accent);
-    color: var(--color-on-accent);
+  .capitoli > li:first-child .capitolo {
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
   }
-  .btn:disabled,
-  .btn--off {
-    opacity: 0.55;
-    cursor: not-allowed;
+  .capitoli > li:last-child .capitolo {
+    border-radius: 0 0 var(--radius-lg) var(--radius-lg);
   }
-  .kit {
+  .capitolo__n {
+    min-width: 1.5rem;
+    color: var(--color-ink-muted);
+    font-size: var(--text-sm);
+    text-align: right;
+  }
+  .vuoto {
+    padding: var(--space-5);
+    color: var(--color-ink-muted);
+  }
+  .laterale {
+    gap: var(--space-4);
+  }
+  .kit,
+  .simula {
     display: grid;
     gap: var(--space-3);
-    padding: var(--space-4) var(--space-5);
-    background: var(--color-surface);
-    border: var(--border);
-    border-radius: var(--radius-md);
+    padding: var(--space-5);
   }
-  .kit__testa {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-3);
-    align-items: center;
-    justify-content: space-between;
+  .kit form {
+    margin: 0;
   }
   .kit__esito {
     color: var(--color-accent);
     font-weight: var(--weight-medium);
   }
-  .kit__avviso {
+  .kit__stato {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-weight: var(--weight-medium);
+  }
+  .kit__stato svg {
+    width: 16px;
+    height: 16px;
+    flex: none;
+  }
+  .kit__stato--ok {
+    color: var(--color-success);
+  }
+  .kit__stato--avviso {
     color: var(--color-warning);
   }
   .kit__errore {
     color: var(--color-danger);
     font-size: var(--text-sm);
   }
-  .kit form {
-    margin: 0;
+  .kit__agente {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2) var(--space-3);
+    padding-top: var(--space-3);
+    border-top: var(--border);
+    font-size: var(--text-sm);
   }
-  code {
-    font-family: var(--font-mono);
-    font-size: 0.9em;
+  .simula {
+    background: var(--color-surface-muted);
+    border-style: dashed;
   }
-  .colonne {
-    display: grid;
-    gap: var(--space-6);
-    grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr));
-    align-items: start;
+  .esame {
+    max-width: 72ch;
   }
-  .programma,
-  .capitoli {
-    margin: 0;
+  .esame__testo {
+    line-height: 1.6;
+  }
+  .sezione {
+    padding: 0 var(--space-4);
+  }
+  .sezione summary {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: var(--space-3);
+    min-height: var(--tap-min);
+    font-weight: var(--weight-semibold);
+    cursor: pointer;
+  }
+  .sezione[open] summary {
+    border-bottom: var(--border);
+  }
+  .sezione ul,
+  .sezione p {
+    margin: var(--space-3) 0 var(--space-4);
+  }
+  .sezione ul {
     padding-left: var(--space-5);
     display: grid;
     gap: var(--space-2);
-  }
-  .capitoli a {
-    color: var(--color-ink);
-  }
-  .capitoli a:hover {
-    color: var(--color-accent);
   }
 </style>

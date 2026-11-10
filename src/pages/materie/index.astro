@@ -1,82 +1,112 @@
 ---
 import Base from '../../layouts/Base.astro';
-import Card from '../../components/Card.astro';
-import Badge from '../../components/Badge.astro';
 import TipoEsame from '../../components/TipoEsame.astro';
-import { getMaterie, statoDidattico } from '../../lib/percorso';
+import { getMaterie } from '../../lib/percorso';
 
 const materie = await getMaterie();
 const conAppunti = materie.filter((m) => m.appunti);
-const altre = materie.filter((m) => !m.appunti);
+const anni = [1, 2, 3].map((anno) => ({ anno, voci: materie.filter((m) => m.anno === anno && !m.appunti) })).filter((a) => a.voci.length);
 ---
 
 <Base title="Materie">
-  <header class="stack intro">
+  <header class="intro">
     <p class="eyebrow">Studio</p>
     <h1>Materie</h1>
-    <p class="muted">Prima le materie con appunti pronti; poi tutte le altre del piano di studi.</p>
   </header>
 
   <section class="stack" aria-labelledby="con-appunti">
-    <h2 id="con-appunti">Con appunti</h2>
-    <div class="grid">
+    <h2 id="con-appunti">Con appunti pronti</h2>
+    <ul class="righe pannello">
       {conAppunti.map((m) => (
-        <Card title={m.nome} eyebrow={`${m.anno}º anno · ${m.periodo}`} materia={m.colore} href={`/materie/${m.slug}`}>
-          <div class="cluster">
-            <Badge stato={statoDidattico(m)} />
-            <TipoEsame tipo={m.esame.tipo} />
-            <span class="muted num">{m.cfu} CFU</span>
-          </div>
-          <p class="muted num">{m.appunti!.capitoli.length} pagine di appunti{m.appunti!.pdf && ' · PDF completo'}</p>
-        </Card>
-      ))}
-    </div>
-  </section>
-
-  <section class="stack" aria-labelledby="altre">
-    <h2 id="altre">Altre materie</h2>
-    <ul class="lista">
-      {altre.map((m) => (
         <li>
-          <a href={`/materie/${m.slug}`}>{m.nome}</a>
-          <span class="muted num">{m.anno}º anno · {m.cfu} CFU</span>
+          <a class="riga riga--grande" href={`/materie/${m.slug}`} style={`--c: var(--materia-${m.colore})`}>
+            <span class="punto"></span>
+            <span class="riga__testo">
+              <span class="riga__nome">{m.nome}</span>
+              <span class="riga__meta">
+                <TipoEsame tipo={m.esame.tipo} />
+                <span class="num">{m.cfu}&nbsp;CFU</span>
+                <span class="num">{m.appunti!.capitoli.length} pagine di appunti</span>
+              </span>
+            </span>
+          </a>
         </li>
       ))}
     </ul>
   </section>
+
+  {anni.map((a) => (
+    <section class="stack" aria-labelledby={`altre-${a.anno}`}>
+      <h2 id={`altre-${a.anno}`}>{a.anno}º anno</h2>
+      <ul class="righe pannello">
+        {a.voci.map((m) => (
+          <li>
+            <a class="riga" href={`/materie/${m.slug}`} style={`--c: var(--materia-${m.colore})`}>
+              <span class="punto"></span>
+              <span class="riga__testo">
+                <span class="riga__nome">{m.nome}</span>
+              </span>
+              <span class="muted num">{m.cfu}&nbsp;CFU</span>
+            </a>
+          </li>
+        ))}
+      </ul>
+    </section>
+  ))}
 </Base>
 
 <style>
   .intro {
+    display: grid;
+    gap: var(--space-1);
+  }
+  .stack {
     gap: var(--space-2);
   }
-  .grid {
-    display: grid;
-    gap: var(--space-4);
-    grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
-  }
-  .lista {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-    display: grid;
-    border-top: var(--border);
-  }
-  .lista li {
+  .riga {
     display: flex;
-    flex-wrap: wrap;
-    justify-content: space-between;
-    gap: var(--space-1) var(--space-4);
-    padding: var(--space-3) 0;
-    border-bottom: var(--border);
-  }
-  .lista a {
+    align-items: center;
+    gap: var(--space-3);
+    min-height: 52px;
+    padding: var(--space-3) var(--space-4);
     color: var(--color-ink);
     text-decoration: none;
-    font-weight: var(--weight-medium);
   }
-  .lista a:hover {
-    color: var(--color-accent);
-    text-decoration: underline;
+  .riga--grande {
+    min-height: 72px;
+  }
+  .riga:hover {
+    background: var(--color-surface-muted);
+  }
+  .righe > li:first-child .riga {
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  }
+  .righe > li:last-child .riga {
+    border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+  }
+  .righe > li:only-child .riga {
+    border-radius: var(--radius-lg);
+  }
+  .riga__testo {
+    flex: 1;
+    display: grid;
+    gap: 2px;
+    min-width: 0;
+  }
+  .riga__nome {
+    font-weight: var(--weight-semibold);
+    overflow-wrap: anywhere;
+  }
+  .riga--grande .riga__nome {
+    font-family: var(--font-serif);
+    font-size: var(--text-lg);
+  }
+  .riga__meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0 var(--space-3);
+    align-items: center;
+    font-size: var(--text-sm);
+    color: var(--color-ink-muted);
   }
 </style>

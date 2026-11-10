@@ -8,8 +8,12 @@ import { getVoti, statoMateria, votoTesto } from '../lib/voti';
 export const prerender = false;
 
 const voti = await getVoti();
-
 const materie = await getMaterie();
+
+// Anno accademico in corso per la coorte 2026/27 (l'anno accademico parte a settembre).
+const oggi = new Date();
+const annoCorrente = Math.min(3, Math.max(1, oggi.getFullYear() - 2026 + (oggi.getMonth() >= 8 ? 1 : 0)));
+
 const anni = [1, 2, 3].map((anno) => {
   const delAnno = materie.filter((m) => m.anno === anno);
   // Una scelta vincolata vale per un solo esame: conta i CFU una volta sola.
@@ -17,124 +21,203 @@ const anni = [1, 2, 3].map((anno) => {
     if (m.sceltaVincolata && arr.slice(0, i).some((x) => x.sceltaVincolata)) return s;
     return s + m.cfu;
   }, 0);
+  const fatti = delAnno.reduce((s, m) => s + (m.codice && voti.has(m.codice) ? m.cfu : 0), 0);
   const periodi = ORDINE_PERIODI.map((p) => ({ periodo: p, voci: delAnno.filter((m) => m.periodo === p) })).filter((g) => g.voci.length);
-  return { anno, cfu, periodi, aa: `${2025 + anno}/${String(26 + anno).padStart(2, '0')}` };
+  return { anno, cfu, fatti, periodi, aa: `${2025 + anno}/${String(26 + anno).padStart(2, '0')}` };
 });
 ---
 
 <Base title="Percorso">
-  <header class="stack intro">
+  <header class="intro">
     <p class="eyebrow">Curriculum Economico-giuridico · coorte 2026/27</p>
     <h1>Percorso</h1>
-    <p class="muted">Tre anni, {CFU_TOTALI} CFU. Gli esami segnati con * hanno solo l'indicazione generica del catalogo: il programma non è ancora pubblicato.</p>
+    <p class="muted">Tre anni, {CFU_TOTALI} CFU. L'asterisco indica un tipo d'esame preso dal catalogo: il programma non è ancora pubblicato.</p>
   </header>
 
   <div class="anni">
     {anni.map((a) => (
-      <section class="anno" aria-labelledby={`anno-${a.anno}`}>
-        <header class="anno__head">
-          <h2 id={`anno-${a.anno}`}>{a.anno}º anno</h2>
-          <span class="muted num">a.a. {a.aa} · {a.cfu} CFU</span>
-        </header>
-        {a.periodi.map((g) => (
-          <div class="periodo">
-            <h3 class="eyebrow">{g.periodo}</h3>
-            <ul class="lista">
-              {g.voci.map((m) => (
-                <li class:list={['voce', { 'voce--scelta': m.sceltaVincolata }]} style={`--c: var(--materia-${m.colore}); --c-soft: var(--materia-${m.colore}-soft)`}>
-                  <a class="voce__nome" href={`/materie/${m.slug}`}>{m.nome}</a>
-                  <div class="voce__meta">
-                    <Badge stato={statoMateria(m, voti)} label={m.codice && voti.has(m.codice) ? `Superato · ${votoTesto(voti.get(m.codice)!)}` : undefined} />
-                    <TipoEsame tipo={m.esame.tipo} dalCatalogo={m.esame.dalCatalogo} />
-                    <span class="muted num">{m.cfu} CFU</span>
-                    {m.sceltaVincolata && <span class="scelta">uno a scelta</span>}
-                    {m.appunti && <span class="appunti">Appunti</span>}
-                  </div>
-                </li>
-              ))}
-            </ul>
-          </div>
-        ))}
-      </section>
+      <details class="anno" open={a.anno === annoCorrente}>
+        <summary class="anno__testa">
+          <span class="anno__titolo">
+            <span class="anno__nome">{a.anno}º anno</span>
+            {a.anno === annoCorrente && <span class="corrente">In corso</span>}
+          </span>
+          <span class="anno__dati muted num">a.a. {a.aa} · {a.fatti}/{a.cfu}&nbsp;CFU</span>
+          <span class="anno__barra" aria-hidden="true"><span style={`width: ${Math.round((a.fatti / a.cfu) * 100)}%`}></span></span>
+          <svg class="anno__freccia" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 6l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" /></svg>
+        </summary>
+        <div class="anno__corpo">
+          {a.periodi.map((g) => (
+            <section class="periodo" aria-label={g.periodo}>
+              <h2 class="periodo__titolo">{g.periodo}</h2>
+              <ul class="righe pannello">
+                {g.voci.map((m) => {
+                  const stato = statoMateria(m, voti);
+                  const v = m.codice ? voti.get(m.codice) : undefined;
+                  return (
+                    <li>
+                      <a class="voce" href={`/materie/${m.slug}`} style={`--c: var(--materia-${m.colore})`}>
+                        <span class="punto"></span>
+                        <span class="voce__nome">
+                          {m.nome}
+                          {m.sceltaVincolata && <span class="voce__nota">uno a scelta</span>}
+                        </span>
+                        <span class="voce__meta">
+                          {v ? <Badge stato="superato" label={votoTesto(v)} /> : stato === 'in-corso' && <Badge stato="in-corso" />}
+                          <TipoEsame tipo={m.esame.tipo} dalCatalogo={m.esame.dalCatalogo} />
+                          <span class="muted num cfu">{m.cfu}&nbsp;CFU</span>
+                        </span>
+                      </a>
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
+          ))}
+        </div>
+      </details>
     ))}
   </div>
 </Base>
 
 <style>
   .intro {
+    display: grid;
     gap: var(--space-2);
   }
   .anni {
     display: grid;
-    gap: var(--space-5);
-    grid-template-columns: repeat(auto-fit, minmax(min(100%, 19rem), 1fr));
-    align-items: start;
+    gap: var(--space-4);
   }
   .anno {
-    display: grid;
-    gap: var(--space-4);
-    min-width: 0;
+    border-radius: var(--radius-lg);
   }
-  .anno__head {
+  .anno__testa {
     display: grid;
-    gap: var(--space-1);
-    padding-bottom: var(--space-3);
-    border-bottom: 2px solid var(--color-ink);
+    grid-template-columns: 1fr auto;
+    grid-template-areas:
+      'titolo freccia'
+      'dati freccia'
+      'barra barra';
+    gap: var(--space-1) var(--space-3);
+    align-items: center;
+    padding: var(--space-4);
+    background: var(--color-surface-muted);
+    border-radius: var(--radius-lg);
+    cursor: pointer;
+    list-style: none;
+  }
+  .anno__testa::-webkit-details-marker {
+    display: none;
+  }
+  .anno__testa:hover {
+    background: var(--color-accent-soft);
+  }
+  .anno__titolo {
+    grid-area: titolo;
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+  }
+  .anno__nome {
+    font-family: var(--font-serif);
+    font-size: var(--text-xl);
+    font-weight: var(--weight-semibold);
+  }
+  .corrente {
+    font-size: var(--text-xs);
+    font-weight: var(--weight-semibold);
+    color: var(--color-accent);
+    background: var(--color-accent-soft);
+    padding: 2px var(--space-2);
+    border-radius: var(--radius-pill);
+  }
+  .anno__dati {
+    grid-area: dati;
+    font-size: var(--text-sm);
+  }
+  .anno__barra {
+    grid-area: barra;
+    height: 4px;
+    margin-top: var(--space-2);
+    border-radius: var(--radius-pill);
+    background: var(--color-rule);
+    overflow: hidden;
+  }
+  .anno__barra span {
+    display: block;
+    height: 100%;
+    background: var(--color-success);
+  }
+  .anno__freccia {
+    grid-area: freccia;
+    width: 20px;
+    height: 20px;
+    color: var(--color-ink-muted);
+    transition: transform 0.15s;
+  }
+  .anno[open] .anno__freccia {
+    transform: rotate(180deg);
+  }
+  .anno__corpo {
+    display: grid;
+    gap: var(--space-5);
+    padding: var(--space-5) 0 var(--space-3);
   }
   .periodo {
     display: grid;
     gap: var(--space-2);
   }
-  .lista {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-    display: grid;
-    gap: var(--space-2);
+  .periodo__titolo {
+    font-size: var(--text-sm);
+    font-weight: var(--weight-semibold);
+    color: var(--color-ink-muted);
   }
   .voce {
-    display: grid;
-    gap: var(--space-2);
-    padding: var(--space-3) var(--space-4);
-    background: var(--color-surface);
-    border: var(--border);
-    border-left: 4px solid var(--c);
-    border-radius: var(--radius-md);
-    min-width: 0;
-  }
-  .voce--scelta {
-    border-style: dashed;
-    border-left-style: solid;
-  }
-  .voce__nome {
-    color: var(--color-ink);
-    font-weight: var(--weight-semibold);
-    text-decoration: none;
-    overflow-wrap: anywhere;
-  }
-  .voce__nome:hover {
-    color: var(--color-accent);
-    text-decoration: underline;
-  }
-  .voce__meta {
     display: flex;
     flex-wrap: wrap;
-    gap: var(--space-1) var(--space-3);
     align-items: center;
+    gap: var(--space-2) var(--space-3);
+    min-height: 56px;
+    padding: var(--space-3) var(--space-4);
+    color: var(--color-ink);
+    text-decoration: none;
   }
-  .scelta,
-  .appunti {
+  .voce:hover {
+    background: var(--color-surface-muted);
+  }
+  .righe > li:first-child .voce {
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  }
+  .righe > li:last-child .voce {
+    border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+  }
+  .righe > li:only-child .voce {
+    border-radius: var(--radius-lg);
+  }
+  .voce__nome {
+    flex: 1 1 14rem;
+    font-weight: var(--weight-semibold);
+    overflow-wrap: anywhere;
+  }
+  .voce__nota {
+    margin-left: var(--space-2);
     font-size: var(--text-xs);
     font-weight: var(--weight-semibold);
-    padding: 1px var(--space-2);
-    border-radius: var(--radius-sm);
-  }
-  .scelta {
     color: var(--color-warning);
     background: var(--color-warning-soft);
+    padding: 1px var(--space-2);
+    border-radius: var(--radius-pill);
+    white-space: nowrap;
   }
-  .appunti {
-    color: var(--c);
-    background: var(--c-soft);
+  .voce__meta {
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: var(--space-2) var(--space-3);
+    align-items: center;
+  }
+  .cfu {
+    min-width: 3.5rem;
+    text-align: right;
   }
 </style>

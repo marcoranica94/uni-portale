@@ -1,11 +1,10 @@
 ---
 import Base from '../layouts/Base.astro';
-import Card from '../components/Card.astro';
 import Badge from '../components/Badge.astro';
 import TipoEsame from '../components/TipoEsame.astro';
 import { getMaterie, CFU_TOTALI } from '../lib/percorso';
 import { getVoti, riepilogo, statoMateria } from '../lib/voti';
-import { statoAgenti } from '../lib/coda';
+import { statoAgenti, getKit } from '../lib/coda';
 
 export const prerender = false;
 
@@ -14,71 +13,175 @@ const voti = await getVoti();
 const r = riepilogo(materie, voti);
 const inCorso = materie.filter((m) => statoMateria(m, voti) === 'in-corso');
 const agente = await statoAgenti();
+
+// Prossimo passo: la prima materia in corso con il kit d'esame pronto, altrimenti la prima con appunti.
+const conKit = await Promise.all(inCorso.map(async (m) => ({ m, kit: m.codice ? await getKit(m.codice) : null })));
+const adesso = conKit.find((x) => x.kit) ?? conKit.find((x) => x.m.appunti) ?? null;
+const primoCapitolo = adesso?.m.appunti?.capitoli.find((c) => !/indice|mappa/i.test(c.titolo)) ?? adesso?.m.appunti?.capitoli[0];
 ---
 
 <Base title="Uni">
-  <header class="stack intro">
+  <header class="intro">
     <p class="eyebrow">1º anno · Scienze politiche e strategie globali</p>
     <h1>Oggi</h1>
-    <p class="muted">Il ripasso quotidiano arriva con lo Sprint 6; per ora qui trovi le materie in corso.</p>
-    <p class="cluster agente">
-      <Badge stato={agente.online ? 'online' : 'offline'} />
-      <a href="/agente">Agente locale: stato e istruzioni</a>
-    </p>
   </header>
 
-  <section class="summary" aria-label="Riepilogo del percorso">
-    <Card tone="accent" title="Ripasso di oggi" eyebrow="Prossima azione">
-      <p>Le simulazioni d'esame saranno disponibili da fine dicembre: prima lo scritto di Sociologia, poi l'orale di Diritto pubblico.</p>
-    </Card>
-    <Card tone="muted" title="CFU conseguiti" eyebrow="Percorso">
-      <p class="figure num">{r.cfu} <span class="muted">/ {CFU_TOTALI}</span></p>
-      <div class="bar" role="img" aria-label={`${r.cfu} CFU conseguiti su ${CFU_TOTALI}`}><span style={`width: ${Math.round((r.cfu / CFU_TOTALI) * 100)}%`}></span></div>
-    </Card>
-  </section>
+  {adesso && (
+    <section class="adesso" aria-labelledby="adesso-titolo" style={`--c: var(--materia-${adesso.m.colore})`}>
+      <p class="adesso__etichetta"><span class="punto"></span> Adesso</p>
+      <h2 id="adesso-titolo" class="adesso__titolo">Ripassa {adesso.m.breve}</h2>
+      <p class="adesso__testo">
+        Esame {adesso.m.esame.tipo.toLowerCase()}.
+        {adesso.kit
+          ? ` Il kit d'esame è pronto (${adesso.kit.nuclei} nuclei): le simulazioni arrivano a dicembre, intanto ripassa dagli appunti.`
+          : " Riparti dagli appunti: dal kit d'esame nasceranno le simulazioni."}
+      </p>
+      <div class="adesso__azioni">
+        {primoCapitolo && adesso.m.appunti && (
+          <a class="btn btn--primary" href={`/appunti/${adesso.m.appunti.slug}/${primoCapitolo.file}`}>Apri gli appunti</a>
+        )}
+        <a class="btn" href={`/materie/${adesso.m.slug}`}>Scheda della materia</a>
+      </div>
+    </section>
+  )}
 
   <section class="stack" aria-labelledby="in-corso">
     <h2 id="in-corso">Materie in corso</h2>
-    <div class="grid">
+    <ul class="righe pannello">
       {inCorso.map((m) => (
-        <Card title={m.nome} eyebrow={m.periodo} materia={m.colore} href={`/materie/${m.slug}`}>
-          <div class="cluster">
-            <Badge stato="in-corso" />
-            <TipoEsame tipo={m.esame.tipo} />
-            <span class="muted num">{m.cfu} CFU</span>
-          </div>
-        </Card>
+        <li>
+          <a class="riga" href={`/materie/${m.slug}`} style={`--c: var(--materia-${m.colore})`}>
+            <span class="punto"></span>
+            <span class="riga__nome">{m.nome}</span>
+            <span class="riga__meta">
+              <TipoEsame tipo={m.esame.tipo} />
+              <span class="muted num">{m.cfu}&nbsp;CFU</span>
+            </span>
+          </a>
+        </li>
       ))}
+    </ul>
+  </section>
+
+  <section class="stato" aria-label="Riepilogo">
+    <div class="stato__voce">
+      <span class="muted">CFU</span>
+      <span class="stato__valore num">{r.cfu} <small>/ {CFU_TOTALI}</small></span>
+      <div class="barra" role="img" aria-label={`${r.cfu} CFU su ${CFU_TOTALI}`}><span style={`width: ${Math.round((r.cfu / CFU_TOTALI) * 100)}%`}></span></div>
     </div>
+    <div class="stato__voce">
+      <span class="muted">Esami superati</span>
+      <span class="stato__valore num">{r.superati}</span>
+    </div>
+    <a class="stato__voce stato__link" href="/agente">
+      <span class="muted">Agente locale</span>
+      <Badge stato={agente.online ? 'online' : 'offline'} label={agente.online ? 'Online' : 'Offline'} />
+    </a>
   </section>
 </Base>
 
 <style>
   .intro {
-    gap: var(--space-2);
-  }
-  .summary,
-  .grid {
     display: grid;
-    gap: var(--space-4);
-    grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
+    gap: var(--space-1);
   }
-  .figure {
-    font-family: var(--font-serif);
-    font-size: var(--text-3xl);
+  .adesso {
+    display: grid;
+    gap: var(--space-3);
+    padding: var(--space-5);
+    background: var(--color-surface);
+    border: var(--border);
+    border-radius: var(--radius-lg);
+  }
+  .adesso__etichetta {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-size: var(--text-sm);
     font-weight: var(--weight-semibold);
-    line-height: 1;
+    color: var(--color-accent);
   }
-  .figure .muted {
+  .adesso__titolo {
+    font-family: var(--font-serif);
+    font-size: var(--text-2xl);
+  }
+  .adesso__testo {
+    color: var(--color-ink-muted);
+    max-width: 60ch;
+  }
+  .adesso__azioni {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-3);
+    padding-top: var(--space-2);
+  }
+  .riga {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2) var(--space-3);
+    min-height: 56px;
+    padding: var(--space-3) var(--space-4);
+    color: var(--color-ink);
+    text-decoration: none;
+  }
+  .riga:hover {
+    background: var(--color-surface-muted);
+  }
+  .righe > li:first-child .riga {
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  }
+  .righe > li:last-child .riga {
+    border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+  }
+  .riga__nome {
+    flex: 1 1 14rem;
+    font-weight: var(--weight-semibold);
+  }
+  .riga__meta {
+    display: inline-flex;
+    gap: var(--space-3);
+    align-items: center;
+  }
+  .stato {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr));
+    gap: var(--space-3);
+  }
+  .stato__voce {
+    display: grid;
+    gap: var(--space-1);
+    align-content: start;
+    padding: var(--space-3) var(--space-4);
+    background: var(--color-surface-muted);
+    border-radius: var(--radius-lg);
+    font-size: var(--text-sm);
+  }
+  .stato__valore {
+    font-family: var(--font-serif);
     font-size: var(--text-xl);
+    font-weight: var(--weight-semibold);
+    color: var(--color-ink);
   }
-  .bar {
-    height: 8px;
+  .stato__valore small {
+    font-size: var(--text-sm);
+    color: var(--color-ink-muted);
+  }
+  .stato__link {
+    color: inherit;
+    text-decoration: none;
+    justify-items: start;
+  }
+  .stato__link:hover {
+    background: var(--color-accent-soft);
+  }
+  .barra {
+    height: 6px;
     border-radius: var(--radius-pill);
     background: var(--color-rule);
     overflow: hidden;
   }
-  .bar span {
+  .barra span {
     display: block;
     height: 100%;
     background: var(--color-success);

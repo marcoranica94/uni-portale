@@ -3,6 +3,7 @@ import '@fontsource-variable/source-serif-4';
 import '@fontsource-variable/source-sans-3';
 import '../styles/global.css';
 import Nav from '../components/Nav.astro';
+import SceltaTema from '../components/SceltaTema.astro';
 
 interface Props {
   title: string;
@@ -19,15 +20,25 @@ const { title, description = 'Portale di studio personale - Scienze politiche e 
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="description" content={description} />
     <meta name="robots" content="noindex, nofollow" />
-    <meta name="theme-color" content="#fafaf7" media="(prefers-color-scheme: light)" />
-    <meta name="theme-color" content="#15171a" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#f3f5f8" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#121519" media="(prefers-color-scheme: dark)" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <title>{title === 'Uni' ? 'Uni' : `${title} · Uni`}</title>
+    <script is:inline>
+      // Applica il tema scelto prima del primo disegno, per evitare lampi.
+      try {
+        var t = localStorage.getItem('tema');
+        if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t;
+      } catch (e) {}
+    </script>
   </head>
   <body>
     <Nav />
     <main class="page">
       <slot />
+      <footer class="piede">
+        <SceltaTema />
+      </footer>
     </main>
   </body>
 </html>
@@ -42,14 +53,20 @@ const { title, description = 'Portale di studio personale - Scienze politiche e 
     padding-right: max(var(--space-4), env(safe-area-inset-right, 0px));
     display: grid;
     gap: var(--space-6);
+    align-content: start;
   }
-  /* Desktop: il contenuto si centra nello spazio a destra della barra laterale fissa */
-  @media (min-width: 900px) {
+  .piede {
+    padding-top: var(--space-5);
+    border-top: var(--border);
+  }
+  /* Da 1024 px: barra laterale fissa, contenuto centrato nello spazio a destra */
+  @media (min-width: 1024px) {
     body {
       padding-left: var(--nav-width);
     }
     .page {
-      padding: var(--space-6);
+      padding: var(--space-6) var(--space-6) var(--space-7);
+      gap: var(--space-7);
     }
   }
 </style>

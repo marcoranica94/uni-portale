@@ -1,0 +1,86 @@
+---
+/** Scelta del tema: Automatico (segue il sistema), Chiaro, Scuro. Ricordata su questo dispositivo. */
+---
+
+<fieldset class="tema">
+  <legend>Tema</legend>
+  <div class="tema__opzioni">
+    <label><input type="radio" name="tema" value="auto" /> <span>Automatico</span></label>
+    <label><input type="radio" name="tema" value="light" /> <span>Chiaro</span></label>
+    <label><input type="radio" name="tema" value="dark" /> <span>Scuro</span></label>
+  </div>
+</fieldset>
+
+<script>
+  const radice = document.documentElement;
+  let attuale = 'auto';
+  try {
+    attuale = localStorage.getItem('tema') ?? 'auto';
+  } catch {}
+  document.querySelectorAll<HTMLInputElement>('input[name="tema"]').forEach((input) => {
+    input.checked = input.value === attuale;
+    input.addEventListener('change', () => {
+      const v = input.value;
+      if (v === 'light' || v === 'dark') radice.dataset.theme = v;
+      else delete radice.dataset.theme;
+      try {
+        if (v === 'auto') localStorage.removeItem('tema');
+        else localStorage.setItem('tema', v);
+      } catch {}
+    });
+  });
+</script>
+
+<style>
+  .tema {
+    margin: 0;
+    padding: 0;
+    border: none;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-3);
+  }
+  legend {
+    float: left;
+    padding: 0;
+    font-size: var(--text-sm);
+    color: var(--color-ink-muted);
+  }
+  .tema__opzioni {
+    display: inline-flex;
+    padding: 3px;
+    gap: 2px;
+    background: var(--color-surface-muted);
+    border: var(--border);
+    border-radius: var(--radius-md);
+  }
+  label {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    min-height: 36px;
+    padding: 0 var(--space-3);
+    border-radius: var(--radius-sm);
+    font-size: var(--text-sm);
+    font-weight: var(--weight-medium);
+    color: var(--color-ink-muted);
+    cursor: pointer;
+  }
+  input {
+    position: absolute;
+    opacity: 0;
+    inset: 0;
+    margin: 0;
+    cursor: pointer;
+  }
+  label:has(input:checked) {
+    background: var(--color-surface);
+    color: var(--color-ink);
+    box-shadow: 0 0 0 1px var(--color-rule);
+  }
+  label:has(input:focus-visible) {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 1px;
+  }
+</style>
