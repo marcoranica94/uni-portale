@@ -117,6 +117,8 @@ export const RichiestaDomande = z.object({
   /** Quante domande ci sono già per nucleo (id del kit -> numero). */
   presenti: z.record(z.string(), z.number()).default({}),
   istruzioni: z.string().default(''),
+  /** Esame orale: servono solo domande aperte (la scelta multipla all'orale non si usa). */
+  soloAperte: z.boolean().default(false),
 });
 export type RichiestaDomande = z.infer<typeof RichiestaDomande>;
 

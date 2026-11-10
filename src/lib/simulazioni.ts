@@ -3,6 +3,7 @@ import type { D1PreparedStatement } from '@cloudflare/workers-types';
 import type { DomandaCompleta, RichiestaApprofondimento, RichiestaCorrezione, RichiestaDomande, RisultatoCorrezione } from '../shared/schemi';
 import { accoda, getKit, ultimoLavoro } from './coda';
 import { votoDa } from './calcoli';
+import { getMaterie } from './percorso';
 export { domandaValida, votoDa } from './calcoli';
 
 /** Formati della simulazione scritta: numero di domande per tipo e durata. */
@@ -77,8 +78,9 @@ export async function richiestaRifornimento(codice: string): Promise<RichiestaDo
   const { results } = await env.DB.prepare('SELECT nucleo, COUNT(*) AS n FROM domande WHERE codice = ? AND archiviata = 0 GROUP BY nucleo')
     .bind(codice)
     .all<{ nucleo: string; n: number }>();
-  const profilo = await getProfilo(codice);
-  return { nuclei: 6, presenti: Object.fromEntries(results.map((r) => [r.nucleo, r.n])), istruzioni: profilo.istruzioni };
+  const [profilo, materie] = await Promise.all([getProfilo(codice), getMaterie()]);
+  const soloAperte = materie.find((m) => m.codice === codice)?.esame.tipo === 'Orale';
+  return { nuclei: 6, presenti: Object.fromEntries(results.map((r) => [r.nucleo, r.n])), istruzioni: profilo.istruzioni, soloAperte };
 }
 
 /** Se le domande mai uscite non bastano per altre due simulazioni, chiede all'agente un rifornimento. */
