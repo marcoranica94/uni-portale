@@ -182,6 +182,9 @@ importers:
       astro:
         specifier: ^7.0.0
         version: 7.4.7(esbuild@0.28.2)(yaml@2.9.1)
+      jose:
+        specifier: ^6.2.16
+        version: 6.2.16
       wrangler:
         specifier: ^4.0.0
         version: 4.158.0(@cloudflare/workers-types@5.20261109.1)
@@ -1494,6 +1497,9 @@ packages:
   is-plain-obj@4.1.0:
     resolution: {integrity: sha512-+Pgi+vMuUNkJyExiMBt5IlFoMyKnr5zhJ4Uspz58WOhBF5QoIZkFyNHIbBAtHwzVAgk5RtndVNsDRN61/mmDqg==}
     engines: {node: '>=12'}
+
+  jose@6.2.16:
+    resolution: {integrity: sha512-4LSJpbuBuPdGrONCdZUy0xnxtLf8eEz+EY0SMXdHQEBU7bgUHDVblU/JAjryv3wID9/LK7/YuwFwq+AQNfMscQ==}
 
   json-schema-traverse@1.0.0:
     resolution: {integrity: sha512-NM8/P9n3XjXhIZn1lLhkFaACTOURQXjWhV4BA/RnOv8xvgqtqpAX9IO4mRQxSx1Rlo4tqzeqb0sOlruaOy3dug==}
@@ -3390,6 +3396,8 @@ snapshots:
   is-docker@4.0.0: {}
 
   is-plain-obj@4.1.0: {}
+
+  jose@6.2.16: {}
 
   json-schema-traverse@1.0.0: {}
 

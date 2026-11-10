@@ -7,6 +7,11 @@
   // Il sito si serve solo da uni.marcoranica.com, protetto da Cloudflare Access.
   "workers_dev": false,
   "preview_urls": false,
+  // Cloudflare Access: il Worker verifica anche lui il token (difesa in profondità). Valori pubblici, non segreti.
+  "vars": {
+    "ACCESS_TEAM_DOMAIN": "https://narraya.cloudflareaccess.com",
+    "ACCESS_AUD": "ceb75856ea68b69c34ce29ad99bc489e791f68b2ba095503a7477e58157ccb0c"
+  },
   "routes": [{ "pattern": "uni.marcoranica.com", "custom_domain": true }],
   "d1_databases": [
     {

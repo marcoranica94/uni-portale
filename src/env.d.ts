@@ -4,5 +4,7 @@
 declare module 'cloudflare:workers' {
   export const env: {
     DB: import('@cloudflare/workers-types').D1Database;
+    ACCESS_TEAM_DOMAIN: string;
+    ACCESS_AUD: string;
   };
 }
