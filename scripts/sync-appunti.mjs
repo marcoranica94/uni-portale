@@ -42,13 +42,13 @@ for (const [codice, materia] of Object.entries(config)) {
   const capitoli = [];
   let pdf = null;
 
+  const pagine = [];
   for (const nome of file.sort()) {
     if (nome.startsWith('_') || nome.startsWith('.')) continue;
     const estensione = path.extname(nome).toLowerCase();
     if (!ESTENSIONI.has(estensione)) continue;
     const sorgente = path.join(origine, nome);
     if (!(await stat(sorgente)).isFile()) continue;
-    await copyFile(sorgente, path.join(cartella, nome));
 
     if (estensione === '.pdf' && nome === materia.pdf) {
       pdf = { file: nome, bytes: (await stat(sorgente)).size };
@@ -59,7 +59,29 @@ for (const [codice, materia] of Object.entries(config)) {
         .replace(/^[^—–-]+[—–-]\s*/, '')
         .trim();
       capitoli.push({ file: nome, titolo });
+      pagine.push({ nome, html });
+    } else {
+      await copyFile(sorgente, path.join(cartella, nome));
     }
+  }
+
+  // Copie HTML con il lettore (barra, capitoli, vista continua). Gli originali non si toccano.
+  const nomeMateria = materia.breve ?? materia.slug;
+  for (const [i, { nome, html }] of pagine.entries()) {
+    const dati = {
+      materia: nomeMateria,
+      scheda: `/materie/${materia.slug}`,
+      titolo: capitoli[i].titolo,
+      prec: capitoli[i - 1] ?? null,
+      succ: capitoli[i + 1] ?? null,
+    };
+    const inserto =
+      (/<meta[^>]+name=["']viewport/i.test(html) ? '' : '<meta name="viewport" content="width=device-width, initial-scale=1">\n') +
+      '<link rel="stylesheet" href="/lettore/lettore.css">\n' +
+      `<script>window.__LETTORE__=${JSON.stringify(dati).replace(/</g, '\\u003c')};</script>\n` +
+      '<script src="/lettore/lettore.js"></script>\n';
+    const conLettore = /<\/head>/i.test(html) ? html.replace(/<\/head>/i, `${inserto}</head>`) : inserto + html;
+    await writeFile(path.join(cartella, nome), conLettore);
   }
 
   risultato[codice] = { slug: materia.slug, capitoli, pdf, impronta: await improntaAppunti(origine) };
