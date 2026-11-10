@@ -70,6 +70,11 @@ svg {
   max-width: 100%;
 }
 
+/* L'attributo hidden vince sempre sui display dei componenti */
+[hidden] {
+  display: none !important;
+}
+
 :focus-visible {
   outline: 2px solid var(--color-accent);
   outline-offset: 2px;
