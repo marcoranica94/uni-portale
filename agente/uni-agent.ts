@@ -4,7 +4,7 @@
  * uni-agent: l'agente locale del portale uni.marcoranica.com.
  * Preleva i lavori dalla coda del portale, li esegue con claude / codex / agy e consegna i risultati.
  *
- *   node agente/uni-agent.ts watch [--agente claude|codex|agy] [--intervallo 20] [--modello X] [--no-push]
+ *   node agente/uni-agent.ts watch [--agente claude|codex|agy] [--intervallo 5] [--modello X] [--no-push]
  *   node agente/uni-agent.ts once  [stesse opzioni]       un solo giro di coda
  *   node agente/uni-agent.ts kit <codice|slug> [opzioni]  genera un kit senza passare dalla coda
  *   node agente/uni-agent.ts verifica                     controlla credenziali e collegamento
@@ -16,12 +16,13 @@ import { configMaterie, HOST, VERSIONE } from './config.ts';
 import { generaKit } from './kit.ts';
 import { generaDomande } from './domande.ts';
 import { correggi } from './correzione.ts';
+import { generaApprofondimento } from './approfondimento.ts';
 
 const { values, positionals } = parseArgs({
   allowPositionals: true,
   options: {
     agente: { type: 'string', default: 'claude' },
-    intervallo: { type: 'string', default: '20' },
+    intervallo: { type: 'string', default: '5' },
     modello: { type: 'string' },
     'no-push': { type: 'boolean', default: false },
   },
@@ -34,9 +35,11 @@ if (!sceltaAgente.success) {
   process.exit(1);
 }
 const agente = sceltaAgente.data;
-const intervallo = Math.max(5, Number(values.intervallo) || 20) * 1000;
+const intervallo = Math.max(3, Number(values.intervallo) || 5) * 1000;
 const push = !values['no-push'];
-const TIPI: TipoLavoro[] = ['correzione', 'kit', 'domande'];
+const TIPI: TipoLavoro[] = ['approfondimento', 'correzione', 'kit', 'domande'];
+/** Per l'approfondimento conta la velocità: con Claude, se non indicato, si usa il modello veloce. */
+const modelloPer = (tipo: TipoLavoro) => values.modello ?? (tipo === 'approfondimento' && agente === 'claude' ? 'haiku' : undefined);
 
 const ora = () => new Date().toLocaleTimeString('it-IT');
 const log = (msg: string) => console.log(`[${ora()}] ${msg}`);
@@ -55,6 +58,8 @@ async function giro(): Promise<boolean> {
       risultato = await generaKit(lavoro.codice, { agente, modello: values.modello, push, log });
     } else if (lavoro.tipo === 'domande' && lavoro.codice) {
       risultato = await generaDomande(lavoro.codice, lavoro.richiesta, { agente, modello: values.modello, log });
+    } else if (lavoro.tipo === 'approfondimento') {
+      risultato = await generaApprofondimento(lavoro.richiesta, { agente, modello: modelloPer('approfondimento'), log });
     } else if (lavoro.tipo === 'correzione') {
       risultato = await correggi(lavoro.richiesta, { agente, modello: values.modello, log });
     }

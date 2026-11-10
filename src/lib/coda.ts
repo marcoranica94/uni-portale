@@ -39,7 +39,8 @@ export async function preleva(agente: string, tipi: TipoLavoro[]): Promise<Lavor
   const segnaposto = tipi.map(() => '?').join(', ');
   const r = await env.DB.prepare(
     `UPDATE lavori SET stato = 'in_corso', preso = ?, agente = ?, tentativi = tentativi + 1
-     WHERE id = (SELECT id FROM lavori WHERE stato = 'in_coda' AND tipo IN (${segnaposto}) ORDER BY creato LIMIT 1)
+     WHERE id = (SELECT id FROM lavori WHERE stato = 'in_coda' AND tipo IN (${segnaposto})
+       ORDER BY CASE tipo WHEN 'approfondimento' THEN 0 WHEN 'correzione' THEN 1 ELSE 2 END, creato LIMIT 1)
      RETURNING id, tipo, codice, richiesta, tentativi`,
   )
     .bind(adesso(), agente, ...tipi)

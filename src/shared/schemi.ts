@@ -43,7 +43,7 @@ export type KitModello = z.infer<typeof KitModello>;
 
 // ---------- Coda dei lavori: API tra sito e agente ----------
 
-export const TipoLavoro = z.enum(['kit', 'domande', 'correzione']);
+export const TipoLavoro = z.enum(['kit', 'domande', 'correzione', 'approfondimento']);
 export type TipoLavoro = z.infer<typeof TipoLavoro>;
 
 export const NomeAgente = z.enum(['claude', 'codex', 'agy']);
@@ -186,3 +186,29 @@ export const CorrezioneOraleModello = CorrezioneModello.extend({ esposizione: Es
 
 export const RisultatoCorrezione = CorrezioneModello.extend({ agente: z.string(), esposizione: EsposizioneModello.nullable().optional() });
 export type RisultatoCorrezione = z.infer<typeof RisultatoCorrezione>;
+
+// ---------- Orale dal vivo: domanda di approfondimento (lavoro "approfondimento") ----------
+
+export const RichiestaApprofondimento = z.object({
+  simulazione: z.string(),
+  ordine: z.number().int(),
+  codice: z.string(),
+  nucleo: z.string(),
+  domanda: z.string(),
+  puntiChiave: z.array(z.string()),
+  rispostaModello: z.string(),
+  risposta: z.string(),
+  istruzioni: z.string().default(''),
+});
+export type RichiestaApprofondimento = z.infer<typeof RichiestaApprofondimento>;
+
+export const ApprofondimentoModello = z
+  .object({
+    serve: z.boolean().describe('false se la risposta è completa e corretta: si passa alla domanda successiva'),
+    domanda: z.string().describe('Una sola domanda breve, come la farebbe il docente; vuota se serve è false'),
+    motivo: z.string().describe('Perché la fai (punto mancante, imprecisione, collegamento); breve'),
+  })
+  .strict();
+
+export const RisultatoApprofondimento = ApprofondimentoModello.extend({ agente: z.string() });
+export type RisultatoApprofondimento = z.infer<typeof RisultatoApprofondimento>;

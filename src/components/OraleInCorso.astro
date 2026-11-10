@@ -2,6 +2,7 @@
 /**
  * Simulazione orale in corso: una domanda per volta, lettura ad alta voce, registrazione con forma d'onda,
  * invio al Worker che trascrive (l'audio non viene salvato), coda sul telefono se manca la rete.
+ * Dal vivo: dopo ogni risposta il docente (agente locale) può fare una domanda di approfondimento.
  */
 import type { Risposta, Simulazione } from '../lib/simulazioni';
 import MetricheParlato from './MetricheParlato.astro';
@@ -11,34 +12,64 @@ interface Props {
   risposte: Risposta[];
 }
 const { sim, risposte } = Astro.props;
+const dalVivo = !!sim.dal_vivo;
 ---
 
-<div class="orale" id="orale" data-id={sim.id}>
+<div class="orale" id="orale" data-id={sim.id} data-vivo={dalVivo ? '1' : '0'}>
   <div class="barra-esame" role="status">
     <span class="num" id="progresso">Domanda 1 di {risposte.length}</span>
-    <span class="muted">L'audio non viene salvato</span>
+    <span class="muted">{dalVivo ? 'Dal vivo · ' : ''}L'audio non viene salvato</span>
   </div>
 
   {risposte.map((r) => (
     <section class="domanda pannello" data-ordine={r.ordine} data-fatta={r.risposta ? '1' : '0'} aria-label={`Domanda ${r.ordine}`}>
-      <p class="domanda__testo">{r.domanda.testo}</p>
-      <button type="button" class="btn ascolta">Ascolta la domanda</button>
-
-      <div class="registratore">
-        <button type="button" class="rec" aria-pressed="false">
-          <span class="rec__icona" aria-hidden="true"></span>
-          <span class="rec__testo">Rispondi</span>
-        </button>
-        <canvas class="onda" width="600" height="80" aria-hidden="true"></canvas>
-        <span class="durata num" aria-live="off">0:00</span>
+      <div class="blocco" data-parte="principale">
+        <p class="domanda__testo testo-domanda">{r.domanda.testo}</p>
+        <button type="button" class="btn ascolta">Ascolta la domanda</button>
+        <div class="registratore">
+          <button type="button" class="rec" aria-pressed="false">
+            <span class="rec__icona" aria-hidden="true"></span>
+            <span class="rec__testo">{r.risposta ? 'Rifai la risposta' : 'Rispondi'}</span>
+          </button>
+          <canvas class="onda" width="600" height="80" aria-hidden="true"></canvas>
+          <span class="durata num" aria-live="off">0:00</span>
+        </div>
+        <p class="stato" role="status"></p>
+        <div class="trascrizione" hidden={!r.risposta}>
+          <h3>Hai detto</h3>
+          <blockquote class="testo">{r.risposta}</blockquote>
+          <div class="metriche-box">{r.metriche && <MetricheParlato metriche={r.metriche} />}</div>
+        </div>
       </div>
-      <p class="stato" role="status"></p>
 
-      <div class="trascrizione" hidden={!r.risposta}>
-        <h3>Hai detto</h3>
-        <blockquote class="testo">{r.risposta}</blockquote>
-        <div class="metriche-box">{r.metriche && <MetricheParlato metriche={r.metriche} />}</div>
-      </div>
+      {dalVivo && (
+        <>
+          <p class="pensa" hidden>
+            <span class="pensa__punti" aria-hidden="true"><span></span><span></span><span></span></span>
+            <span class="pensa__testo">Il docente sta valutando la risposta…</span>
+          </p>
+          <div class="blocco blocco--extra" data-parte="approfondimento" hidden={!r.approfondimento}>
+            <p class="extra__etichetta">Domanda di approfondimento</p>
+            <p class="domanda__extra testo-domanda">{r.approfondimento}</p>
+            <button type="button" class="btn ascolta">Ascolta</button>
+            <div class="registratore">
+              <button type="button" class="rec" aria-pressed="false">
+                <span class="rec__icona" aria-hidden="true"></span>
+                <span class="rec__testo">{r.rispostaExtra ? 'Rifai la risposta' : 'Rispondi'}</span>
+              </button>
+              <canvas class="onda" width="600" height="80" aria-hidden="true"></canvas>
+              <span class="durata num" aria-live="off">0:00</span>
+            </div>
+            <p class="stato" role="status"></p>
+            <div class="trascrizione" hidden={!r.rispostaExtra}>
+              <h3>Hai detto</h3>
+              <blockquote class="testo">{r.rispostaExtra}</blockquote>
+              <div class="metriche-box">{r.metricheExtra && <MetricheParlato metriche={r.metricheExtra} />}</div>
+            </div>
+          </div>
+          <p class="soddisfatto" hidden={r.approfondimento !== ''}>Il docente non ha altre domande su questo punto.</p>
+        </>
+      )}
     </section>
   ))}
 
@@ -58,6 +89,7 @@ const { sim, risposte } = Astro.props;
   const radice = document.getElementById('orale') as HTMLElement | null;
   if (radice) {
     const id = radice.dataset.id!;
+    const dalVivo = radice.dataset.vivo === '1';
     const sezioni = Array.from(radice.querySelectorAll<HTMLElement>('.domanda'));
     const progresso = document.getElementById('progresso')!;
     const indietro = document.getElementById('indietro') as HTMLButtonElement;
@@ -66,6 +98,7 @@ const { sim, risposte } = Astro.props;
     const riepilogo = document.getElementById('riepilogo')!;
     const MAX_SECONDI = 180;
     let attuale = 0;
+    type Parte = 'principale' | 'approfondimento';
 
     // ---------- Coda sul telefono (IndexedDB) per registrazioni senza rete ----------
     const db = (): Promise<IDBDatabase> =>
@@ -75,170 +108,227 @@ const { sim, risposte } = Astro.props;
         r.onsuccess = () => ok(r.result);
         r.onerror = () => ko(r.error);
       });
-    const accoda = async (ordine: number, blob: Blob) => {
+    const chiave = (ordine: number, parte: Parte) => `${id}:${ordine}:${parte}`;
+    const accoda = async (ordine: number, parte: Parte, blob: Blob) => {
       const d = await db();
-      d.transaction('attesa', 'readwrite').objectStore('attesa').put({ chiave: `${id}:${ordine}`, id, ordine, blob });
+      d.transaction('attesa', 'readwrite').objectStore('attesa').put({ chiave: chiave(ordine, parte), id, ordine, parte, blob });
     };
-    const togli = async (ordine: number) => {
+    const togli = async (ordine: number, parte: Parte) => {
       const d = await db();
-      d.transaction('attesa', 'readwrite').objectStore('attesa').delete(`${id}:${ordine}`);
+      d.transaction('attesa', 'readwrite').objectStore('attesa').delete(chiave(ordine, parte));
     };
-    const inAttesa = async (): Promise<{ ordine: number; blob: Blob }[]> => {
+    const inAttesa = async (): Promise<{ ordine: number; parte: Parte; blob: Blob }[]> => {
       const d = await db();
       return new Promise((ok) => {
         const r = d.transaction('attesa').objectStore('attesa').getAll();
-        r.onsuccess = () => ok((r.result as { id: string; ordine: number; blob: Blob }[]).filter((x) => x.id === id));
+        r.onsuccess = () => ok((r.result as { id: string; ordine: number; parte?: Parte; blob: Blob }[]).filter((x) => x.id === id).map((x) => ({ ...x, parte: x.parte ?? 'principale' })));
         r.onerror = () => ok([]);
       });
     };
 
     const sezione = (ordine: number) => sezioni.find((s) => Number(s.dataset.ordine) === ordine)!;
-    const stato = (s: HTMLElement, testo: string, tipo = '') => {
-      const p = s.querySelector('.stato')!;
+    const blocco = (ordine: number, parte: Parte) => sezione(ordine).querySelector<HTMLElement>(`.blocco[data-parte="${parte}"]`)!;
+    const stato = (b: HTMLElement, testo: string, tipo = '') => {
+      const p = b.querySelector('.stato')!;
       p.textContent = testo;
       p.className = `stato ${tipo}`;
     };
 
-    const mostraTrascrizione = (s: HTMLElement, testo: string, m: Record<string, any>) => {
-      const box = s.querySelector<HTMLElement>('.trascrizione')!;
-      box.hidden = false;
-      box.querySelector('.testo')!.textContent = testo;
-      const parti = [
+    const etichetteMetriche = (m: Record<string, any>) =>
+      [
         m.paroleAlMinuto ? `${m.paroleAlMinuto} parole/min` : null,
         `${m.pauseLunghe} ${m.pauseLunghe === 1 ? 'pausa lunga' : 'pause lunghe'}`,
         `${m.intercalari} intercalari${m.intercalari ? ` (${Object.keys(m.intercalariUsati).join(', ')})` : ''}`,
         m.avvio !== null ? `avvio ${String(m.avvio).replace('.', ',')} s` : null,
         `${Math.round(m.durata)} s`,
-      ].filter(Boolean);
+      ].filter(Boolean) as string[];
+
+    const mostraTrascrizione = (b: HTMLElement, testo: string, m: Record<string, any>) => {
+      const box = b.querySelector<HTMLElement>('.trascrizione')!;
+      box.hidden = false;
+      box.querySelector('.testo')!.textContent = testo;
       const ul = document.createElement('ul');
       ul.className = 'metriche';
-      parti.forEach((t) => {
+      etichetteMetriche(m).forEach((t) => {
         const li = document.createElement('li');
-        li.textContent = t as string;
+        li.textContent = t;
         ul.append(li);
       });
       box.querySelector('.metriche-box')!.replaceChildren(ul);
-      s.dataset.fatta = '1';
-      aggiornaRiepilogo();
+      b.querySelector('.rec__testo')!.textContent = 'Rifai la risposta';
     };
 
-    const invia = async (ordine: number, blob: Blob): Promise<boolean> => {
+    // ---------- Lettura ad alta voce ----------
+    const leggi = (testo: string) => {
+      if (!('speechSynthesis' in window)) return;
+      speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(testo);
+      u.lang = 'it-IT';
+      const v = speechSynthesis.getVoices().find((x) => x.lang?.toLowerCase().startsWith('it'));
+      if (v) u.voice = v;
+      speechSynthesis.speak(u);
+    };
+
+    // ---------- Approfondimento (dal vivo) ----------
+    const attesaApprofondimento = new Set<number>();
+    const mostraApprofondimento = (ordine: number, esito: { stato: string; domanda?: string; messaggio?: string }) => {
       const s = sezione(ordine);
-      stato(s, 'Trascrizione in corso…');
+      const pensa = s.querySelector<HTMLElement>('.pensa')!;
+      const extra = blocco(ordine, 'approfondimento');
+      const soddisfatto = s.querySelector<HTMLElement>('.soddisfatto')!;
+      pensa.hidden = esito.stato !== 'in_attesa';
+      if (esito.stato === 'pronto' && esito.domanda) {
+        extra.hidden = false;
+        soddisfatto.hidden = true;
+        const testo = extra.querySelector('.domanda__extra')!;
+        const nuova = testo.textContent !== esito.domanda;
+        testo.textContent = esito.domanda;
+        if (nuova && Number(s.dataset.ordine) === Number(sezioni[attuale]?.dataset.ordine)) leggi(esito.domanda);
+      } else if (esito.stato === 'nessuno') {
+        extra.hidden = true;
+        soddisfatto.hidden = false;
+      } else if (esito.stato === 'errore') {
+        pensa.hidden = false;
+        pensa.querySelector('.pensa__testo')!.textContent = 'Il docente non è riuscito a formulare la domanda: puoi passare alla successiva.';
+      }
+    };
+    const seguiApprofondimento = async (ordine: number, chiedi: boolean) => {
+      if (!dalVivo || attesaApprofondimento.has(ordine)) return;
+      attesaApprofondimento.add(ordine);
       try {
-        const r = await fetch(`/api/simulazioni/${id}/audio?ordine=${ordine}`, {
+        let esito = await (await fetch(`/api/simulazioni/${id}/approfondimento?ordine=${ordine}`, { method: chiedi ? 'POST' : 'GET' })).json();
+        mostraApprofondimento(ordine, esito);
+        const inizio = Date.now();
+        while (esito.stato === 'in_attesa' && Date.now() - inizio < 180_000) {
+          await new Promise((r) => setTimeout(r, 2500));
+          esito = await (await fetch(`/api/simulazioni/${id}/approfondimento?ordine=${ordine}`)).json();
+          mostraApprofondimento(ordine, esito);
+        }
+        if (esito.stato === 'in_attesa') {
+          sezione(ordine).querySelector('.pensa__testo')!.textContent = 'Il docente ci sta mettendo troppo (agente spento?): puoi passare alla domanda successiva.';
+        }
+      } catch {
+        /* rete assente: si può proseguire comunque */
+      } finally {
+        attesaApprofondimento.delete(ordine);
+      }
+    };
+
+    // ---------- Invio dell'audio ----------
+    const invia = async (ordine: number, parte: Parte, blob: Blob): Promise<boolean> => {
+      const b = blocco(ordine, parte);
+      stato(b, 'Trascrizione in corso…');
+      try {
+        const r = await fetch(`/api/simulazioni/${id}/audio?ordine=${ordine}&parte=${parte}`, {
           method: 'POST',
           headers: { 'Content-Type': blob.type || 'audio/webm' },
           body: blob,
         });
         const dati = await r.json().catch(() => ({}));
+        await togli(ordine, parte);
         if (!r.ok) {
-          stato(s, dati.errore ?? `Errore ${r.status}: riprova.`, 'stato--errore');
-          await togli(ordine);
+          stato(b, dati.errore ?? `Errore ${r.status}: riprova.`, 'stato--errore');
           return false;
         }
-        await togli(ordine);
-        stato(s, '');
-        mostraTrascrizione(s, dati.trascrizione, dati.metriche);
+        stato(b, '');
+        mostraTrascrizione(b, dati.trascrizione, dati.metriche);
+        if (parte === 'principale') {
+          sezione(ordine).dataset.fatta = '1';
+          aggiornaRiepilogo();
+          // Una risposta rifatta richiede un nuovo approfondimento.
+          const extra = sezione(ordine).querySelector<HTMLElement>('.blocco--extra');
+          if (extra) {
+            extra.hidden = true;
+            extra.querySelector<HTMLElement>('.trascrizione')!.hidden = true;
+          }
+          seguiApprofondimento(ordine, true);
+        }
         return true;
       } catch {
-        await accoda(ordine, blob);
-        stato(s, 'Nessuna rete: la risposta è salvata sul telefono e parte da sola appena torni online.', 'stato--attesa');
+        await accoda(ordine, parte, blob);
+        stato(b, 'Nessuna rete: la risposta è salvata sul telefono e parte da sola appena torni online.', 'stato--attesa');
         return false;
       }
     };
 
     const svuotaCoda = async () => {
       if (!navigator.onLine) return;
-      for (const x of await inAttesa()) await invia(x.ordine, x.blob);
+      for (const x of await inAttesa()) await invia(x.ordine, x.parte, x.blob);
     };
     window.addEventListener('online', svuotaCoda);
-
-    // ---------- Lettura della domanda ----------
-    const voceItaliana = () => speechSynthesis.getVoices().find((v) => v.lang?.toLowerCase().startsWith('it'));
-    sezioni.forEach((s) => {
-      const b = s.querySelector<HTMLButtonElement>('.ascolta')!;
-      if (!('speechSynthesis' in window)) {
-        b.hidden = true;
-        return;
-      }
-      b.addEventListener('click', () => {
-        speechSynthesis.cancel();
-        const u = new SpeechSynthesisUtterance(s.querySelector('.domanda__testo')!.textContent ?? '');
-        u.lang = 'it-IT';
-        const v = voceItaliana();
-        if (v) u.voice = v;
-        speechSynthesis.speak(u);
-      });
-    });
 
     // ---------- Registrazione con forma d'onda ----------
     const tipoAudio = () =>
       ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg;codecs=opus'].find((t) => window.MediaRecorder?.isTypeSupported?.(t)) ?? '';
 
-    sezioni.forEach((s) => {
-      const bottone = s.querySelector<HTMLButtonElement>('.rec')!;
-      const etichetta = s.querySelector<HTMLElement>('.rec__testo')!;
-      const tela = s.querySelector<HTMLCanvasElement>('.onda')!;
-      const durata = s.querySelector<HTMLElement>('.durata')!;
+    const collega = (b: HTMLElement, ordine: number, parte: Parte) => {
+      b.querySelector<HTMLButtonElement>('.ascolta')!.addEventListener('click', () =>
+        leggi(b.querySelector('.testo-domanda')!.textContent ?? ''),
+      );
+      if (!('speechSynthesis' in window)) b.querySelector<HTMLButtonElement>('.ascolta')!.hidden = true;
+
+      const bottone = b.querySelector<HTMLButtonElement>('.rec')!;
+      const etichetta = b.querySelector<HTMLElement>('.rec__testo')!;
+      const tela = b.querySelector<HTMLCanvasElement>('.onda')!;
+      const durata = b.querySelector<HTMLElement>('.durata')!;
       let registratore: MediaRecorder | null = null;
-      let flusso: MediaStream | null = null;
       let fermaDisegno = () => {};
       let timer = 0;
-
       const fine = () => {
-        registratore?.state === 'recording' && registratore.stop();
+        if (registratore?.state === 'recording') registratore.stop();
       };
 
       bottone.addEventListener('click', async () => {
         if (registratore) return fine();
         if (!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder) {
-          stato(s, 'Questo browser non permette di registrare.', 'stato--errore');
+          stato(b, 'Questo browser non permette di registrare.', 'stato--errore');
           return;
         }
+        let flusso: MediaStream;
         try {
           flusso = await navigator.mediaDevices.getUserMedia({ audio: true });
         } catch {
-          stato(s, 'Microfono non autorizzato: consentilo nelle impostazioni del browser.', 'stato--errore');
+          stato(b, 'Microfono non autorizzato: consentilo nelle impostazioni del browser.', 'stato--errore');
           return;
         }
-        speechSynthesis?.cancel();
+        if ('speechSynthesis' in window) speechSynthesis.cancel();
         const pezzi: Blob[] = [];
         const tipo = tipoAudio();
-        registratore = tipo ? new MediaRecorder(flusso, { mimeType: tipo }) : new MediaRecorder(flusso);
-        registratore.ondataavailable = (e) => e.data.size && pezzi.push(e.data);
-        registratore.onstop = async () => {
+        const rec = tipo ? new MediaRecorder(flusso, { mimeType: tipo }) : new MediaRecorder(flusso);
+        registratore = rec;
+        rec.ondataavailable = (e) => e.data.size && pezzi.push(e.data);
+        rec.onstop = async () => {
           clearInterval(timer);
           fermaDisegno();
-          flusso?.getTracks().forEach((t) => t.stop());
-          const blob = new Blob(pezzi, { type: registratore?.mimeType || tipo || 'audio/webm' });
+          flusso.getTracks().forEach((t) => t.stop());
+          const blob = new Blob(pezzi, { type: rec.mimeType || tipo || 'audio/webm' });
           registratore = null;
           bottone.setAttribute('aria-pressed', 'false');
           bottone.classList.remove('rec--attivo');
           etichetta.textContent = 'Rifai la risposta';
-          await invia(Number(s.dataset.ordine), blob);
+          await invia(ordine, parte, blob);
         };
 
-        // Forma d'onda dal vivo
         const ctx = new AudioContext();
         const analisi = ctx.createAnalyser();
         analisi.fftSize = 1024;
         ctx.createMediaStreamSource(flusso).connect(analisi);
-        const dati = new Uint8Array(analisi.fftSize);
+        const campioni = new Uint8Array(analisi.fftSize);
         const g = tela.getContext('2d')!;
-        const colore = getComputedStyle(document.documentElement).getPropertyValue('--color-accent') || '#1f4e8c';
+        const colore = getComputedStyle(document.documentElement).getPropertyValue('--color-accent').trim() || '#1f4e8c';
         let attivo = true;
         const disegna = () => {
           if (!attivo) return;
-          analisi.getByteTimeDomainData(dati);
+          analisi.getByteTimeDomainData(campioni);
           g.clearRect(0, 0, tela.width, tela.height);
           g.lineWidth = 3;
           g.strokeStyle = colore;
           g.beginPath();
-          for (let i = 0; i < dati.length; i++) {
-            const x = (i / (dati.length - 1)) * tela.width;
-            const y = (dati[i] / 255) * tela.height;
-            i ? g.lineTo(x, y) : g.moveTo(x, y);
+          for (let i = 0; i < campioni.length; i++) {
+            const x = (i / (campioni.length - 1)) * tela.width;
+            const y = (campioni[i] / 255) * tela.height;
+            if (i) g.lineTo(x, y);
+            else g.moveTo(x, y);
           }
           g.stroke();
           requestAnimationFrame(disegna);
@@ -257,12 +347,17 @@ const { sim, risposte } = Astro.props;
           if (sec >= MAX_SECONDI) fine();
         }, 250);
 
-        registratore.start(1000);
+        rec.start(1000);
         bottone.setAttribute('aria-pressed', 'true');
         bottone.classList.add('rec--attivo');
         etichetta.textContent = 'Ho finito';
-        stato(s, 'Ti ascolto… Massimo 3 minuti.');
+        stato(b, 'Ti ascolto… Massimo 3 minuti.');
       });
+    };
+
+    sezioni.forEach((s) => {
+      const ordine = Number(s.dataset.ordine);
+      s.querySelectorAll<HTMLElement>('.blocco').forEach((b) => collega(b, ordine, b.dataset.parte as Parte));
     });
 
     // ---------- Navigazione ----------
@@ -287,6 +382,8 @@ const { sim, risposte } = Astro.props;
     radice.classList.add('orale--js');
     mostra(Math.max(0, sezioni.findIndex((s) => s.dataset.fatta !== '1')));
     svuotaCoda();
+    // Dal vivo: riprende gli approfondimenti già chiesti (pagina ricaricata).
+    if (dalVivo) sezioni.forEach((s) => s.dataset.fatta === '1' && seguiApprofondimento(Number(s.dataset.ordine), false));
   }
 </script>
 
@@ -316,12 +413,30 @@ const { sim, risposte } = Astro.props;
     display: grid;
     gap: var(--space-4);
     padding: var(--space-5);
+  }
+  .blocco {
+    display: grid;
+    gap: var(--space-4);
     justify-items: start;
+  }
+  .blocco--extra {
+    padding-top: var(--space-4);
+    border-top: var(--border);
   }
   .domanda__testo {
     font-family: var(--font-serif);
     font-size: var(--text-xl);
     line-height: 1.35;
+  }
+  .extra__etichetta {
+    font-size: var(--text-sm);
+    font-weight: var(--weight-semibold);
+    color: var(--color-accent);
+  }
+  .domanda__extra {
+    font-family: var(--font-serif);
+    font-size: var(--text-lg);
+    line-height: 1.4;
   }
   .registratore {
     width: 100%;
@@ -424,6 +539,47 @@ const { sim, risposte } = Astro.props;
     border-radius: var(--radius-pill);
     font-size: var(--text-sm);
     font-variant-numeric: tabular-nums;
+  }
+  .pensa {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-3) var(--space-4);
+    background: var(--color-accent-soft);
+    border-radius: var(--radius-md);
+    color: var(--color-ink);
+    font-weight: var(--weight-medium);
+  }
+  .pensa__punti {
+    display: inline-flex;
+    gap: 4px;
+  }
+  .pensa__punti span {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--color-accent);
+    animation: punto 1.2s infinite ease-in-out;
+  }
+  .pensa__punti span:nth-child(2) {
+    animation-delay: 0.2s;
+  }
+  .pensa__punti span:nth-child(3) {
+    animation-delay: 0.4s;
+  }
+  @keyframes punto {
+    0%,
+    80%,
+    100% {
+      opacity: 0.25;
+    }
+    40% {
+      opacity: 1;
+    }
+  }
+  .soddisfatto {
+    color: var(--color-success);
+    font-weight: var(--weight-medium);
   }
   .comandi {
     display: none;

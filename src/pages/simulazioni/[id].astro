@@ -30,7 +30,7 @@ const sufficiente = (sim.voto ?? 0) >= 18;
   <header class="intro" style={`--c: var(--materia-${m?.colore ?? 1})`}>
     <p class="etichetta"><span class="punto"></span><a href={m ? `/materie/${m.slug}` : '/'}>{m?.nome ?? sim.codice}</a></p>
     <h1>{sim.stato === 'in_corso' ? (orale ? 'Interrogazione orale' : 'Simulazione scritta') : orale ? "Risultato dell'orale" : 'Risultato della simulazione'}</h1>
-    <p class="muted">{formato.etichetta} · {risposte.length} domande{orale ? ' · rispondi a voce, una domanda per volta' : ` · ${sim.minuti} minuti`}</p>
+    <p class="muted">{formato.etichetta}{orale && sim.dal_vivo ? ' dal vivo' : ''} · {risposte.length} domande{orale ? ' · rispondi a voce, una domanda per volta' : ` · ${sim.minuti} minuti`}</p>
   </header>
 
   {sim.stato === 'in_corso' && orale ? (
@@ -146,6 +146,13 @@ const sufficiente = (sim.voto ?? 0) >= 18;
                 <>
                   <blockquote class="tua">{r.risposta ?? <span class="muted">Nessuna risposta.</span>}</blockquote>
                   {r.metriche && <MetricheParlato metriche={r.metriche} />}
+                  {r.approfondimento && (
+                    <div class="extra">
+                      <p class="extra__domanda"><span>Approfondimento del docente:</span> {r.approfondimento}</p>
+                      <blockquote class="tua">{r.rispostaExtra ?? <span class="muted">Nessuna risposta.</span>}</blockquote>
+                      {r.metricheExtra && <MetricheParlato metriche={r.metricheExtra} />}
+                    </div>
+                  )}
                   {r.esito && (
                     <div class="rubrica">
                       {r.esito.coperti && r.esito.coperti.length > 0 && (
@@ -644,6 +651,22 @@ const sufficiente = (sim.voto ?? 0) >= 18;
     border-radius: var(--radius-md);
     white-space: pre-wrap;
     line-height: 1.55;
+  }
+  .extra {
+    display: grid;
+    gap: var(--space-2);
+    padding-left: var(--space-4);
+    border-left: 2px solid var(--color-accent-soft);
+  }
+  .extra__domanda {
+    font-family: var(--font-serif);
+    line-height: 1.4;
+  }
+  .extra__domanda span {
+    font-family: var(--font-sans);
+    font-size: var(--text-sm);
+    font-weight: var(--weight-semibold);
+    color: var(--color-accent);
   }
   .rubrica {
     display: grid;

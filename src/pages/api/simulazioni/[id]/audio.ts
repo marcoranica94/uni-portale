@@ -38,6 +38,7 @@ export const POST: APIRoute = async ({ request, url, locals, params }) => {
   if (bloccata) return bloccata;
 
   const ordine = Number(url.searchParams.get('ordine'));
+  const parte = url.searchParams.get('parte') === 'approfondimento' ? 'approfondimento' : 'principale';
   if (!Number.isInteger(ordine) || ordine < 1) return json({ errore: 'Domanda non indicata.' }, 400);
   const tipo = (request.headers.get('Content-Type') ?? '').split(';')[0].trim() || 'audio/webm';
   if (!/^(audio|video)\//.test(tipo)) return json({ errore: 'Formato non audio.' }, 415);
@@ -65,7 +66,7 @@ export const POST: APIRoute = async ({ request, url, locals, params }) => {
   const metriche = metricheParlato(parole, uscita.transcription_info?.duration ?? null);
   if (!testo) return json({ errore: 'Non ho sentito parole: riprova avvicinandoti al microfono.' }, 422);
 
-  const salvata = await salvaTrascrizione(String(params.id), ordine, testo, metriche);
+  const salvata = await salvaTrascrizione(String(params.id), ordine, testo, metriche, parte);
   if (!salvata) return json({ errore: 'Simulazione non più modificabile.' }, 409);
   return json({ trascrizione: testo, metriche });
 };

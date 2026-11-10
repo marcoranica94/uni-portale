@@ -1,7 +1,7 @@
 import type { APIRoute } from 'astro';
-import { RichiestaCompleta, RisultatoKit, RisultatoDomande, RisultatoCorrezione, RichiestaCorrezione } from '../../../shared/schemi';
+import { RichiestaCompleta, RisultatoKit, RisultatoDomande, RisultatoCorrezione, RichiestaCorrezione, RisultatoApprofondimento, RichiestaApprofondimento } from '../../../shared/schemi';
 import { completa, getLavoro, registraBattito, salvaKit } from '../../../lib/coda';
-import { applicaCorrezione, domandaValida, salvaBanca } from '../../../lib/simulazioni';
+import { applicaCorrezione, domandaValida, salvaApprofondimento, salvaBanca } from '../../../lib/simulazioni';
 import { env } from 'cloudflare:workers';
 import { soloAgente, leggi, json } from './_comune';
 
@@ -46,6 +46,16 @@ export const POST: APIRoute = async (ctx) => {
     const richiesta = RichiestaCorrezione.parse(JSON.parse(riga?.richiesta ?? '{}'));
     await applicaCorrezione(richiesta.simulazione, r.data);
     await completa(lavoro.id, { agente: r.data.agente, valutazioni: r.data.valutazioni.length });
+    return json({ ok: true });
+  }
+
+  if (lavoro.tipo === 'approfondimento') {
+    const r = RisultatoApprofondimento.safeParse(dati.risultato);
+    if (!r.success) return json({ errore: 'Approfondimento non valido.', dettagli: r.error.issues.slice(0, 5) }, 400);
+    const riga = await env.DB.prepare('SELECT richiesta FROM lavori WHERE id = ?').bind(lavoro.id).first<{ richiesta: string }>();
+    const richiesta = RichiestaApprofondimento.parse(JSON.parse(riga?.richiesta ?? '{}'));
+    await salvaApprofondimento(richiesta.simulazione, richiesta.ordine, r.data.serve, r.data.domanda);
+    await completa(lavoro.id, r.data);
     return json({ ok: true });
   }
 

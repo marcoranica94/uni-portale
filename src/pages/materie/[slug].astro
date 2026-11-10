@@ -133,6 +133,10 @@ const esito = ESITI[Astro.url.searchParams.get('esito') ?? ''];
             <input type="hidden" name="codice" value={m.codice!} />
             <input type="hidden" name="modalita" value="orale" />
             <input type="hidden" name="formato" value="breve" />
+            <label class="vivo">
+              <input type="checkbox" name="dal_vivo" value="1" checked={agente.online} disabled={!agente.online} />
+              <span><strong>Dal vivo</strong>: dopo ogni risposta il docente può farti una domanda di approfondimento{!agente.online && ' (serve l\'agente locale acceso)'}.</span>
+            </label>
             <p>Interrogazione di {profilo?.domandeOrale ?? ORALE.aperte} domande: le ascolti, rispondi a voce, la trascrizione arriva in pochi secondi. L'audio non viene salvato.</p>
             <button class="btn btn--primary" type="submit">Inizia l'orale</button>
             <p class="muted piccolo num">Domande pronte: {banca.nuoveAperte} mai uscite su {banca.aperte}. Quando scarseggiano, l'agente ne prepara altre da solo.</p>
@@ -394,6 +398,28 @@ const esito = ESITI[Astro.url.searchParams.get('esito') ?? ''];
   }
   .piccolo {
     font-size: var(--text-sm);
+  }
+  .vivo {
+    display: flex;
+    gap: var(--space-3);
+    align-items: flex-start;
+    padding: var(--space-3);
+    background: var(--color-accent-soft);
+    border-radius: var(--radius-md);
+    font-size: var(--text-sm);
+    cursor: pointer;
+  }
+  .vivo input {
+    width: 20px;
+    height: 20px;
+    flex: none;
+    margin-top: 1px;
+    accent-color: var(--color-accent);
+  }
+  .vivo:has(input:disabled) {
+    background: var(--color-surface-muted);
+    color: var(--color-ink-muted);
+    cursor: not-allowed;
   }
   .istruzioni {
     padding: 0 var(--space-5);

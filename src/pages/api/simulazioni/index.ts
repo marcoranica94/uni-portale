@@ -15,7 +15,7 @@ export const POST: APIRoute = async ({ request, url, locals }) => {
   const modalita: Modalita = dati.get('modalita') === 'orale' ? 'orale' : 'scritto';
   const materia = (await getMaterie()).find((m) => m.codice === codice);
   if (!materia || !(formato in FORMATI)) return new Response('Richiesta non valida', { status: 400 });
-  const id = await creaSimulazione(codice, formato, modalita);
+  const id = await creaSimulazione(codice, formato, modalita, dati.get('dal_vivo') === '1');
   if (!id) return new Response(null, { status: 303, headers: { Location: `/materie/${materia.slug}?esito=senza-domande#simula` } });
   return new Response(null, { status: 303, headers: { Location: `/simulazioni/${id}` } });
 };

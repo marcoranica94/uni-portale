@@ -1,6 +1,6 @@
 import { env } from 'cloudflare:workers';
 import type { D1PreparedStatement } from '@cloudflare/workers-types';
-import type { DomandaCompleta, RichiestaCorrezione, RichiestaDomande, RisultatoCorrezione } from '../shared/schemi';
+import type { DomandaCompleta, RichiestaApprofondimento, RichiestaCorrezione, RichiestaDomande, RisultatoCorrezione } from '../shared/schemi';
 import { accoda, getKit, ultimoLavoro } from './coda';
 import { votoDa } from './calcoli';
 export { domandaValida, votoDa } from './calcoli';
@@ -164,7 +164,7 @@ const daRiga = (r: RigaDomanda): Domanda => ({
 });
 
 /** Crea una simulazione pescando le domande meno usate della banca attiva. */
-export async function creaSimulazione(codice: string, formato: Formato, modalita: Modalita = 'scritto'): Promise<string | null> {
+export async function creaSimulazione(codice: string, formato: Formato, modalita: Modalita = 'scritto', dalVivo = false): Promise<string | null> {
   const p = await getProfilo(codice);
   const f =
     modalita === 'orale'
@@ -183,7 +183,7 @@ export async function creaSimulazione(codice: string, formato: Formato, modalita
 
   const id = crypto.randomUUID();
   await env.DB.batch([
-    env.DB.prepare('INSERT INTO simulazioni (id, codice, formato, minuti, modalita) VALUES (?, ?, ?, ?, ?)').bind(id, codice, formato, f.minuti, modalita),
+    env.DB.prepare('INSERT INTO simulazioni (id, codice, formato, minuti, modalita, dal_vivo) VALUES (?, ?, ?, ?, ?, ?)').bind(id, codice, formato, f.minuti, modalita, modalita === 'orale' && dalVivo ? 1 : 0),
     ...scelte.map((s, i) => env.DB.prepare('INSERT INTO risposte (simulazione, ordine, domanda, massimo) VALUES (?, ?, ?, ?)').bind(id, i + 1, s.id, PUNTI[s.tipo])),
     ...scelte.map((s) => env.DB.prepare('UPDATE domande SET usata = usata + 1 WHERE id = ?').bind(s.id)),
   ]);
@@ -206,6 +206,7 @@ export interface Simulazione {
   giudizio: string | null;
   modalita: Modalita;
   esposizione: string | null;
+  dal_vivo: number;
 }
 
 export interface Esito {
@@ -223,18 +224,22 @@ export interface Risposta {
   massimo: number;
   esito: Esito | null;
   metriche: import('./calcoli').MetricheParlato | null;
+  /** Orale dal vivo: null = non chiesto, '' = nessun approfondimento, testo = la domanda. */
+  approfondimento: string | null;
+  rispostaExtra: string | null;
+  metricheExtra: import('./calcoli').MetricheParlato | null;
 }
 
 export async function getSimulazione(id: string): Promise<{ sim: Simulazione; risposte: Risposta[] } | null> {
   const sim = await env.DB.prepare('SELECT * FROM simulazioni WHERE id = ?').bind(id).first<Simulazione>();
   if (!sim) return null;
   const { results } = await env.DB.prepare(
-    `SELECT r.ordine, r.risposta, r.punti, r.massimo, r.esito, r.metriche, d.id, d.nucleo, d.tipo, d.testo, d.opzioni, d.corretta, d.spiegazione,
+    `SELECT r.ordine, r.risposta, r.punti, r.massimo, r.esito, r.metriche, r.approfondimento, r.risposta_extra, r.metriche_extra, d.id, d.nucleo, d.tipo, d.testo, d.opzioni, d.corretta, d.spiegazione,
             d.punti_chiave, d.risposta_modello, d.file, d.pagine
      FROM risposte r JOIN domande d ON d.id = r.domanda WHERE r.simulazione = ? ORDER BY r.ordine`,
   )
     .bind(id)
-    .all<RigaDomanda & { ordine: number; risposta: string | null; punti: number | null; massimo: number; esito: string | null; metriche: string | null }>();
+    .all<RigaDomanda & { ordine: number; risposta: string | null; punti: number | null; massimo: number; esito: string | null; metriche: string | null; approfondimento: string | null; risposta_extra: string | null; metriche_extra: string | null }>();
   return {
     sim,
     risposte: results.map((r) => ({
@@ -245,6 +250,9 @@ export async function getSimulazione(id: string): Promise<{ sim: Simulazione; ri
       massimo: r.massimo,
       esito: r.esito ? (JSON.parse(r.esito) as Esito) : null,
       metriche: r.metriche ? JSON.parse(r.metriche) : null,
+      approfondimento: r.approfondimento,
+      rispostaExtra: r.risposta_extra,
+      metricheExtra: r.metriche_extra ? JSON.parse(r.metriche_extra) : null,
     })),
   };
 }
@@ -284,13 +292,17 @@ export async function consegna(id: string, valori: Map<number, string>): Promise
       );
     } else {
       aggiornamenti.push(env.DB.prepare('UPDATE risposte SET risposta = ? WHERE simulazione = ? AND ordine = ?').bind(v.slice(0, 8000), id, r.ordine));
+      const extra =
+        r.approfondimento && r.rispostaExtra
+          ? `\n\n[Domanda di approfondimento del docente: ${r.approfondimento}]\n[Risposta dello studente: ${r.rispostaExtra}]`
+          : '';
       daCorreggere.push({
         ordine: r.ordine,
         nucleo: r.domanda.nucleo,
         domanda: r.domanda.testo,
         puntiChiave: r.domanda.puntiChiave,
         rispostaModello: r.domanda.rispostaModello,
-        risposta: v.slice(0, 8000),
+        risposta: (v + extra).slice(0, 10000),
         massimo: r.massimo,
         metriche: (r.metriche as Record<string, unknown> | null) ?? null,
       });
@@ -354,12 +366,77 @@ export async function eliminaSimulazione(id: string) {
 }
 
 /** Orale: salva la trascrizione e le metriche di una risposta (l'audio non viene mai salvato). */
-export async function salvaTrascrizione(id: string, ordine: number, testo: string, metriche: import('./calcoli').MetricheParlato) {
+export async function salvaTrascrizione(
+  id: string,
+  ordine: number,
+  testo: string,
+  metriche: import('./calcoli').MetricheParlato,
+  parte: 'principale' | 'approfondimento' = 'principale',
+) {
+  const colonne = parte === 'approfondimento' ? 'risposta_extra = ?, metriche_extra = ?' : 'risposta = ?, metriche = ?, approfondimento = NULL, risposta_extra = NULL, metriche_extra = NULL';
   const r = await env.DB.prepare(
-    `UPDATE risposte SET risposta = ?, metriche = ? WHERE simulazione = ? AND ordine = ?
+    `UPDATE risposte SET ${colonne} WHERE simulazione = ? AND ordine = ?
        AND EXISTS (SELECT 1 FROM simulazioni WHERE id = ? AND stato = 'in_corso' AND modalita = 'orale')`,
   )
     .bind(testo.slice(0, 8000), JSON.stringify(metriche), id, ordine, id)
     .run();
   return (r.meta?.changes ?? 0) > 0;
+}
+
+// ---------- Orale dal vivo: domanda di approfondimento ----------
+
+async function lavoroApprofondimento(id: string, ordine: number) {
+  return env.DB.prepare(
+    `SELECT id, stato, errore FROM lavori WHERE tipo = 'approfondimento'
+       AND json_extract(richiesta, '$.simulazione') = ? AND json_extract(richiesta, '$.ordine') = ?
+     ORDER BY creato DESC LIMIT 1`,
+  )
+    .bind(id, ordine)
+    .first<{ id: string; stato: string; errore: string | null }>();
+}
+
+export type StatoApprofondimento =
+  | { stato: 'pronto'; domanda: string }
+  | { stato: 'nessuno' }
+  | { stato: 'in_attesa' }
+  | { stato: 'errore'; messaggio: string }
+  | { stato: 'non_previsto' };
+
+export async function statoApprofondimento(id: string, ordine: number): Promise<StatoApprofondimento> {
+  const r = await env.DB.prepare('SELECT approfondimento FROM risposte WHERE simulazione = ? AND ordine = ?').bind(id, ordine).first<{ approfondimento: string | null }>();
+  if (r?.approfondimento) return { stato: 'pronto', domanda: r.approfondimento };
+  if (r?.approfondimento === '') return { stato: 'nessuno' };
+  const l = await lavoroApprofondimento(id, ordine);
+  if (!l) return { stato: 'non_previsto' };
+  if (l.stato === 'errore') return { stato: 'errore', messaggio: l.errore ?? 'non riuscito' };
+  return { stato: 'in_attesa' };
+}
+
+/** Chiede all'agente una domanda di approfondimento sulla risposta appena trascritta. */
+export async function chiediApprofondimento(id: string, ordine: number): Promise<StatoApprofondimento> {
+  const dati = await getSimulazione(id);
+  if (!dati || dati.sim.stato !== 'in_corso' || !dati.sim.dal_vivo) return { stato: 'non_previsto' };
+  const r = dati.risposte.find((x) => x.ordine === ordine);
+  if (!r?.risposta) return { stato: 'non_previsto' };
+  const attuale = await statoApprofondimento(id, ordine);
+  if (attuale.stato !== 'non_previsto' && attuale.stato !== 'errore') return attuale;
+  const richiesta: RichiestaApprofondimento = {
+    simulazione: id,
+    ordine,
+    codice: dati.sim.codice,
+    nucleo: r.domanda.nucleo,
+    domanda: r.domanda.testo,
+    puntiChiave: r.domanda.puntiChiave,
+    rispostaModello: r.domanda.rispostaModello,
+    risposta: r.risposta,
+    istruzioni: (await getProfilo(dati.sim.codice)).istruzioni,
+  };
+  await accoda('approfondimento', dati.sim.codice, richiesta);
+  return { stato: 'in_attesa' };
+}
+
+export async function salvaApprofondimento(id: string, ordine: number, serve: boolean, domanda: string) {
+  await env.DB.prepare('UPDATE risposte SET approfondimento = ? WHERE simulazione = ? AND ordine = ?')
+    .bind(serve && domanda.trim() ? domanda.trim().slice(0, 1000) : '', id, ordine)
+    .run();
 }
