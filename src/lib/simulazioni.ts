@@ -440,3 +440,35 @@ export async function salvaApprofondimento(id: string, ordine: number, serve: bo
     .bind(serve && domanda.trim() ? domanda.trim().slice(0, 1000) : '', id, ordine)
     .run();
 }
+
+// ---------- Costanza e ultimi esiti (pagina Oggi) ----------
+
+/** Data di calendario a Roma (AAAA-MM-GG): il giorno di studio segue l'ora italiana, non UTC. */
+export const giornoRoma = (d: Date) => new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Rome' }).format(d);
+
+/**
+ * Giorni di studio: un giorno conta se contiene almeno una simulazione.
+ * `diFila` conta i giorni consecutivi fino a oggi (o fino a ieri, se oggi non hai ancora simulato);
+ * `settimana` dice per gli ultimi 7 giorni, dal più vecchio a oggi, se hai simulato.
+ */
+export async function giorniDiStudio() {
+  const da = new Date(Date.now() - 60 * 86_400_000).toISOString();
+  const { results } = await env.DB.prepare('SELECT creata FROM simulazioni WHERE creata >= ?').bind(da).all<{ creata: string }>();
+  const giorni = new Set(results.map((r) => giornoRoma(new Date(r.creata))));
+  const giorno = (indietro: number) => giornoRoma(new Date(Date.now() - indietro * 86_400_000));
+  const inizio = giorni.has(giorno(0)) ? 0 : 1;
+  let diFila = 0;
+  while (giorni.has(giorno(inizio + diFila))) diFila++;
+  const settimana = Array.from({ length: 7 }, (_, i) => giorni.has(giorno(6 - i)));
+  return { diFila, settimana, oggi: giorni.has(giorno(0)) };
+}
+
+/** Per materia: quante simulazioni corrette e l'ultimo voto. */
+export async function ultimiEsiti() {
+  const { results } = await env.DB.prepare(
+    `SELECT codice, COUNT(*) AS n,
+            (SELECT voto FROM simulazioni s2 WHERE s2.codice = s.codice AND s2.stato = 'corretta' ORDER BY creata DESC LIMIT 1) AS voto
+       FROM simulazioni s WHERE stato = 'corretta' GROUP BY codice`,
+  ).all<{ codice: string; n: number; voto: number | null }>();
+  return new Map(results.map((r) => [r.codice, { n: r.n, voto: r.voto }]));
+}

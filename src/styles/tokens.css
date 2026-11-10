@@ -1,67 +1,73 @@
 /*
-  Token del portale Uni — direzione "quaderno d'inchiostro" (design/redesign-ui.md).
-  Neutri freddi appena tinti verso il blu inchiostro; carta bianca per ciò con cui si interagisce;
-  inchiostro solo per azioni, link, selezione e "corrente". Chiaro e scuro progettati insieme.
+  Token del portale Uni — direzione "taccuino notturno" (seconda passata, novembre 2026).
+  Neutri caldi come carta e inchiostro; giallo evidenziatore solo per l'azione principale,
+  la selezione e "dove sei ora"; righe e filetti più che riquadri. Chiaro e scuro progettati insieme.
   I componenti usano solo questi token, mai colori letterali.
 */
 :root {
-  /* Superfici: fondo tinto, carta, incassata, navigazione */
-  --color-paper: oklch(0.968 0.006 255);
-  --color-surface: oklch(1 0 0);
-  --color-surface-muted: oklch(0.945 0.008 255);
-  --color-nav: oklch(0.94 0.01 255);
+  /* Superfici: fondo, carta, incassata, in rilievo, navigazione */
+  --color-paper: #f4f1ea;
+  --color-surface: #fbfaf6;
+  --color-surface-muted: #ece8de;
+  --color-raised: #e6e1d4;
+  --color-nav: #efebe2;
 
   /* Testo */
-  --color-ink: oklch(0.22 0.02 260);
-  --color-ink-muted: oklch(0.42 0.02 260);
-  --color-ink-faint: oklch(0.5 0.018 260);
+  --color-ink: #1a1a1a;
+  --color-ink-muted: #57534b;
+  --color-ink-faint: #69645a;
 
-  /* Bordi: decorativo, controlli (>= 3:1) */
-  --color-rule: oklch(0.9 0.008 255);
-  --color-rule-strong: oklch(0.66 0.015 255);
+  /* Filetti: decorativo, controlli (>= 3:1) */
+  --color-rule: #dcd5c6;
+  --color-rule-strong: #8f897b;
 
-  /* Accento inchiostro: azioni, link, selezione, corrente */
-  --color-accent: oklch(0.42 0.13 258);
-  --color-accent-hover: oklch(0.36 0.12 258);
-  --color-accent-soft: oklch(0.93 0.03 255);
-  --color-on-accent: oklch(1 0 0);
+  /* Accento di testo (link, voce attiva, focus): seppia in chiaro, giallo in scuro */
+  --color-accent: #7a5600;
+  --color-accent-hover: #5c4000;
+  --color-accent-soft: #f6e6a4;
+  --color-on-accent: #1b1a14;
+
+  /* Evidenziatore: riempimento dell'azione principale */
+  --color-primary: #f2c744;
+  --color-primary-hover: #e9b92a;
+  --color-primary-edge: #c99a1a;
+  --color-on-primary: #1b1a14;
+  --color-highlight: rgb(242 199 68 / 0.55);
+  --color-rec: #c8402d;
 
   /* Stati (sempre con testo o icona) */
-  --color-success: oklch(0.45 0.1 150);
-  --color-success-soft: oklch(0.94 0.035 150);
-  --color-warning: oklch(0.5 0.11 70);
-  --color-warning-soft: oklch(0.95 0.045 80);
-  --color-danger: oklch(0.5 0.17 25);
-  --color-danger-soft: oklch(0.95 0.03 25);
-  --color-info: oklch(0.46 0.08 185);
-  --color-info-soft: oklch(0.94 0.03 185);
+  --color-success: #2f6f43; --color-success-soft: #dcebdc;
+  --color-warning: #8a5a00; --color-warning-soft: #f3e4c4;
+  --color-danger: #b23a26; --color-danger-soft: #f6dcd5;
+  --color-info: #23675e; --color-info-soft: #d7eae6;
+  --color-lode: #845a00;
 
   /* Materie: colore d'identità, sempre accanto al nome */
-  --materia-1: oklch(0.5 0.13 35); --materia-1-soft: oklch(0.94 0.03 35);
-  --materia-2: oklch(0.48 0.09 180); --materia-2-soft: oklch(0.94 0.03 180);
-  --materia-3: oklch(0.5 0.09 75); --materia-3-soft: oklch(0.95 0.035 80);
-  --materia-4: oklch(0.47 0.13 300); --materia-4-soft: oklch(0.94 0.03 300);
-  --materia-5: oklch(0.5 0.1 125); --materia-5-soft: oklch(0.95 0.035 125);
-  --materia-6: oklch(0.47 0.07 240); --materia-6-soft: oklch(0.94 0.02 240);
-  --materia-7: oklch(0.48 0.14 350); --materia-7-soft: oklch(0.95 0.03 350);
-  --materia-8: oklch(0.49 0.08 215); --materia-8-soft: oklch(0.94 0.025 215);
+  --materia-1: #b4472c; --materia-1-soft: #f4ddd5;
+  --materia-2: #2a7a6e; --materia-2-soft: #d7eae6;
+  --materia-3: #8c6418; --materia-3-soft: #f1e5c8;
+  --materia-4: #6a4fae; --materia-4-soft: #e6dff4;
+  --materia-5: #4f7a1f; --materia-5-soft: #e2edd3;
+  --materia-6: #375f9c; --materia-6-soft: #dce5f3;
+  --materia-7: #a33a62; --materia-7-soft: #f3dbe4;
+  --materia-8: #22708c; --materia-8-soft: #d6e9f0;
 
   /* Elevazione: solo per elementi sopraelevati (barra in basso, menu) */
-  --shadow-raised: 0 1px 2px oklch(0.2 0.02 260 / 0.06), 0 6px 20px oklch(0.2 0.02 260 / 0.08);
+  --shadow-raised: 0 1px 0 rgb(40 30 10 / 0.06), 0 8px 24px rgb(40 30 10 / 0.08);
 
-  /* Tipografia */
-  --font-serif: 'Source Serif 4 Variable', 'Iowan Old Style', 'Palatino Linotype', Georgia, serif;
-  --font-sans: 'Source Sans 3 Variable', 'Helvetica Neue', Arial, system-ui, sans-serif;
-  --font-mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  /* Tipografia: serif da libro per titoli e domande, Plex per interfaccia, Plex Mono per le cifre */
+  --font-serif: 'Newsreader Variable', 'Iowan Old Style', Georgia, serif;
+  --font-sans: 'IBM Plex Sans Variable', 'Helvetica Neue', Arial, system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, monospace;
 
   --text-xs: 0.8125rem;   /* 13: solo metadati */
   --text-sm: 0.875rem;    /* 14 */
   --text-base: 1rem;      /* 16: corpo */
   --text-lg: 1.125rem;    /* 18 */
   --text-xl: 1.375rem;    /* 22 */
-  --text-2xl: 1.75rem;    /* 28: titoli di pagina */
-  --text-3xl: 2.25rem;    /* 36: numeri chiave */
-  --leading-tight: 1.2;
+  --text-2xl: 2.125rem;   /* 34: titoli di pagina */
+  --text-3xl: 2.5rem;     /* 40: titolo di Oggi, cifre monumentali */
+  --leading-tight: 1.15;
   --leading-normal: 1.5;
   --weight-regular: 400;
   --weight-medium: 500;
@@ -78,80 +84,100 @@
   --space-7: 3rem;
 
   /* Forme */
-  --radius-sm: 6px;
-  --radius-md: 8px;
-  --radius-lg: 12px;
+  --radius-sm: 4px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
   --radius-pill: 999px;
   --border: 1px solid var(--color-rule);
   --tap-min: 44px;
 
+  /* Movimento: breve, solo dove dà un'informazione */
+  --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --dur: 140ms;
+
   /* Layout */
   --content-max: 70rem;
-  --nav-width: 15rem;
+  --nav-width: 14rem;
   --nav-bottom-height: 4rem;
 
   color-scheme: light;
 }
 
-/* Tema scuro: stessi ruoli, contrasti verificati. Ripetuto per la scelta esplicita. */
+/* Tema scuro: stessi ruoli. Ripetuto per la scelta esplicita. */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
-    --color-paper: oklch(0.17 0.012 255);
-    --color-surface: oklch(0.215 0.014 255);
-    --color-surface-muted: oklch(0.19 0.012 255);
-    --color-nav: oklch(0.15 0.012 255);
-    --color-ink: oklch(0.94 0.008 255);
-    --color-ink-muted: oklch(0.76 0.015 255);
-    --color-ink-faint: oklch(0.68 0.015 255);
-    --color-rule: oklch(0.3 0.014 255);
-    --color-rule-strong: oklch(0.5 0.015 255);
-    --color-accent: oklch(0.74 0.1 255);
-    --color-accent-hover: oklch(0.8 0.09 255);
-    --color-accent-soft: oklch(0.29 0.05 255);
-    --color-on-accent: oklch(0.17 0.02 260);
-    --color-success: oklch(0.78 0.11 150); --color-success-soft: oklch(0.28 0.04 150);
-    --color-warning: oklch(0.8 0.11 80); --color-warning-soft: oklch(0.3 0.045 75);
-    --color-danger: oklch(0.75 0.13 25); --color-danger-soft: oklch(0.29 0.05 25);
-    --color-info: oklch(0.78 0.08 185); --color-info-soft: oklch(0.28 0.035 185);
-    --materia-1: oklch(0.76 0.11 35); --materia-1-soft: oklch(0.29 0.04 35);
-    --materia-2: oklch(0.78 0.08 180); --materia-2-soft: oklch(0.28 0.035 180);
-    --materia-3: oklch(0.8 0.09 80); --materia-3-soft: oklch(0.3 0.04 80);
-    --materia-4: oklch(0.76 0.11 300); --materia-4-soft: oklch(0.29 0.045 300);
-    --materia-5: oklch(0.8 0.1 125); --materia-5-soft: oklch(0.29 0.04 125);
-    --materia-6: oklch(0.77 0.06 240); --materia-6-soft: oklch(0.28 0.03 240);
-    --materia-7: oklch(0.77 0.11 350); --materia-7-soft: oklch(0.29 0.045 350);
-    --materia-8: oklch(0.78 0.07 215); --materia-8-soft: oklch(0.28 0.035 215);
-    --shadow-raised: 0 1px 2px oklch(0 0 0 / 0.3), 0 8px 24px oklch(0 0 0 / 0.35);
+    --color-paper: #121316;
+    --color-surface: #1a1b1f;
+    --color-surface-muted: #17181b;
+    --color-raised: #212328;
+    --color-nav: #0f1012;
+    --color-ink: #ece9e2;
+    --color-ink-muted: #a29e96;
+    --color-ink-faint: #8f8b83;
+    --color-rule: #2b2d33;
+    --color-rule-strong: #6a6c74;
+    --color-accent: #f3cf55;
+    --color-accent-hover: #f8dc80;
+    --color-accent-soft: #352f1c;
+    --color-on-accent: #1b1a14;
+    --color-primary: #f3cf55;
+    --color-primary-hover: #f8dc80;
+    --color-primary-edge: #f3cf55;
+    --color-on-primary: #1b1a14;
+    --color-highlight: rgb(243 207 85 / 0.38);
+    --color-rec: #e5604d;
+    --color-success: #74d095; --color-success-soft: #1b2b21;
+    --color-warning: #e2b462; --color-warning-soft: #30281a;
+    --color-danger: #ee8b76; --color-danger-soft: #36211c;
+    --color-info: #6fc4b7; --color-info-soft: #172b28;
+    --color-lode: #e9c46a;
+    --materia-1: #e07a5f; --materia-1-soft: #35221d;
+    --materia-2: #5fb3a6; --materia-2-soft: #172b28;
+    --materia-3: #d1a75a; --materia-3-soft: #30281a;
+    --materia-4: #a38bd9; --materia-4-soft: #262036;
+    --materia-5: #9cc56b; --materia-5-soft: #212a18;
+    --materia-6: #7fa2d6; --materia-6-soft: #1b2333;
+    --materia-7: #d9809f; --materia-7-soft: #33202a;
+    --materia-8: #6db3cf; --materia-8-soft: #172830;
+    --shadow-raised: 0 1px 0 rgb(0 0 0 / 0.4), 0 10px 30px rgb(0 0 0 / 0.45);
     color-scheme: dark;
   }
 }
 :root[data-theme='dark'] {
-  --color-paper: oklch(0.17 0.012 255);
-  --color-surface: oklch(0.215 0.014 255);
-  --color-surface-muted: oklch(0.19 0.012 255);
-  --color-nav: oklch(0.15 0.012 255);
-  --color-ink: oklch(0.94 0.008 255);
-  --color-ink-muted: oklch(0.76 0.015 255);
-  --color-ink-faint: oklch(0.68 0.015 255);
-  --color-rule: oklch(0.3 0.014 255);
-  --color-rule-strong: oklch(0.5 0.015 255);
-  --color-accent: oklch(0.74 0.1 255);
-  --color-accent-hover: oklch(0.8 0.09 255);
-  --color-accent-soft: oklch(0.29 0.05 255);
-  --color-on-accent: oklch(0.17 0.02 260);
-  --color-success: oklch(0.78 0.11 150); --color-success-soft: oklch(0.28 0.04 150);
-  --color-warning: oklch(0.8 0.11 80); --color-warning-soft: oklch(0.3 0.045 75);
-  --color-danger: oklch(0.75 0.13 25); --color-danger-soft: oklch(0.29 0.05 25);
-  --color-info: oklch(0.78 0.08 185); --color-info-soft: oklch(0.28 0.035 185);
-  --materia-1: oklch(0.76 0.11 35); --materia-1-soft: oklch(0.29 0.04 35);
-  --materia-2: oklch(0.78 0.08 180); --materia-2-soft: oklch(0.28 0.035 180);
-  --materia-3: oklch(0.8 0.09 80); --materia-3-soft: oklch(0.3 0.04 80);
-  --materia-4: oklch(0.76 0.11 300); --materia-4-soft: oklch(0.29 0.045 300);
-  --materia-5: oklch(0.8 0.1 125); --materia-5-soft: oklch(0.29 0.04 125);
-  --materia-6: oklch(0.77 0.06 240); --materia-6-soft: oklch(0.28 0.03 240);
-  --materia-7: oklch(0.77 0.11 350); --materia-7-soft: oklch(0.29 0.045 350);
-  --materia-8: oklch(0.78 0.07 215); --materia-8-soft: oklch(0.28 0.035 215);
-  --shadow-raised: 0 1px 2px oklch(0 0 0 / 0.3), 0 8px 24px oklch(0 0 0 / 0.35);
+  --color-paper: #121316;
+  --color-surface: #1a1b1f;
+  --color-surface-muted: #17181b;
+  --color-raised: #212328;
+  --color-nav: #0f1012;
+  --color-ink: #ece9e2;
+  --color-ink-muted: #a29e96;
+  --color-ink-faint: #8f8b83;
+  --color-rule: #2b2d33;
+  --color-rule-strong: #6a6c74;
+  --color-accent: #f3cf55;
+  --color-accent-hover: #f8dc80;
+  --color-accent-soft: #352f1c;
+  --color-on-accent: #1b1a14;
+  --color-primary: #f3cf55;
+  --color-primary-hover: #f8dc80;
+  --color-primary-edge: #f3cf55;
+  --color-on-primary: #1b1a14;
+  --color-highlight: rgb(243 207 85 / 0.38);
+  --color-rec: #e5604d;
+  --color-success: #74d095; --color-success-soft: #1b2b21;
+  --color-warning: #e2b462; --color-warning-soft: #30281a;
+  --color-danger: #ee8b76; --color-danger-soft: #36211c;
+  --color-info: #6fc4b7; --color-info-soft: #172b28;
+  --color-lode: #e9c46a;
+  --materia-1: #e07a5f; --materia-1-soft: #35221d;
+  --materia-2: #5fb3a6; --materia-2-soft: #172b28;
+  --materia-3: #d1a75a; --materia-3-soft: #30281a;
+  --materia-4: #a38bd9; --materia-4-soft: #262036;
+  --materia-5: #9cc56b; --materia-5-soft: #212a18;
+  --materia-6: #7fa2d6; --materia-6-soft: #1b2333;
+  --materia-7: #d9809f; --materia-7-soft: #33202a;
+  --materia-8: #6db3cf; --materia-8-soft: #172830;
+  --shadow-raised: 0 1px 0 rgb(0 0 0 / 0.4), 0 10px 30px rgb(0 0 0 / 0.45);
   color-scheme: dark;
 }
 :root[data-theme='light'] {

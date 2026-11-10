@@ -51,7 +51,7 @@ const sufficiente = (sim.voto ?? 0) >= 18;
               {r.domanda.opzioni.map((o, j) => (
                 <label class="opzione">
                   <input type="radio" name={`r-${r.ordine}`} value={j} />
-                  <span class="opzione__lettera">{lettera(j)}</span>
+                  <span class="opzione__lettera" title={`Tasto ${j + 1}`}>{lettera(j)}</span>
                   <span>{o}</span>
                 </label>
               ))}
@@ -72,6 +72,7 @@ const sufficiente = (sim.voto ?? 0) >= 18;
         <button type="button" class="btn" id="indietro">Indietro</button>
         <div class="pallini" id="pallini" aria-hidden="true"></div>
         <button type="button" class="btn btn--primary" id="avanti">Avanti</button>
+        <p class="aiuto-tasti" aria-hidden="true"><span class="tasto">1–4</span> risposta · <span class="tasto">←</span> <span class="tasto">→</span> domande</p>
       </nav>
 
       <div class="consegna pannello" id="consegna">
@@ -263,6 +264,29 @@ const sufficiente = (sim.voto ?? 0) >= 18;
     indietro.addEventListener('click', () => mostra(attuale - 1));
     avanti.addEventListener('click', () => mostra(attuale + 1));
 
+    // Tastiera: 1-4 sceglie la risposta, frecce o J/K tra le domande. Spente mentre scrivi in un campo.
+    document.addEventListener('keydown', (e) => {
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      const t = e.target as HTMLElement | null;
+      if (t && (t.isContentEditable || /^(TEXTAREA|SELECT)$/.test(t.tagName) || (t instanceof HTMLInputElement && t.type !== 'radio'))) return;
+      const tasto = e.key.toLowerCase();
+      const n = Number(e.key);
+      if (n >= 1 && n <= 9) {
+        const scelta = domande[attuale]?.querySelectorAll<HTMLInputElement>('input[type="radio"]')[n - 1];
+        if (!scelta) return;
+        e.preventDefault();
+        scelta.checked = true;
+        scelta.dispatchEvent(new Event('input', { bubbles: true }));
+        scelta.focus();
+      } else if ((e.key === 'ArrowRight' || tasto === 'j') && !avanti.hidden) {
+        e.preventDefault();
+        mostra(attuale + 1);
+      } else if ((e.key === 'ArrowLeft' || tasto === 'k') && !indietro.disabled) {
+        e.preventDefault();
+        mostra(attuale - 1);
+      }
+    });
+
     form.addEventListener('input', (e) => {
       try {
         localStorage.setItem(chiave, JSON.stringify(valoriCorrenti()));
@@ -402,11 +426,24 @@ const sufficiente = (sim.voto ?? 0) >= 18;
     overflow: hidden;
     clip: rect(0 0 0 0);
   }
+  .aiuto-tasti {
+    flex-basis: 100%;
+    font-size: var(--text-xs);
+    color: var(--color-ink-faint);
+    text-align: center;
+  }
+  @media (hover: none) {
+    .aiuto-tasti {
+      display: none;
+    }
+  }
   .domanda__testo {
     clear: both;
     font-family: var(--font-serif);
-    font-size: var(--text-xl);
-    line-height: 1.35;
+    font-size: clamp(1.375rem, 3.5vw, 1.75rem);
+    font-weight: var(--weight-medium);
+    line-height: 1.25;
+    letter-spacing: -0.01em;
   }
   .opzioni {
     display: grid;
@@ -435,9 +472,9 @@ const sufficiente = (sim.voto ?? 0) >= 18;
     cursor: pointer;
   }
   .opzione:has(input:checked) {
-    border-color: var(--color-accent);
+    border-color: var(--color-primary-edge);
     background: var(--color-accent-soft);
-    box-shadow: inset 0 0 0 1px var(--color-accent);
+    box-shadow: inset 0 0 0 1px var(--color-primary-edge);
   }
   .opzione:has(input:focus-visible) {
     outline: 2px solid var(--color-accent);
@@ -449,15 +486,16 @@ const sufficiente = (sim.voto ?? 0) >= 18;
     flex: none;
     width: 26px;
     height: 26px;
-    border-radius: 50%;
+    border-radius: var(--radius-sm);
     border: 1px solid var(--color-rule-strong);
+    font-family: var(--font-mono);
     font-size: var(--text-sm);
-    font-weight: var(--weight-semibold);
+    font-weight: var(--weight-medium);
   }
   .opzione:has(input:checked) .opzione__lettera {
-    background: var(--color-accent);
-    border-color: var(--color-accent);
-    color: var(--color-on-accent);
+    background: var(--color-primary);
+    border-color: var(--color-primary-edge);
+    color: var(--color-on-primary);
   }
   .aperta {
     display: grid;
@@ -493,6 +531,7 @@ const sufficiente = (sim.voto ?? 0) >= 18;
   }
   .esame--js .comandi {
     display: flex;
+    flex-wrap: wrap;
     justify-content: space-between;
     align-items: center;
     gap: var(--space-3);

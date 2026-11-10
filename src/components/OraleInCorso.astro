@@ -17,22 +17,22 @@ const dalVivo = !!sim.dal_vivo;
 
 <div class="orale" id="orale" data-id={sim.id} data-vivo={dalVivo ? '1' : '0'}>
   <div class="barra-esame" role="status">
-    <span class="num" id="progresso">Domanda 1 di {risposte.length}</span>
+    <span class="cifra" id="progresso">Domanda 1 di {risposte.length}</span>
     <span class="muted">{dalVivo ? 'Dal vivo · ' : ''}L'audio non viene salvato</span>
   </div>
 
   {risposte.map((r) => (
-    <section class="domanda pannello" data-ordine={r.ordine} data-fatta={r.risposta ? '1' : '0'} aria-label={`Domanda ${r.ordine}`}>
+    <section class="domanda" data-ordine={r.ordine} data-fatta={r.risposta ? '1' : '0'} aria-label={`Domanda ${r.ordine}`}>
       <div class="blocco" data-parte="principale">
         <p class="domanda__testo testo-domanda">{r.domanda.testo}</p>
-        <button type="button" class="btn ascolta">Ascolta la domanda</button>
+        <button type="button" class="btn ascolta"><svg class="ascolta__icona" viewBox="0 0 20 20" aria-hidden="true"><path d="M3 8v4h3l4 3.5v-11L6 8z" fill="currentColor" /><path class="ascolta__onda1" d="M13 7.5a3.5 3.5 0 0 1 0 5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" /><path class="ascolta__onda2" d="M15.5 5a7 7 0 0 1 0 10" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" /></svg><span class="ascolta__testo">Ascolta la domanda</span> <span class="tasto" aria-hidden="true">R</span></button>
         <div class="registratore">
           <button type="button" class="rec" aria-pressed="false">
             <span class="rec__icona" aria-hidden="true"></span>
-            <span class="rec__testo">{r.risposta ? 'Rifai la risposta' : 'Rispondi'}</span>
+            <span class="rec__testo">{r.risposta ? 'Rifai la risposta' : 'Rispondi'}</span><span class="tasto" aria-hidden="true">Spazio</span>
           </button>
           <canvas class="onda" width="600" height="80" aria-hidden="true"></canvas>
-          <span class="durata num" aria-live="off">0:00</span>
+          <span class="durata cifra" aria-live="off">0:00</span>
         </div>
         <p class="stato" role="status"></p>
         <div class="trascrizione" hidden={!r.risposta}>
@@ -51,14 +51,14 @@ const dalVivo = !!sim.dal_vivo;
           <div class="blocco blocco--extra" data-parte="approfondimento" hidden={!r.approfondimento}>
             <p class="extra__etichetta">Domanda di approfondimento</p>
             <p class="domanda__extra testo-domanda">{r.approfondimento}</p>
-            <button type="button" class="btn ascolta">Ascolta</button>
+            <button type="button" class="btn ascolta"><svg class="ascolta__icona" viewBox="0 0 20 20" aria-hidden="true"><path d="M3 8v4h3l4 3.5v-11L6 8z" fill="currentColor" /><path class="ascolta__onda1" d="M13 7.5a3.5 3.5 0 0 1 0 5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" /><path class="ascolta__onda2" d="M15.5 5a7 7 0 0 1 0 10" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" /></svg><span class="ascolta__testo">Ascolta</span> <span class="tasto" aria-hidden="true">R</span></button>
             <div class="registratore">
               <button type="button" class="rec" aria-pressed="false">
                 <span class="rec__icona" aria-hidden="true"></span>
-                <span class="rec__testo">{r.rispostaExtra ? 'Rifai la risposta' : 'Rispondi'}</span>
+                <span class="rec__testo">{r.rispostaExtra ? 'Rifai la risposta' : 'Rispondi'}</span><span class="tasto" aria-hidden="true">Spazio</span>
               </button>
               <canvas class="onda" width="600" height="80" aria-hidden="true"></canvas>
-              <span class="durata num" aria-live="off">0:00</span>
+              <span class="durata cifra" aria-live="off">0:00</span>
             </div>
             <p class="stato" role="status"></p>
             <div class="trascrizione" hidden={!r.rispostaExtra}>
@@ -159,15 +159,22 @@ const dalVivo = !!sim.dal_vivo;
     };
 
     // ---------- Lettura ad alta voce ----------
-    const leggi = (testo: string) => {
+    // Mentre il docente legge, il pulsante mostra l'altoparlante con le onde in movimento.
+    const leggi = (testo: string, pulsante?: HTMLElement) => {
       if (!('speechSynthesis' in window)) return;
       speechSynthesis.cancel();
+      radice.querySelectorAll('.ascolta--parla').forEach((x) => x.classList.remove('ascolta--parla'));
       const u = new SpeechSynthesisUtterance(testo);
       u.lang = 'it-IT';
       const v = speechSynthesis.getVoices().find((x) => x.lang?.toLowerCase().startsWith('it'));
       if (v) u.voice = v;
+      const fine = () => pulsante?.classList.remove('ascolta--parla');
+      u.onstart = () => pulsante?.classList.add('ascolta--parla');
+      u.onend = fine;
+      u.onerror = fine;
       speechSynthesis.speak(u);
     };
+    const vibra = () => navigator.vibrate?.(15);
 
     // ---------- Approfondimento (dal vivo) ----------
     const attesaApprofondimento = new Set<number>();
@@ -262,9 +269,8 @@ const dalVivo = !!sim.dal_vivo;
       ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg;codecs=opus'].find((t) => window.MediaRecorder?.isTypeSupported?.(t)) ?? '';
 
     const collega = (b: HTMLElement, ordine: number, parte: Parte) => {
-      b.querySelector<HTMLButtonElement>('.ascolta')!.addEventListener('click', () =>
-        leggi(b.querySelector('.testo-domanda')!.textContent ?? ''),
-      );
+      const pulsanteAscolta = b.querySelector<HTMLButtonElement>('.ascolta')!;
+      pulsanteAscolta.addEventListener('click', () => leggi(b.querySelector('.testo-domanda')!.textContent ?? '', pulsanteAscolta));
       if (!('speechSynthesis' in window)) b.querySelector<HTMLButtonElement>('.ascolta')!.hidden = true;
 
       const bottone = b.querySelector<HTMLButtonElement>('.rec')!;
@@ -292,6 +298,8 @@ const dalVivo = !!sim.dal_vivo;
           return;
         }
         if ('speechSynthesis' in window) speechSynthesis.cancel();
+        radice.querySelectorAll('.ascolta--parla').forEach((x) => x.classList.remove('ascolta--parla'));
+        vibra();
         const pezzi: Blob[] = [];
         const tipo = tipoAudio();
         const rec = tipo ? new MediaRecorder(flusso, { mimeType: tipo }) : new MediaRecorder(flusso);
@@ -306,6 +314,7 @@ const dalVivo = !!sim.dal_vivo;
           bottone.setAttribute('aria-pressed', 'false');
           bottone.classList.remove('rec--attivo');
           etichetta.textContent = 'Rifai la risposta';
+          vibra();
           await invia(ordine, parte, blob);
         };
 
@@ -315,22 +324,28 @@ const dalVivo = !!sim.dal_vivo;
         ctx.createMediaStreamSource(flusso).connect(analisi);
         const campioni = new Uint8Array(analisi.fftSize);
         const g = tela.getContext('2d')!;
-        const colore = getComputedStyle(document.documentElement).getPropertyValue('--color-accent').trim() || '#1f4e8c';
+        const colore = getComputedStyle(document.documentElement).getPropertyValue('--color-ink').trim() || '#1a1a1a';
+        // Barre: ogni barra è l'ampiezza massima di un tratto del segnale, smorzata per non tremolare.
+        const BARRE = 40;
+        const altezze = new Float32Array(BARRE);
         let attivo = true;
         const disegna = () => {
           if (!attivo) return;
           analisi.getByteTimeDomainData(campioni);
           g.clearRect(0, 0, tela.width, tela.height);
-          g.lineWidth = 3;
-          g.strokeStyle = colore;
-          g.beginPath();
-          for (let i = 0; i < campioni.length; i++) {
-            const x = (i / (campioni.length - 1)) * tela.width;
-            const y = (campioni[i] / 255) * tela.height;
-            if (i) g.lineTo(x, y);
-            else g.moveTo(x, y);
+          g.fillStyle = colore;
+          const tratto = Math.floor(campioni.length / BARRE);
+          const passo = tela.width / BARRE;
+          for (let i = 0; i < BARRE; i++) {
+            let max = 0;
+            for (let j = i * tratto; j < (i + 1) * tratto; j++) max = Math.max(max, Math.abs(campioni[j] - 128));
+            altezze[i] = altezze[i] * 0.6 + Math.min(1, (max / 128) * 2.2) * 0.4;
+            const h = Math.max(4, altezze[i] * tela.height);
+            g.globalAlpha = 0.85;
+            g.beginPath();
+            g.roundRect(i * passo + passo * 0.2, (tela.height - h) / 2, passo * 0.6, h, 2);
+            g.fill();
           }
-          g.stroke();
           requestAnimationFrame(disegna);
         };
         fermaDisegno = () => {
@@ -379,6 +394,27 @@ const dalVivo = !!sim.dal_vivo;
     };
     indietro.addEventListener('click', () => mostra(attuale - 1));
     avanti.addEventListener('click', () => mostra(attuale + 1));
+    // Tastiera: Spazio registra/ferma, R riascolta, frecce o J/K tra le domande. Spente mentre scrivi in un campo.
+    document.addEventListener('keydown', (e) => {
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      const t = e.target as HTMLElement | null;
+      if (t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))) return;
+      const corrente = sezioni[attuale];
+      const blocchi = corrente ? Array.from(corrente.querySelectorAll<HTMLElement>('.blocco:not([hidden])')) : [];
+      const attivo = blocchi[blocchi.length - 1];
+      const registrando = !!radice.querySelector('.rec--attivo');
+      const tasto = e.key.toLowerCase();
+      if (e.key === ' ' && attivo) {
+        e.preventDefault();
+        (radice.querySelector<HTMLButtonElement>('.rec--attivo') ?? attivo.querySelector<HTMLButtonElement>('.rec'))?.click();
+      } else if (tasto === 'r' && attivo && !registrando) {
+        attivo.querySelector<HTMLButtonElement>('.ascolta')?.click();
+      } else if ((e.key === 'ArrowRight' || tasto === 'j') && !registrando && !avanti.hidden) {
+        mostra(attuale + 1);
+      } else if ((e.key === 'ArrowLeft' || tasto === 'k') && !registrando && !indietro.disabled) {
+        mostra(attuale - 1);
+      }
+    });
     radice.classList.add('orale--js');
     mostra(Math.max(0, sezioni.findIndex((s) => s.dataset.fatta !== '1')));
     svuotaCoda();
@@ -390,29 +426,27 @@ const dalVivo = !!sim.dal_vivo;
 <style>
   .orale {
     display: grid;
-    gap: var(--space-4);
-    max-width: 48rem;
+    gap: var(--space-5);
+    max-width: 46rem;
   }
+  /* Riga di servizio come l'intestazione di un foglio d'esame */
   .barra-esame {
     display: flex;
     justify-content: space-between;
-    align-items: center;
+    align-items: baseline;
     flex-wrap: wrap;
     gap: var(--space-2);
-    padding: var(--space-3) var(--space-4);
-    background: var(--color-surface);
-    border: var(--border);
-    border-radius: var(--radius-lg);
-    font-weight: var(--weight-semibold);
+    padding-bottom: var(--space-2);
+    border-bottom: var(--border);
+    font: var(--weight-medium) var(--text-xs) var(--font-mono);
+    color: var(--color-ink-muted);
   }
   .barra-esame .muted {
-    font-size: var(--text-sm);
-    font-weight: var(--weight-regular);
+    font-family: var(--font-sans);
   }
   .domanda {
     display: grid;
-    gap: var(--space-4);
-    padding: var(--space-5);
+    gap: var(--space-5);
   }
   .blocco {
     display: grid;
@@ -420,13 +454,15 @@ const dalVivo = !!sim.dal_vivo;
     justify-items: start;
   }
   .blocco--extra {
-    padding-top: var(--space-4);
-    border-top: var(--border);
+    padding: var(--space-4) 0 0 var(--space-4);
+    border-left: 3px solid var(--color-primary);
   }
   .domanda__testo {
     font-family: var(--font-serif);
-    font-size: var(--text-xl);
-    line-height: 1.35;
+    font-size: clamp(1.5rem, 4vw, 2rem);
+    font-weight: var(--weight-medium);
+    line-height: 1.2;
+    letter-spacing: -0.01em;
   }
   .extra__etichetta {
     font-size: var(--text-sm);
@@ -435,8 +471,36 @@ const dalVivo = !!sim.dal_vivo;
   }
   .domanda__extra {
     font-family: var(--font-serif);
-    font-size: var(--text-lg);
-    line-height: 1.4;
+    font-size: var(--text-xl);
+    font-weight: var(--weight-medium);
+    line-height: 1.3;
+  }
+  .ascolta {
+    min-height: 36px;
+    padding: 0 var(--space-3);
+    border-radius: var(--radius-pill);
+    border-color: var(--color-rule);
+    font-size: var(--text-sm);
+    font-weight: var(--weight-medium);
+    color: var(--color-ink-muted);
+  }
+  .ascolta__icona {
+    width: 18px;
+    height: 18px;
+  }
+  .ascolta--parla {
+    color: var(--color-ink);
+    border-color: var(--color-primary-edge);
+  }
+  .ascolta--parla .ascolta__onda1,
+  .ascolta--parla .ascolta__onda2 {
+    animation: voce 0.9s ease-in-out infinite;
+  }
+  .ascolta--parla .ascolta__onda2 {
+    animation-delay: 0.25s;
+  }
+  @keyframes voce {
+    50% { opacity: 0.15; }
   }
   .registratore {
     width: 100%;
@@ -445,7 +509,8 @@ const dalVivo = !!sim.dal_vivo;
     gap: var(--space-4);
     align-items: center;
     padding: var(--space-4);
-    background: var(--color-surface-muted);
+    background: var(--color-surface);
+    border: var(--border);
     border-radius: var(--radius-lg);
   }
   .rec {
@@ -461,39 +526,49 @@ const dalVivo = !!sim.dal_vivo;
     color: var(--color-ink);
     cursor: pointer;
   }
+  /* Anello rosso; dentro un punto che diventa quadrato mentre registri. Il rosso compare solo qui. */
   .rec__icona {
+    position: relative;
     width: 64px;
     height: 64px;
     border-radius: 50%;
-    background: var(--color-danger);
-    box-shadow: 0 0 0 4px var(--color-danger-soft);
-    position: relative;
+    border: 2px solid var(--color-rec);
+    transition: transform var(--dur) var(--ease);
+  }
+  .rec:active .rec__icona {
+    transform: scale(0.95);
   }
   .rec__icona::after {
     content: '';
     position: absolute;
-    inset: 22px;
+    inset: 14px;
     border-radius: 50%;
-    background: var(--color-on-accent);
+    background: var(--color-rec);
+    transition: inset var(--dur) var(--ease), border-radius var(--dur) var(--ease);
   }
   .rec--attivo .rec__icona::after {
-    border-radius: 3px;
+    inset: 20px;
+    border-radius: 4px;
   }
   .rec--attivo .rec__icona {
     animation: pulsa 1.4s ease-in-out infinite;
   }
   @keyframes pulsa {
     50% {
-      box-shadow: 0 0 0 10px var(--color-danger-soft);
+      box-shadow: 0 0 0 8px var(--color-danger-soft);
     }
+  }
+  .rec .tasto {
+    font-size: 0.625rem;
   }
   .onda {
     width: 100%;
-    height: 56px;
+    height: 64px;
   }
   .durata {
-    font-weight: var(--weight-semibold);
-    min-width: 3rem;
+    font-size: 1.75rem;
+    font-weight: var(--weight-medium);
+    min-width: 4.5rem;
     text-align: right;
   }
   .stato:empty {
@@ -501,7 +576,7 @@ const dalVivo = !!sim.dal_vivo;
   }
   .stato {
     font-weight: var(--weight-medium);
-    color: var(--color-accent);
+    color: var(--color-ink-muted);
   }
   .stato--errore {
     color: var(--color-danger);
@@ -520,10 +595,11 @@ const dalVivo = !!sim.dal_vivo;
   }
   .testo {
     margin: 0;
-    padding: var(--space-3) var(--space-4);
-    background: var(--color-surface-muted);
-    border-radius: var(--radius-md);
-    line-height: 1.55;
+    padding: var(--space-1) 0 var(--space-1) var(--space-4);
+    border-left: 2px solid var(--color-rule-strong);
+    font-family: var(--font-serif);
+    font-size: var(--text-lg);
+    line-height: 1.5;
   }
   .metriche-box :global(.metriche) {
     list-style: none;
@@ -534,20 +610,20 @@ const dalVivo = !!sim.dal_vivo;
     gap: var(--space-2);
   }
   .metriche-box :global(.metriche li) {
-    padding: 2px var(--space-3);
+    padding: 1px var(--space-2);
     border: var(--border);
-    border-radius: var(--radius-pill);
-    font-size: var(--text-sm);
-    font-variant-numeric: tabular-nums;
+    border-radius: var(--radius-sm);
+    font: var(--text-xs) var(--font-mono);
   }
+  /* Il docente sta pensando: riquadro tratteggiato, tre punti che respirano */
   .pensa {
     display: flex;
     align-items: center;
     gap: var(--space-3);
     padding: var(--space-3) var(--space-4);
-    background: var(--color-accent-soft);
+    border: 1px dashed var(--color-rule-strong);
     border-radius: var(--radius-md);
-    color: var(--color-ink);
+    color: var(--color-ink-muted);
     font-weight: var(--weight-medium);
   }
   .pensa__punti {
@@ -558,7 +634,7 @@ const dalVivo = !!sim.dal_vivo;
     width: 7px;
     height: 7px;
     border-radius: 50%;
-    background: var(--color-accent);
+    background: var(--color-primary);
     animation: punto 1.2s infinite ease-in-out;
   }
   .pensa__punti span:nth-child(2) {

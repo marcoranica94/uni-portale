@@ -61,8 +61,8 @@ const style = materia
     background: var(--color-surface-muted);
   }
   .card--accent {
-    background: var(--color-accent-soft);
-    border-color: transparent;
+    background: var(--color-surface);
+    border-color: var(--color-rule-strong);
   }
   .card__head {
     display: grid;
@@ -80,15 +80,16 @@ const style = materia
   }
   .card--materia .card__eyebrow::before {
     content: '';
-    width: 10px;
-    height: 10px;
-    border-radius: 50%;
+    width: 9px;
+    height: 9px;
+    border-radius: 2px;
     background: var(--card-materia);
   }
   .card__title {
     font-family: var(--font-serif);
     font-size: var(--text-xl);
     font-weight: var(--weight-semibold);
+    letter-spacing: -0.01em;
     overflow-wrap: anywhere;
   }
   .card__body {
@@ -117,10 +118,11 @@ const style = materia
     border-radius: inherit;
   }
   .card--link {
-    transition: border-color 0.15s;
+    transition: border-color var(--dur) var(--ease), background-color var(--dur) var(--ease);
   }
   .card--link:hover {
     border-color: var(--color-rule-strong);
+    background: var(--color-raised);
   }
   .card--link:has(.card__link:focus-visible) {
     outline: 2px solid var(--color-accent);

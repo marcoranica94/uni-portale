@@ -1,11 +1,9 @@
 ---
 import Base from '../layouts/Base.astro';
-import Badge from '../components/Badge.astro';
-import TipoEsame from '../components/TipoEsame.astro';
 import { getMaterie, CFU_TOTALI } from '../lib/percorso';
-import { getVoti, riepilogo, statoMateria } from '../lib/voti';
+import { getVoti, riepilogo, statoMateria, formatoMedia } from '../lib/voti';
 import { statoAgenti, getKit } from '../lib/coda';
-import { contaBanca } from '../lib/simulazioni';
+import { contaBanca, giorniDiStudio, ultimiEsiti, FORMATI, ORALE } from '../lib/simulazioni';
 
 export const prerender = false;
 
@@ -13,7 +11,7 @@ const materie = await getMaterie();
 const voti = await getVoti();
 const r = riepilogo(materie, voti);
 const inCorso = materie.filter((m) => statoMateria(m, voti) === 'in-corso');
-const agente = await statoAgenti();
+const [agente, studio, esiti] = await Promise.all([statoAgenti(), giorniDiStudio(), ultimiEsiti()]);
 
 // Prossimo passo: la prima materia in corso con il kit d'esame pronto, altrimenti la prima con appunti.
 const conKit = await Promise.all(inCorso.map(async (m) => ({ m, kit: m.codice ? await getKit(m.codice) : null })));
@@ -22,89 +20,256 @@ const primoCapitolo = adesso?.m.appunti?.capitoli.find((c) => !/indice|mappa/i.t
 const banca = adesso?.m.codice ? await contaBanca(adesso.m.codice) : null;
 const orale = adesso?.m.esame.tipo === 'Orale';
 const simulabile = !!(adesso && banca && banca.totale > 0 && (orale || adesso.m.esame.tipo === 'Scritto'));
+const minuti = orale ? ORALE.minuti : FORMATI.breve.minuti;
+
+// Data e settimana del semestre, dalle date ufficiali del piano di studi ("14/09/2026 - 18/12/2026").
+const ora = new Date();
+const dataEstesa = new Intl.DateTimeFormat('it-IT', { timeZone: 'Europe/Rome', weekday: 'long', day: 'numeric', month: 'long' }).format(ora);
+const leggiData = (s: string) => {
+  const [g, m, a] = s.split('/').map(Number);
+  return new Date(Date.UTC(a, m - 1, g));
+};
+const semestre = (() => {
+  const conDate = inCorso.find((m) => m.periodo === 'I semestre' || m.periodo === 'II semestre') ?? inCorso.find((m) => m.date);
+  const date = conDate?.date?.split(' - ');
+  if (!conDate || !date || date.length !== 2) return null;
+  const inizio = leggiData(date[0]);
+  const fine = leggiData(date[1]);
+  const settimane = Math.ceil((fine.getTime() - inizio.getTime() + 86_400_000) / (7 * 86_400_000));
+  const corrente = Math.floor((ora.getTime() - inizio.getTime()) / (7 * 86_400_000)) + 1;
+  if (corrente < 1 || corrente > settimane) return null;
+  const nome = conDate.periodo === 'II semestre' ? 'secondo semestre' : conDate.periodo === 'I semestre' ? 'primo semestre' : 'anno';
+  const fineLezioni = new Intl.DateTimeFormat('it-IT', { day: 'numeric', month: 'long', timeZone: 'UTC' }).format(fine);
+  return { settimane, corrente, nome, fineLezioni };
+})();
+
+const nomiGiorni = ['lun', 'mar', 'mer', 'gio', 'ven', 'sab', 'dom'];
+const giornoSettimana = (indietro: number) => nomiGiorni[(new Date(ora.getTime() - indietro * 86_400_000).getUTCDay() + 6) % 7];
 ---
 
 <Base title="Uni">
-  <header class="intro">
-    <p class="eyebrow">1º anno · Scienze politiche e strategie globali</p>
-    <h1>Oggi</h1>
+  <header class="testa">
+    <div class="testa__riga">
+      <p class="data">{dataEstesa}</p>
+      <a class:list={['agente', { 'agente--acceso': agente.online }]} href="/agente">
+        <span class="agente__luce" aria-hidden="true"></span>{agente.online ? 'agente acceso' : 'agente spento'}
+      </a>
+    </div>
+    <h1 class="titolo">Oggi</h1>
+    {semestre && (
+      <div class="semestre">
+        <div class="semestre__tacche" role="img" aria-label={`Settimana ${semestre.corrente} di ${semestre.settimane}`}>
+          {Array.from({ length: semestre.settimane }, (_, i) => (
+            <i class:list={{ fatta: i + 1 < semestre.corrente, ora: i + 1 === semestre.corrente }}></i>
+          ))}
+        </div>
+        <p class="semestre__testo">Settimana <span class="cifra">{semestre.corrente}</span> di <span class="cifra">{semestre.settimane}</span> del {semestre.nome} · lezioni fino al {semestre.fineLezioni}</p>
+      </div>
+    )}
   </header>
 
-  {adesso && (
-    <section class="adesso" aria-labelledby="adesso-titolo" style={`--c: var(--materia-${adesso.m.colore})`}>
-      <p class="adesso__etichetta"><span class="punto"></span> Adesso</p>
-      <h2 id="adesso-titolo" class="adesso__titolo">{simulabile ? `Simula ${orale ? "l'orale" : 'lo scritto'} di ${adesso.m.breve}` : `Ripassa ${adesso.m.breve}`}</h2>
-      <p class="adesso__testo">
-        {simulabile
-          ? orale
-            ? `Tre domande: le ascolti e rispondi a voce${agente.online ? ', il docente ti fa domande di approfondimento' : ''}. Poi rileggi i punti mancanti negli appunti.`
-            : 'Sei domande in dieci minuti: la scelta multipla si corregge subito, le aperte le corregge l\'agente.'
-          : adesso.kit
-            ? `Il kit d'esame è pronto (${adesso.kit.nuclei} nuclei): prepara le domande dalla scheda della materia, intanto ripassa dagli appunti.`
-            : "Riparti dagli appunti: dal kit d'esame nasceranno le simulazioni."}
-      </p>
-      <div class="adesso__azioni">
-        {simulabile ? (
-          <form method="post" action="/api/simulazioni">
-            <input type="hidden" name="codice" value={adesso.m.codice!} />
-            <input type="hidden" name="formato" value="breve" />
-            {orale && <input type="hidden" name="modalita" value="orale" />}
-            {orale && agente.online && <input type="hidden" name="dal_vivo" value="1" />}
-            <button class="btn btn--primary" type="submit">Inizia la simulazione</button>
-          </form>
-        ) : (
-          primoCapitolo && adesso.m.appunti && <a class="btn btn--primary" href={`/appunti/${adesso.m.appunti.slug}/${primoCapitolo.file}`}>Apri gli appunti</a>
-        )}
-        {simulabile && primoCapitolo && adesso.m.appunti ? (
-          <a class="btn" href={`/appunti/${adesso.m.appunti.slug}/${primoCapitolo.file}`}>Apri gli appunti</a>
-        ) : (
-          <a class="btn" href={`/materie/${adesso.m.slug}`}>Scheda della materia</a>
-        )}
+  <div class="cruscotto">
+    {adesso && (
+      <section class="mossa" aria-labelledby="mossa-titolo" style={`--c: var(--materia-${adesso.m.colore})`}>
+        <p class="mossa__chi">
+          <span class="quadro" aria-hidden="true"></span>
+          {adesso.m.breve}{simulabile && <> · {orale ? 'orale' : 'scritto'} · circa <span class="cifra">{minuti}</span> minuti</>}
+        </p>
+        <h2 id="mossa-titolo" class="mossa__titolo">
+          {simulabile ? (
+            <>{orale ? 'Interrogati su ' : 'Mettiti alla prova su '}<span class="evidenzia">{adesso.m.breve}</span></>
+          ) : (
+            <>Ripassa <span class="evidenzia">{adesso.m.breve}</span></>
+          )}
+        </h2>
+        <p class="mossa__testo">
+          {simulabile
+            ? orale
+              ? `Tre domande a voce${agente.online ? ': il docente rilancia dove resti scoperto' : ''}. Poi rileggi i punti mancanti negli appunti.`
+              : 'Sei domande in dieci minuti: la scelta multipla si corregge subito, le aperte le corregge l\'agente.'
+            : adesso.kit
+              ? `Il kit d'esame è pronto (${adesso.kit.nuclei} nuclei): prepara le domande dalla scheda della materia, intanto ripassa dagli appunti.`
+              : "Riparti dagli appunti: dal kit d'esame nasceranno le simulazioni."}
+        </p>
+        <div class="mossa__azioni">
+          {simulabile ? (
+            <form method="post" action="/api/simulazioni">
+              <input type="hidden" name="codice" value={adesso.m.codice!} />
+              <input type="hidden" name="formato" value="breve" />
+              {orale && <input type="hidden" name="modalita" value="orale" />}
+              {orale && agente.online && <input type="hidden" name="dal_vivo" value="1" />}
+              <button class="btn btn--primary btn--largo" type="submit" data-tasto="s">Inizia <span class="tasto" aria-hidden="true">S</span></button>
+            </form>
+          ) : (
+            primoCapitolo && adesso.m.appunti && <a class="btn btn--primary btn--largo" href={`/appunti/${adesso.m.appunti.slug}/${primoCapitolo.file}`} data-tasto="s">Apri gli appunti <span class="tasto" aria-hidden="true">S</span></a>
+          )}
+          {simulabile && primoCapitolo && adesso.m.appunti ? (
+            <a class="btn" href={`/appunti/${adesso.m.appunti.slug}/${primoCapitolo.file}`}>Appunti</a>
+          ) : (
+            <a class="btn" href={`/materie/${adesso.m.slug}`}>Scheda</a>
+          )}
+        </div>
+      </section>
+    )}
+
+    <section class="strumenti" aria-label="Riepilogo">
+      <a class="strumento" href="/libretto">
+        <span class="strumento__val cifra">{r.cfu}<small> / {CFU_TOTALI}</small></span>
+        <span class="strumento__lab">CFU</span>
+      </a>
+      <a class="strumento" href="/libretto">
+        <span class="strumento__val cifra">{formatoMedia(r.media)}</span>
+        <span class="strumento__lab">Media</span>
+      </a>
+      <div class="strumento">
+        <span class="strumento__val cifra">{studio.diFila}</span>
+        <span class="strumento__lab">{studio.diFila === 1 ? 'giorno di studio' : 'giorni di studio di fila'}</span>
+        <span class="giorni" role="img" aria-label={`Ultimi 7 giorni: ${studio.settimana.filter(Boolean).length} con almeno una simulazione`}>
+          {studio.settimana.map((fatto, i) => (
+            <i class:list={{ fatto, oggi: i === 6 }} title={giornoSettimana(6 - i)}></i>
+          ))}
+        </span>
       </div>
     </section>
-  )}
+  </div>
 
-  <section class="stack" aria-labelledby="in-corso">
-    <h2 id="in-corso">Materie in corso</h2>
-    <ul class="righe pannello">
-      {inCorso.map((m) => (
-        <li>
-          <a class="riga" href={`/materie/${m.slug}`} style={`--c: var(--materia-${m.colore})`}>
-            <span class="punto"></span>
-            <span class="riga__nome">{m.nome}</span>
-            <span class="riga__meta">
-              <TipoEsame tipo={m.esame.tipo} />
-              <span class="muted num">{m.cfu}&nbsp;CFU</span>
-            </span>
-          </a>
-        </li>
-      ))}
+  <section class="corso" aria-labelledby="in-corso">
+    <h2 id="in-corso" class="sezione">In corso</h2>
+    <ul class="materie">
+      {inCorso.map((m) => {
+        const e = m.codice ? esiti.get(m.codice) : undefined;
+        return (
+          <li>
+            <a class="materia" href={`/materie/${m.slug}`} style={`--c: var(--materia-${m.colore})`}>
+              <span class="quadro" aria-hidden="true"></span>
+              <span class="materia__nome">
+                <b>{m.nome}</b>
+                <small>{m.esame.tipo === 'Da definire' ? 'esame da definire' : m.esame.tipo.toLowerCase()} · <span class="cifra">{m.cfu}</span> CFU</small>
+              </span>
+              <span class="materia__esito">
+                {e && e.voto !== null ? (
+                  <>
+                    <span class="inchiostro" aria-hidden="true"><i style={`width: ${Math.round((e.voto / 30) * 100)}%`}></i></span>
+                    <span class="materia__voto"><span class="cifra">{e.voto}</span>/30 · {e.n === 1 ? '1 simulazione' : `${e.n} simulazioni`}</span>
+                  </>
+                ) : (
+                  <span class="materia__voto">mai simulata</span>
+                )}
+              </span>
+            </a>
+          </li>
+        );
+      })}
     </ul>
-  </section>
-
-  <section class="stato" aria-label="Riepilogo">
-    <div class="stato__voce">
-      <span class="muted">CFU</span>
-      <span class="stato__valore num">{r.cfu} <small>/ {CFU_TOTALI}</small></span>
-      <div class="barra" role="img" aria-label={`${r.cfu} CFU su ${CFU_TOTALI}`}><span style={`width: ${Math.round((r.cfu / CFU_TOTALI) * 100)}%`}></span></div>
-    </div>
-    <div class="stato__voce">
-      <span class="muted">Esami superati</span>
-      <span class="stato__valore num">{r.superati}</span>
-    </div>
-    <a class="stato__voce stato__link" href="/agente">
-      <span class="muted">Agente locale</span>
-      <Badge stato={agente.online ? 'online' : 'offline'} label={agente.online ? 'Online' : 'Offline'} />
-    </a>
   </section>
 </Base>
 
+<script>
+  // Scorciatoia: S avvia la mossa di oggi (spenta mentre scrivi in un campo).
+  document.addEventListener('keydown', (e) => {
+    if (e.key.toLowerCase() !== 's' || e.metaKey || e.ctrlKey || e.altKey) return;
+    const t = e.target as HTMLElement | null;
+    if (t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))) return;
+    const azione = document.querySelector<HTMLElement>('[data-tasto="s"]');
+    if (!azione) return;
+    e.preventDefault();
+    azione.click();
+  });
+</script>
+
 <style>
-  .intro {
+  .testa {
     display: grid;
-    gap: var(--space-1);
+    gap: var(--space-2);
   }
-  .adesso {
+  .testa__riga {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: var(--space-3);
+  }
+  .data {
+    font-family: var(--font-serif);
+    font-style: italic;
+    font-size: var(--text-lg);
+    color: var(--color-ink-muted);
+  }
+  .data::first-letter {
+    text-transform: uppercase;
+  }
+  .agente {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-size: var(--text-xs);
+    color: var(--color-ink-faint);
+    text-decoration: none;
+    white-space: nowrap;
+  }
+  .agente:hover {
+    color: var(--color-ink);
+  }
+  .agente__luce {
+    position: relative;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    border: 1.5px solid var(--color-ink-faint);
+  }
+  .agente--acceso .agente__luce {
+    border: 0;
+    background: var(--color-success);
+  }
+  /* L'impulso dice che l'agente è collegato: si muove solo quando è vero */
+  .agente--acceso .agente__luce::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background: var(--color-success);
+    animation: impulso 2.4s var(--ease) infinite;
+  }
+  @keyframes impulso {
+    0% { transform: scale(1); opacity: 0.6; }
+    70%, 100% { transform: scale(3); opacity: 0; }
+  }
+  .titolo {
+    font-size: var(--text-3xl);
+  }
+  .semestre {
+    display: grid;
+    gap: var(--space-2);
+    max-width: 34rem;
+  }
+  .semestre__tacche {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: 1fr;
+    gap: 3px;
+  }
+  .semestre__tacche i {
+    height: 4px;
+    border-radius: 2px;
+    background: var(--color-rule);
+  }
+  .semestre__tacche i.fatta {
+    background: var(--color-ink-faint);
+  }
+  .semestre__tacche i.ora {
+    background: var(--color-primary);
+    outline: 1px solid var(--color-primary-edge);
+  }
+  .semestre__testo {
+    font-size: var(--text-xs);
+    color: var(--color-ink-muted);
+  }
+
+  /* Cruscotto: la mossa domina, gli strumenti stanno in riga sotto (telefono) o a lato (desktop) */
+  .cruscotto {
+    display: grid;
+    gap: var(--space-4);
+  }
+  .mossa {
     display: grid;
     gap: var(--space-3);
     padding: var(--space-5);
@@ -112,100 +277,182 @@ const simulabile = !!(adesso && banca && banca.totale > 0 && (orale || adesso.m.
     border: var(--border);
     border-radius: var(--radius-lg);
   }
-  .adesso__etichetta {
-    display: inline-flex;
+  .quadro {
+    flex: none;
+    width: 9px;
+    height: 9px;
+    border-radius: 2px;
+    background: var(--c, var(--color-ink-faint));
+  }
+  .mossa__chi {
+    display: flex;
     align-items: center;
     gap: var(--space-2);
     font-size: var(--text-sm);
-    font-weight: var(--weight-semibold);
-    color: var(--color-accent);
-  }
-  .adesso__titolo {
-    font-family: var(--font-serif);
-    font-size: var(--text-2xl);
-  }
-  .adesso__testo {
     color: var(--color-ink-muted);
-    max-width: 60ch;
   }
-  .adesso__azioni form {
-    margin: 0;
+  .mossa__titolo {
+    font-family: var(--font-serif);
+    font-size: clamp(1.625rem, 4vw, 2.25rem);
+    font-weight: var(--weight-semibold);
+    line-height: 1.1;
+    letter-spacing: -0.015em;
   }
-  .adesso__azioni {
+  .mossa__testo {
+    color: var(--color-ink-muted);
+    max-width: 58ch;
+  }
+  .mossa__azioni {
     display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-3);
+    gap: var(--space-2);
     padding-top: var(--space-2);
   }
-  .riga {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: var(--space-2) var(--space-3);
-    min-height: 56px;
-    padding: var(--space-3) var(--space-4);
-    color: var(--color-ink);
-    text-decoration: none;
-  }
-  .riga:hover {
-    background: var(--color-surface-muted);
-  }
-  .righe > li:first-child .riga {
-    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
-  }
-  .righe > li:last-child .riga {
-    border-radius: 0 0 var(--radius-lg) var(--radius-lg);
-  }
-  .riga__nome {
-    flex: 1 1 14rem;
-    font-weight: var(--weight-semibold);
-  }
-  .riga__meta {
-    display: inline-flex;
-    gap: var(--space-3);
-    align-items: center;
-  }
-  .stato {
+  .mossa__azioni form {
+    margin: 0;
+    flex: 1;
+    max-width: 22rem;
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr));
-    gap: var(--space-3);
   }
-  .stato__voce {
+  .mossa__azioni > .btn--primary {
+    flex: 1;
+    max-width: 22rem;
+  }
+
+  .strumenti {
+    display: grid;
+    grid-template-columns: 1.1fr 1fr 1.2fr;
+    border-block: var(--border);
+  }
+  .strumento {
     display: grid;
     gap: var(--space-1);
     align-content: start;
-    padding: var(--space-3) var(--space-4);
-    background: var(--color-surface-muted);
-    border-radius: var(--radius-lg);
-    font-size: var(--text-sm);
-  }
-  .stato__valore {
-    font-family: var(--font-serif);
-    font-size: var(--text-xl);
-    font-weight: var(--weight-semibold);
-    color: var(--color-ink);
-  }
-  .stato__valore small {
-    font-size: var(--text-sm);
-    color: var(--color-ink-muted);
-  }
-  .stato__link {
+    padding: var(--space-4) var(--space-3) var(--space-3) 0;
     color: inherit;
     text-decoration: none;
-    justify-items: start;
   }
-  .stato__link:hover {
-    background: var(--color-accent-soft);
+  .strumento + .strumento {
+    padding-left: var(--space-3);
+    border-left: var(--border);
   }
-  .barra {
-    height: 6px;
-    border-radius: var(--radius-pill);
-    background: var(--color-rule);
+  a.strumento:hover .strumento__lab {
+    color: var(--color-ink);
+  }
+  .strumento__val {
+    font-size: 1.75rem;
+    font-weight: var(--weight-medium);
+    line-height: 1;
+  }
+  .strumento__val small {
+    font-size: var(--text-sm);
+    color: var(--color-ink-muted);
+    letter-spacing: 0;
+  }
+  .strumento__lab {
+    font-size: var(--text-xs);
+    color: var(--color-ink-muted);
+  }
+  .giorni {
+    display: flex;
+    gap: 3px;
+    margin-top: var(--space-1);
+  }
+  .giorni i {
+    width: 10px;
+    height: 10px;
+    border-radius: 2px;
+    background: var(--color-raised);
+  }
+  .giorni i.fatto {
+    background: var(--color-primary);
+  }
+  .giorni i.oggi:not(.fatto) {
+    box-shadow: inset 0 0 0 1px var(--color-rule-strong);
+  }
+
+  .corso {
+    display: grid;
+    gap: var(--space-2);
+  }
+  .materie {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    border-bottom: var(--border);
+  }
+  .materia {
+    display: grid;
+    grid-template-columns: 9px 1fr auto;
+    gap: var(--space-3);
+    align-items: center;
+    min-height: 60px;
+    padding: var(--space-3) 0;
+    border-top: var(--border);
+    color: inherit;
+    text-decoration: none;
+    transition: background-color var(--dur) var(--ease);
+  }
+  .materia:hover {
+    background: linear-gradient(90deg, var(--color-surface-muted), transparent);
+  }
+  .materia__nome {
+    display: grid;
+    min-width: 0;
+  }
+  .materia__nome b {
+    font-family: var(--font-serif);
+    font-size: var(--text-lg);
+    font-weight: var(--weight-semibold);
+    line-height: 1.2;
+  }
+  .materia__nome small {
+    font-size: var(--text-xs);
+    color: var(--color-ink-muted);
+  }
+  .materia__esito {
+    display: grid;
+    gap: var(--space-1);
+    justify-items: end;
+  }
+  .inchiostro {
+    width: 64px;
+    height: 4px;
+    border-radius: 2px;
+    background: var(--color-raised);
     overflow: hidden;
   }
-  .barra span {
+  .inchiostro i {
     display: block;
     height: 100%;
-    background: var(--color-success);
+    background: var(--color-ink);
+  }
+  .materia__voto {
+    font-size: var(--text-xs);
+    color: var(--color-ink-faint);
+    white-space: nowrap;
+  }
+
+  @media (min-width: 760px) {
+    .cruscotto {
+      grid-template-columns: minmax(0, 2fr) minmax(15rem, 1fr);
+      align-items: stretch;
+    }
+    .strumenti {
+      grid-template-columns: 1fr;
+      border-block: 0;
+      border-left: var(--border);
+      padding-left: var(--space-5);
+    }
+    .strumento,
+    .strumento + .strumento {
+      padding: var(--space-3) 0;
+      border-left: 0;
+    }
+    .strumento + .strumento {
+      border-top: var(--border);
+    }
+    .cruscotto:not(:has(.mossa)) {
+      grid-template-columns: 1fr;
+    }
   }
 </style>

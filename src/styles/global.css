@@ -20,11 +20,12 @@ body {
   font-size: var(--text-base);
   line-height: var(--leading-normal);
   -webkit-font-smoothing: antialiased;
+  font-feature-settings: 'ss02';
   touch-action: manipulation;
 }
 
 ::selection {
-  background: var(--color-accent-soft);
+  background: var(--color-highlight);
   color: var(--color-ink);
 }
 
@@ -35,12 +36,13 @@ h3 {
   line-height: var(--leading-tight);
   text-wrap: balance;
 }
-/* Serif solo per i titoli di pagina e i nomi delle materie; sans per l'interfaccia. */
+/* Serif da libro per titoli di pagina, materie e domande; Plex per l'interfaccia. */
 h1 {
   font-family: var(--font-serif);
   font-size: var(--text-2xl);
   font-weight: var(--weight-semibold);
-  letter-spacing: -0.01em;
+  line-height: 1.05;
+  letter-spacing: -0.02em;
 }
 h2 {
   font-size: var(--text-lg);
@@ -58,8 +60,9 @@ p {
 
 a {
   color: var(--color-accent);
-  text-underline-offset: 0.18em;
+  text-underline-offset: 0.2em;
   text-decoration-thickness: 1px;
+  transition: color var(--dur) var(--ease);
 }
 a:hover {
   color: var(--color-accent-hover);
@@ -99,6 +102,39 @@ code {
 .num {
   font-variant-numeric: tabular-nums lining-nums;
 }
+/* Cifre da cruscotto: Plex Mono, tabellari */
+.cifra {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+/* Passaggio evidenziato come con l'evidenziatore sul libro */
+.evidenzia {
+  background: linear-gradient(transparent 58%, var(--color-highlight) 58%);
+  padding: 0 2px;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+}
+/* Tasto da tastiera mostrato dentro pulsanti e istruzioni (nascosto sui dispositivi touch) */
+.tasto {
+  font: var(--weight-medium) 0.6875rem/1.4 var(--font-mono);
+  padding: 0 6px;
+  border-radius: var(--radius-sm);
+  border: 1px solid currentColor;
+  opacity: 0.6;
+  white-space: nowrap;
+}
+@media (hover: none) {
+  .tasto {
+    display: none;
+  }
+}
+/* Titolo di sezione: frase breve, sans semibold tenue, senza maiuscolo spaziato */
+.sezione {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  color: var(--color-ink-muted);
+}
 
 .stack {
   display: grid;
@@ -121,34 +157,43 @@ code {
   padding: 0 var(--space-5);
   border-radius: var(--radius-md);
   border: 1px solid var(--color-rule-strong);
-  background: var(--color-surface);
+  background: transparent;
   color: var(--color-ink);
   font: inherit;
   font-weight: var(--weight-semibold);
   text-decoration: none;
   cursor: pointer;
-  transition: background-color 0.15s, border-color 0.15s;
+  transition: background-color var(--dur) var(--ease), border-color var(--dur) var(--ease), transform var(--dur) var(--ease);
 }
 .btn:hover {
   border-color: var(--color-ink-muted);
+  background: var(--color-surface-muted);
   color: var(--color-ink);
 }
+.btn:active:not(:disabled) {
+  transform: scale(0.98);
+}
 .btn--primary {
-  background: var(--color-accent);
-  border-color: var(--color-accent);
-  color: var(--color-on-accent);
+  background: var(--color-primary);
+  border-color: var(--color-primary-edge);
+  color: var(--color-on-primary);
 }
 .btn--primary:hover {
-  background: var(--color-accent-hover);
-  border-color: var(--color-accent-hover);
-  color: var(--color-on-accent);
+  background: var(--color-primary-hover);
+  border-color: var(--color-primary-edge);
+  color: var(--color-on-primary);
+}
+/* Pulsante largo con testo a sinistra e tasto a destra, come nella mossa di oggi */
+.btn--largo {
+  justify-content: space-between;
+  padding: 0 var(--space-4);
 }
 .btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
 
-/* Pannello: superficie bianca con bordo tenue, senza ombra */
+/* Pannello: carta appena sollevata con filetto, senza ombra */
 .pannello {
   background: var(--color-surface);
   border: var(--border);

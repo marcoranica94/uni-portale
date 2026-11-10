@@ -16,8 +16,8 @@ const isActive = (href: string) => (href === '/' ? path === '/' : path === href 
 
 <nav class="nav" aria-label="Navigazione principale">
   <a class="nav__brand" href="/">
-    <span class="nav__mark" aria-hidden="true">U</span>
     <span class="nav__name">Uni</span>
+    <span class="nav__sub">Scienze politiche</span>
   </a>
   <ul class="nav__list">
     {voci.map((v) => (
@@ -26,27 +26,27 @@ const isActive = (href: string) => (href === '/' ? path === '/' : path === href 
           <svg class="nav__icon" viewBox="0 0 24 24" aria-hidden="true">
             {v.icon === 'oggi' && (
               <>
-                <circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" stroke-width="1.8" />
-                <path d="M12 2.5v2.5M12 19v2.5M2.5 12H5M19 12h2.5M5.3 5.3l1.8 1.8M16.9 16.9l1.8 1.8M5.3 18.7l1.8-1.8M16.9 7.1l1.8-1.8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+                <circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" stroke-width="1.6" />
+                <path d="M12 2.5v2.5M12 19v2.5M2.5 12H5M19 12h2.5M5.3 5.3l1.8 1.8M16.9 16.9l1.8 1.8M5.3 18.7l1.8-1.8M16.9 7.1l1.8-1.8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
               </>
             )}
             {v.icon === 'percorso' && (
               <>
-                <circle cx="5" cy="18" r="2.2" fill="none" stroke="currentColor" stroke-width="1.8" />
-                <circle cx="19" cy="6" r="2.2" fill="none" stroke="currentColor" stroke-width="1.8" />
-                <path d="M7 17c5 0 3-5 6-6.5S17 9 17.5 7.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-dasharray="2.5 2.5" />
+                <circle cx="5" cy="18" r="2.2" fill="none" stroke="currentColor" stroke-width="1.6" />
+                <circle cx="19" cy="6" r="2.2" fill="none" stroke="currentColor" stroke-width="1.6" />
+                <path d="M7 17c5 0 3-5 6-6.5S17 9 17.5 7.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-dasharray="2.5 2.5" />
               </>
             )}
             {v.icon === 'materie' && (
               <>
-                <path d="M4 5.5A1.5 1.5 0 0 1 5.5 4H11v16H5.5A1.5 1.5 0 0 1 4 18.5z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" />
-                <path d="M13 4h5.5A1.5 1.5 0 0 1 20 5.5v13a1.5 1.5 0 0 1-1.5 1.5H13z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" />
+                <path d="M4 5.5A1.5 1.5 0 0 1 5.5 4H11v16H5.5A1.5 1.5 0 0 1 4 18.5z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" />
+                <path d="M13 4h5.5A1.5 1.5 0 0 1 20 5.5v13a1.5 1.5 0 0 1-1.5 1.5H13z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" />
               </>
             )}
             {v.icon === 'libretto' && (
               <>
-                <rect x="5" y="3" width="14" height="18" rx="2" fill="none" stroke="currentColor" stroke-width="1.8" />
-                <path d="M8.5 8h7M8.5 12h7M8.5 16h4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+                <rect x="5" y="3" width="14" height="18" rx="2" fill="none" stroke="currentColor" stroke-width="1.6" />
+                <path d="M8.5 8h7M8.5 12h7M8.5 16h4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
               </>
             )}
           </svg>
@@ -59,13 +59,13 @@ const isActive = (href: string) => (href === '/' ? path === '/' : path === href 
 </nav>
 
 <style>
-  /* Telefono e tablet: barra fissa in basso, sopraelevata */
+  /* Telefono e tablet: barra fissa in basso, filetto in alto, voce attiva segnata dall'evidenziatore */
   .nav {
     position: fixed;
     inset: auto 0 0 0;
     z-index: 20;
-    background: var(--color-surface);
-    box-shadow: var(--shadow-raised);
+    background: var(--color-nav);
+    border-top: var(--border);
     padding-bottom: env(safe-area-inset-bottom, 0px);
     padding-left: env(safe-area-inset-left, 0px);
     padding-right: env(safe-area-inset-right, 0px);
@@ -82,34 +82,45 @@ const isActive = (href: string) => (href === '/' ? path === '/' : path === href 
     list-style: none;
   }
   .nav__item {
+    position: relative;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 2px;
+    gap: 3px;
     min-height: var(--nav-bottom-height);
-    color: var(--color-ink-muted);
+    color: var(--color-ink-faint);
     font-size: var(--text-xs);
     font-weight: var(--weight-medium);
     text-decoration: none;
+    transition: color var(--dur) var(--ease);
+  }
+  .nav__item::before {
+    content: '';
+    position: absolute;
+    top: -1px;
+    width: 28px;
+    height: 3px;
+    border-radius: 0 0 2px 2px;
+    background: transparent;
+    transition: background-color var(--dur) var(--ease);
   }
   .nav__icon {
-    width: 24px;
-    height: 24px;
+    width: 22px;
+    height: 22px;
+  }
+  .nav__item:hover {
+    color: var(--color-ink);
   }
   .nav__item[aria-current='page'] {
-    color: var(--color-accent);
-    font-weight: var(--weight-bold);
+    color: var(--color-ink);
+    font-weight: var(--weight-semibold);
   }
-  .nav__item[aria-current='page'] .nav__icon {
-    background: var(--color-accent-soft);
-    border-radius: var(--radius-pill);
-    padding: 2px 14px;
-    width: 52px;
-    height: 28px;
+  .nav__item[aria-current='page']::before {
+    background: var(--color-primary);
   }
 
-  /* Da 1024 px: barra laterale, un gradino sotto il contenuto */
+  /* Da 1024 px: barra laterale come il margine di un quaderno */
   @media (min-width: 1024px) {
     .nav {
       inset: 0 auto 0 0;
@@ -117,34 +128,29 @@ const isActive = (href: string) => (href === '/' ? path === '/' : path === href 
       display: flex;
       flex-direction: column;
       gap: var(--space-6);
-      padding: var(--space-5) var(--space-3);
+      padding: var(--space-6) var(--space-3) var(--space-5);
       background: var(--color-nav);
-      box-shadow: none;
+      border-top: 0;
       border-right: var(--border);
     }
     .nav__brand {
-      display: flex;
-      align-items: center;
-      gap: var(--space-2);
+      display: grid;
+      gap: 2px;
       padding: 0 var(--space-3);
       color: var(--color-ink);
       text-decoration: none;
     }
-    .nav__mark {
-      display: grid;
-      place-items: center;
-      width: 32px;
-      height: 32px;
-      border-radius: var(--radius-md);
-      background: var(--color-accent);
-      color: var(--color-on-accent);
-      font-family: var(--font-serif);
-      font-weight: var(--weight-bold);
-    }
     .nav__name {
       font-family: var(--font-serif);
-      font-size: var(--text-xl);
+      font-size: 1.75rem;
+      font-style: italic;
       font-weight: var(--weight-semibold);
+      line-height: 1;
+      letter-spacing: -0.02em;
+    }
+    .nav__sub {
+      font-size: var(--text-xs);
+      color: var(--color-ink-faint);
     }
     .nav__list {
       grid-template-columns: 1fr;
@@ -154,32 +160,30 @@ const isActive = (href: string) => (href === '/' ? path === '/' : path === href 
       flex-direction: row;
       justify-content: flex-start;
       gap: var(--space-3);
-      min-height: var(--tap-min);
+      min-height: 40px;
       padding: 0 var(--space-3);
-      border-radius: var(--radius-md);
+      border-radius: var(--radius-sm);
       font-size: var(--text-base);
     }
+    .nav__item::before {
+      top: 8px;
+      bottom: 8px;
+      left: 0;
+      width: 3px;
+      height: auto;
+      border-radius: 0 2px 2px 0;
+    }
     .nav__item:hover {
-      color: var(--color-ink);
       background: var(--color-surface-muted);
-    }
-    .nav__item[aria-current='page'] {
-      background: var(--color-accent-soft);
-    }
-    .nav__item[aria-current='page'] .nav__icon {
-      background: none;
-      padding: 0;
-      width: 24px;
-      height: 24px;
     }
     .nav__agente {
       display: block;
       margin-top: auto;
       padding: var(--space-2) var(--space-3);
       font-size: var(--text-sm);
-      color: var(--color-ink-muted);
+      color: var(--color-ink-faint);
       text-decoration: none;
-      border-radius: var(--radius-md);
+      border-radius: var(--radius-sm);
     }
     .nav__agente:hover,
     .nav__agente[aria-current='page'] {

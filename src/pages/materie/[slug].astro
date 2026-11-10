@@ -45,17 +45,17 @@ const esito = ESITI[Astro.url.searchParams.get('esito') ?? ''];
 
 <Base title={m.breve}>
   <header class="testata" style={`--c: var(--materia-${m.colore})`}>
-    <p class="etichetta"><span class="punto"></span><span>{m.anno}º anno · {m.periodo}{m.date && <span class="muted"> · {m.date}</span>}</span></p>
+    <p class="etichetta"><span>{m.anno}º anno · {m.periodo}{m.date && <span class="etichetta__date"> · {m.date}</span>}</span></p>
     <h1>{m.nome}</h1>
     <div class="cluster meta">
       {voto ? <Badge stato="superato" label={`Superato · ${votoTesto(voto)}`} /> : <Badge stato={statoMateria(m, voti)} />}
       <TipoEsame tipo={m.esame.tipo} dalCatalogo={m.esame.dalCatalogo} />
-      <span class="num">{m.cfu}&nbsp;CFU</span>
+      <span class="cifra">{m.cfu}&nbsp;CFU</span>
       {m.docenti.length > 0 && <span>{m.docenti.join(', ')}</span>}
     </div>
     {m.appunti && (
       <div class="azioni">
-        {banca && banca.totale > 0 && (scritto || oraleEsame) && <a class="btn btn--primary" href="#simula">Simula l'esame</a>}
+        {banca && banca.totale > 0 && (scritto || oraleEsame) && <a class="btn btn--primary btn--largo azione-principale" href="#simula" data-tasto="s">Simula l'esame <span class="tasto" aria-hidden="true">S</span></a>}
         {primoCapitolo && <a class:list={['btn', { 'btn--primary': !(banca && banca.totale > 0 && (scritto || oraleEsame)) }]} href={`${base}/${primoCapitolo.file}`}>Apri gli appunti</a>}
         {m.appunti.pdf && (
           <a class="btn" href={`${base}/${m.appunti.pdf.file}`} download>
@@ -70,11 +70,11 @@ const esito = ESITI[Astro.url.searchParams.get('esito') ?? ''];
     <section class="stack" aria-labelledby="appunti">
       <h2 id="appunti">Appunti</h2>
       {m.appunti && base ? (
-        <ol class="righe pannello capitoli">
+        <ol class="capitoli">
           {m.appunti.capitoli.map((c, i) => (
             <li>
               <a class="capitolo" href={`${base}/${c.file}`}>
-                <span class="capitolo__n num">{i + 1}</span>
+                <span class="capitolo__n cifra">{String(i + 1).padStart(2, '0')}</span>
                 <span>{c.titolo}</span>
               </a>
             </li>
@@ -241,21 +241,53 @@ const esito = ESITI[Astro.url.searchParams.get('esito') ?? ''];
   </section>
 </Base>
 
+<script>
+  // Scorciatoia: S porta alla simulazione (spenta mentre scrivi in un campo).
+  document.addEventListener('keydown', (e) => {
+    if (e.key.toLowerCase() !== 's' || e.metaKey || e.ctrlKey || e.altKey) return;
+    const t = e.target as HTMLElement | null;
+    if (t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))) return;
+    const azione = document.querySelector<HTMLElement>('[data-tasto="s"]');
+    if (!azione) return;
+    e.preventDefault();
+    azione.click();
+  });
+</script>
+
 <style>
+  /* Un filo del colore della materia in cima, come il segnalibro di un quaderno */
   .testata {
+    position: relative;
     display: grid;
     gap: var(--space-3);
+    padding-top: var(--space-4);
+  }
+  .testata::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: min(100%, 12rem);
+    height: 3px;
+    border-radius: 2px;
+    background: var(--c);
   }
   .etichetta {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--space-2);
-    font-size: var(--text-sm);
-    font-weight: var(--weight-semibold);
-    color: var(--color-ink);
+    font-family: var(--font-serif);
+    font-style: italic;
+    font-size: var(--text-lg);
+    color: var(--color-ink-muted);
+  }
+  .etichetta__date {
+    font-family: var(--font-mono);
+    font-style: normal;
+    font-size: var(--text-xs);
   }
   .testata h1 {
-    font-size: clamp(var(--text-2xl), 4vw, var(--text-3xl));
+    font-size: clamp(var(--text-2xl), 4.5vw, 2.75rem);
+  }
+  .azione-principale {
+    min-width: min(100%, 16rem);
   }
   .meta {
     gap: var(--space-2) var(--space-4);
@@ -279,30 +311,34 @@ const esito = ESITI[Astro.url.searchParams.get('esito') ?? ''];
       grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
     }
   }
+  /* Capitoli come righe di un indice: filetti, numero in cifre, nessun riquadro */
+  .capitoli {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    border-bottom: var(--border);
+  }
+  .capitoli > li {
+    border-top: var(--border);
+  }
   .capitolo {
     display: flex;
     gap: var(--space-3);
     align-items: baseline;
-    padding: var(--space-3) var(--space-4);
+    padding: var(--space-3) 0;
     min-height: 48px;
     color: var(--color-ink);
     text-decoration: none;
+    transition: color var(--dur) var(--ease), padding var(--dur) var(--ease);
   }
   .capitolo:hover {
-    background: var(--color-surface-muted);
     color: var(--color-accent);
-  }
-  .capitoli > li:first-child .capitolo {
-    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
-  }
-  .capitoli > li:last-child .capitolo {
-    border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+    padding-left: var(--space-2);
   }
   .capitolo__n {
-    min-width: 1.5rem;
-    color: var(--color-ink-muted);
-    font-size: var(--text-sm);
-    text-align: right;
+    min-width: 1.75rem;
+    color: var(--color-ink-faint);
+    font-size: var(--text-xs);
   }
   .vuoto {
     padding: var(--space-5);
@@ -382,9 +418,9 @@ const esito = ESITI[Astro.url.searchParams.get('esito') ?? ''];
     cursor: pointer;
   }
   .formato:has(input:checked) {
-    border-color: var(--color-accent);
+    border-color: var(--color-primary-edge);
     background: var(--color-accent-soft);
-    box-shadow: inset 0 0 0 1px var(--color-accent);
+    box-shadow: inset 0 0 0 1px var(--color-primary-edge);
   }
   .formato:has(input:focus-visible) {
     outline: 2px solid var(--color-accent);
