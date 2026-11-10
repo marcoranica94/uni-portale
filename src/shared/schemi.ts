@@ -76,6 +76,8 @@ export const RisultatoKit = z.object({
   generato: z.string(),
   agente: z.string(),
   file: z.string(),
+  /** Nuclei con il loro capitolo, per la mappa di padronanza (assente nei kit di agenti non aggiornati). */
+  mappa: z.array(z.object({ id: z.string(), titolo: z.string(), file: z.string() })).optional(),
 });
 export type RisultatoKit = z.infer<typeof RisultatoKit>;
 
@@ -119,6 +121,8 @@ export const RichiestaDomande = z.object({
   istruzioni: z.string().default(''),
   /** Esame orale: servono solo domande aperte (la scelta multipla all'orale non si usa). */
   soloAperte: z.boolean().default(false),
+  /** Rifornimento mirato ("Allena solo questo"): solo i nuclei di questo file degli appunti. */
+  capitolo: z.string().default(''),
 });
 export type RichiestaDomande = z.infer<typeof RichiestaDomande>;
 

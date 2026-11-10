@@ -130,7 +130,8 @@ export async function generaKit(codice: string, opz: OpzioniKit): Promise<Risult
     log(`kit ${materia.slug}: nessuna differenza rispetto al kit già committato`);
   }
 
-  return { impronta, nuclei: kit.nuclei.length, commit, generato, agente, file: relativi[0] };
+  const mappa = kit.nuclei.map((n) => ({ id: n.id, titolo: n.titolo, file: n.file }));
+  return { impronta, nuclei: kit.nuclei.length, commit, generato, agente, file: relativi[0], mappa };
 }
 
 function kitMarkdown(meta: { materia: string; codice: string; impronta: string; generato: string; agente: string; appunti: string }, kit: KitModello): string {

@@ -1,6 +1,6 @@
 import type { APIRoute } from 'astro';
 import { RichiestaCompleta, RisultatoKit, RisultatoDomande, RisultatoCorrezione, RichiestaCorrezione, RisultatoApprofondimento, RichiestaApprofondimento } from '../../../shared/schemi';
-import { completa, getLavoro, registraBattito, salvaKit } from '../../../lib/coda';
+import { completa, getLavoro, registraBattito, salvaKit, salvaNuclei } from '../../../lib/coda';
 import { applicaCorrezione, domandaValida, salvaApprofondimento, salvaBanca } from '../../../lib/simulazioni';
 import { env } from 'cloudflare:workers';
 import { soloAgente, leggi, json } from './_comune';
@@ -24,6 +24,7 @@ export const POST: APIRoute = async (ctx) => {
     const r = RisultatoKit.safeParse(dati.risultato);
     if (!r.success) return json({ errore: 'Risultato del kit non valido.', dettagli: r.error.issues.slice(0, 5) }, 400);
     await salvaKit(lavoro.codice, r.data);
+    if (r.data.mappa?.length) await salvaNuclei(lavoro.codice, r.data.mappa);
     await completa(lavoro.id, r.data);
     return json({ ok: true });
   }

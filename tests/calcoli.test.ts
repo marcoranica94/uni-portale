@@ -125,3 +125,71 @@ test('metricheParlato: nessuna parola', () => {
   assert.equal(m.paroleAlMinuto, null);
   assert.equal(m.avvio, null);
 });
+
+// ---------- Padronanza ----------
+import { capitoliDi, padronanzaCapitoli, statoPadronanza } from '../src/lib/calcoli.ts';
+
+test('capitoliDi separa i nuclei che valgono per più capitoli', () => {
+  assert.deepEqual(capitoliDi('09-parlamento.html; 10-parlamento.html'), ['09-parlamento.html', '10-parlamento.html']);
+  assert.deepEqual(capitoliDi('02-lo-stato.html'), ['02-lo-stato.html']);
+  assert.deepEqual(capitoliDi(''), []);
+});
+
+test('statoPadronanza: soglie e prove minime per "solido"', () => {
+  assert.equal(statoPadronanza(null, 0), 'mai-provato');
+  assert.equal(statoPadronanza(0.5, 4), 'debole');
+  assert.equal(statoPadronanza(0.75, 8), 'in-crescita');
+  assert.equal(statoPadronanza(1, 4), 'in-crescita'); // una sola aperta perfetta non basta
+  assert.equal(statoPadronanza(0.9, 8), 'solido');
+});
+
+test('padronanzaCapitoli pesa per punti in palio e conta i capitoli multipli', () => {
+  const ora = new Date('2026-11-10T12:00:00Z');
+  const p = padronanzaCapitoli(
+    [
+      { file: 'a.html', punti: 4, massimo: 4, data: '2026-11-10T10:00:00Z' },
+      { file: 'a.html', punti: 0, massimo: 1, data: '2026-11-10T10:00:00Z' },
+      { file: 'a.html; b.html', punti: 4, massimo: 4, data: '2026-11-09T10:00:00Z' },
+    ],
+    ora,
+  );
+  const a = p.get('a.html')!;
+  assert.equal(a.risposte, 3);
+  assert.equal(a.inPalio, 9);
+  assert.ok(a.quota! > 0.88 && a.quota! < 0.9, `quota ${a.quota}`);
+  assert.equal(a.stato, 'in-crescita');
+  assert.equal(p.get('b.html')!.stato, 'in-crescita');
+  assert.equal(p.has('c.html'), false);
+});
+
+test('padronanzaCapitoli: le risposte vecchie pesano meno delle recenti', () => {
+  const ora = new Date('2026-11-10T12:00:00Z');
+  const p = padronanzaCapitoli(
+    [
+      { file: 'a.html', punti: 0, massimo: 4, data: '2026-09-01T10:00:00Z' },
+      { file: 'a.html', punti: 4, massimo: 4, data: '2026-11-10T10:00:00Z' },
+      { file: 'a.html', punti: 4, massimo: 4, data: '2026-11-09T10:00:00Z' },
+    ],
+    ora,
+  );
+  assert.equal(p.get('a.html')!.stato, 'solido');
+});
+
+import { prossimoCapitolo } from '../src/lib/calcoli.ts';
+
+test('prossimoCapitolo: prima il debole, poi il mai provato, poi la crescita, saltando i non pronti', () => {
+  const c = (file: string, stato: 'mai-provato' | 'debole' | 'in-crescita' | 'solido', quota: number | null, pronto = true, ultima: string | null = null) => ({
+    file,
+    stato,
+    quota,
+    risposte: quota === null ? 0 : 2,
+    inPalio: quota === null ? 0 : 8,
+    ultima,
+    pronto,
+  });
+  assert.equal(prossimoCapitolo([c('a', 'in-crescita', 0.7), c('b', 'debole', 0.5), c('c', 'debole', 0.3, false)])?.capitolo.file, 'b');
+  assert.equal(prossimoCapitolo([c('a', 'in-crescita', 0.7), c('b', 'mai-provato', null), c('d', 'mai-provato', null)])?.capitolo.file, 'b');
+  assert.equal(prossimoCapitolo([c('a', 'in-crescita', 0.8), c('b', 'in-crescita', 0.65)])?.motivo, 'in-crescita');
+  assert.equal(prossimoCapitolo([c('a', 'solido', 0.95, true, '2026-11-09'), c('b', 'solido', 0.92, true, '2026-11-01')])?.capitolo.file, 'b');
+  assert.equal(prossimoCapitolo([c('a', 'debole', 0.2, false)]), null);
+});

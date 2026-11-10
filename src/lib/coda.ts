@@ -96,6 +96,13 @@ export async function getKit(codice: string) {
     .first<{ codice: string; impronta: string; nuclei: number; commit_git: string | null; agente: string | null; generato: string }>();
 }
 
+/** Sostituisce i nuclei del kit di una materia (id, titolo, capitolo): servono alla mappa di padronanza. */
+export async function salvaNuclei(codice: string, nuclei: { id: string; titolo: string; file: string }[]) {
+  const inserimenti = nuclei.map((n) => env.DB.prepare('INSERT OR REPLACE INTO nuclei (codice, id, titolo, file) VALUES (?, ?, ?, ?)').bind(codice, n.id, n.titolo, n.file));
+  await env.DB.batch([env.DB.prepare('DELETE FROM nuclei WHERE codice = ?').bind(codice), ...inserimenti.slice(0, 49)]);
+  for (let i = 49; i < inserimenti.length; i += 50) await env.DB.batch(inserimenti.slice(i, i + 50));
+}
+
 export async function salvaKit(codice: string, k: { impronta: string; nuclei: number; commit: string | null; agente: string; generato: string }) {
   await env.DB.prepare(
     `INSERT INTO kit (codice, impronta, nuclei, commit_git, agente, generato) VALUES (?, ?, ?, ?, ?, ?)

@@ -5,7 +5,9 @@ import TipoEsame from '../../components/TipoEsame.astro';
 import { getMaterie } from '../../lib/percorso';
 import { getVoti, statoMateria, votoTesto } from '../../lib/voti';
 import { getKit, ultimoLavoro, statoAgenti } from '../../lib/coda';
-import { contaBanca, storico, FORMATI, ORALE, getProfilo } from '../../lib/simulazioni';
+import { contaBanca, storico, FORMATI, ORALE, CAPITOLO, getProfilo, padronanzaMateria } from '../../lib/simulazioni';
+import { prossimoCapitolo, type StatoPadronanza, type MotivoCapitolo } from '../../lib/calcoli';
+import StatoCapitolo from '../../components/StatoCapitolo.astro';
 
 export const prerender = false;
 
@@ -40,7 +42,33 @@ const ESITI: Record<string, string> = {
   'senza-domande': 'La banca di domande è vuota: preparala prima.',
   'simulazione-eliminata': 'Simulazione eliminata dallo storico.',
 };
-const esito = ESITI[Astro.url.searchParams.get('esito') ?? ''];
+// Padronanza per capitolo: solo i capitoli con nuclei nel kit (indice e mappe restano senza stato).
+const allenabile = !!(m.codice && kit && (scritto || oraleEsame));
+const padronanza = allenabile ? await padronanzaMateria(m.codice!, oraleEsame ? 'orale' : 'scritto') : new Map();
+const minimo = oraleEsame ? CAPITOLO.minimoOrale : CAPITOLO.minimo;
+const capitoliP = (m.appunti?.capitoli ?? []).flatMap((c) => {
+  const p = padronanza.get(c.file);
+  return p ? [{ ...p, titolo: c.titolo, pronto: true }] : [];
+});
+const ORDINE_STATI: StatoPadronanza[] = ['solido', 'in-crescita', 'debole', 'mai-provato'];
+const conteggi = Object.fromEntries(ORDINE_STATI.map((st) => [st, capitoliP.filter((c) => c.stato === st).length])) as Record<StatoPadronanza, number>;
+const prossimo = prossimoCapitolo(capitoliP);
+const MOTIVI: Record<MotivoCapitolo, string> = {
+  debole: 'è il capitolo più debole',
+  'mai-provato': 'non l\'hai ancora mai provato',
+  'in-crescita': 'è il meno sicuro tra quelli in crescita',
+  'da-rinfrescare': 'è il solido che non ripassi da più tempo',
+};
+const percento = (q: number | null) => (q === null ? '' : `${Math.round(q * 100)}%`);
+const dettaglio = (c: { stato: StatoPadronanza; quota: number | null; risposte: number; ultima: string | null }) =>
+  c.stato === 'mai-provato' ? 'Nessuna risposta ancora' : `${percento(c.quota)} dei punti · ${c.risposte} ${c.risposte === 1 ? 'risposta' : 'risposte'} · ultima ${giorno(c.ultima!)}`;
+
+const esitoCodice = Astro.url.searchParams.get('esito') ?? '';
+const capitoloInAttesa = m.appunti?.capitoli.find((c) => c.file === Astro.url.searchParams.get('capitolo'));
+const esito =
+  esitoCodice === 'capitolo-in-preparazione' && capitoloInAttesa
+    ? `Su «${capitoloInAttesa.titolo}» ci sono ancora poche domande: le ho chieste all'agente. ${agente.online ? 'Ci vogliono uno o due minuti; la pagina si aggiorna da sola.' : 'Partiranno quando accendi l\'agente sul PC.'}`
+    : ESITI[esitoCodice];
 ---
 
 <Base title={m.breve}>
@@ -67,28 +95,80 @@ const esito = ESITI[Astro.url.searchParams.get('esito') ?? ''];
   </header>
 
   <div class="colonne">
-    <section class="stack" aria-labelledby="appunti">
-      <h2 id="appunti">Appunti</h2>
+    <section class="stack capitoli-sez" id="padronanza" aria-labelledby="appunti">
+      <h2 id="appunti">{capitoliP.length ? 'Capitoli e padronanza' : 'Appunti'}</h2>
+      {esitoCodice === 'capitolo-in-preparazione' && esito && <p class="avviso-attesa" role="status">{esito}</p>}
+      {capitoliP.length > 0 && (
+        <div class="padronanza">
+          <div class="padronanza__barra" role="img" aria-label={ORDINE_STATI.map((st) => `${conteggi[st]} ${st.replace('-', ' ')}`).join(', ')}>
+            {ORDINE_STATI.map((st) => conteggi[st] > 0 && <i class={`p-${st}`} style={`flex-grow: ${conteggi[st]}`}></i>)}
+          </div>
+          <ul class="padronanza__legenda">
+            {ORDINE_STATI.map((st) => (
+              <li><StatoCapitolo stato={st} breve /> <span class="num">{conteggi[st]}</span></li>
+            ))}
+          </ul>
+          {prossimo && (
+            <form method="post" action="/api/simulazioni" class="prossimo">
+              <input type="hidden" name="codice" value={m.codice!} />
+              <input type="hidden" name="formato" value="breve" />
+              <input type="hidden" name="capitolo" value={prossimo.capitolo.file} />
+              {oraleEsame && <input type="hidden" name="modalita" value="orale" />}
+              {oraleEsame && agente.online && <input type="hidden" name="dal_vivo" value="1" />}
+              <p>
+                <span class="prossimo__etichetta">Da allenare adesso</span>
+                <strong>{prossimo.capitolo.titolo}</strong>
+                <span class="muted">: {MOTIVI[prossimo.motivo]}{prossimo.capitolo.quota !== null && ` (${percento(prossimo.capitolo.quota)} dei punti)`}.</span>
+              </p>
+              <button class="btn" type="submit" disabled={prossimo.capitolo.inPreparazione}>Allena questo</button>
+            </form>
+          )}
+        </div>
+      )}
       {m.appunti && base ? (
         <ol class="capitoli">
-          {m.appunti.capitoli.map((c, i) => (
-            <li>
-              <a class="capitolo" href={`${base}/${c.file}`}>
+          {m.appunti.capitoli.map((c, i) => {
+            const p = padronanza.get(c.file);
+            return (
+              <li class:list={['capitolo', { 'capitolo--attesa': p?.inPreparazione }]} data-attesa={p?.inPreparazione ? '1' : undefined}>
                 <span class="capitolo__n cifra">{String(i + 1).padStart(2, '0')}</span>
-                <span>{c.titolo}</span>
-              </a>
-            </li>
-          ))}
+                <a class="capitolo__titolo" href={`${base}/${c.file}`}>{c.titolo}</a>
+                {p && (
+                  <span class="capitolo__stato" title={dettaglio(p)}>
+                    {p.inPreparazione ? <span class="attesa">domande in preparazione</span> : <StatoCapitolo stato={p.stato} />}
+                    {p.quota !== null && !p.inPreparazione && <span class="capitolo__quota num">{percento(p.quota)}</span>}
+                  </span>
+                )}
+                {p && allenabile && (
+                  <form method="post" action="/api/simulazioni" class="capitolo__allena">
+                    <input type="hidden" name="codice" value={m.codice!} />
+                    <input type="hidden" name="formato" value="breve" />
+                    <input type="hidden" name="capitolo" value={c.file} />
+                    {oraleEsame && <input type="hidden" name="modalita" value="orale" />}
+                    {oraleEsame && agente.online && <input type="hidden" name="dal_vivo" value="1" />}
+                    <button class="allena" type="submit" disabled={p.inPreparazione} aria-label={`Allena solo: ${c.titolo}`} title={p.domande < minimo ? 'Poche domande: le chiedo all\'agente' : `${p.nuove} domande mai uscite`}>
+                      Allena
+                    </button>
+                  </form>
+                )}
+              </li>
+            );
+          })}
         </ol>
       ) : (
         <p class="vuoto pannello">Gli appunti di questa materia non sono ancora pronti.</p>
+      )}
+      {capitoliP.length > 0 && (
+        <p class="nota-padronanza">
+          Il livello viene dalle risposte corrette delle simulazioni: sotto il 60% dei punti è debole, dal 90% è solido (servono almeno due domande aperte o equivalenti). Le risposte più vecchie pesano meno. "Allena" fa {oraleEsame ? `un orale di ${profilo?.domandeOrale ?? ORALE.aperte} domande` : `${CAPITOLO.scritto.multiple} multiple e ${CAPITOLO.scritto.aperte} aperta`} solo su quel capitolo.
+        </p>
       )}
     </section>
 
     <aside class="stack laterale">
       <section class="pannello kit" id="kit" aria-labelledby="kit-titolo">
         <h2 id="kit-titolo">Kit d'esame</h2>
-        {esito && <p class="kit__esito" role="status">{esito}</p>}
+        {esito && esitoCodice !== 'capitolo-in-preparazione' && <p class="kit__esito" role="status">{esito}</p>}
         {!m.appunti ? (
           <p class="muted">Si prepara dagli appunti: per ora non ci sono.</p>
         ) : (
@@ -174,7 +254,7 @@ const esito = ESITI[Astro.url.searchParams.get('esito') ?? ''];
             {simulazioni.map((s) => (
               <li>
                 <a href={`/simulazioni/${s.id}`}>
-                  <span>{giorno(s.creata)} · {s.modalita === 'orale' ? 'Orale' : FORMATI[s.formato as keyof typeof FORMATI]?.etichetta ?? s.formato}</span>
+                  <span>{giorno(s.creata)} · {s.modalita === 'orale' ? 'Orale' : s.capitolo ? 'Capitolo' : FORMATI[s.formato as keyof typeof FORMATI]?.etichetta ?? s.formato}{s.capitolo && <span class="muted"> · {m.appunti?.capitoli.find((c) => c.file === s.capitolo)?.titolo ?? s.capitolo}</span>}</span>
                   <span class="num storico__esito">
                     {s.stato === 'corretta' ? `${s.voto}/30` : s.stato === 'in_correzione' ? 'In correzione' : 'Da finire'}
                   </span>
@@ -242,6 +322,20 @@ const esito = ESITI[Astro.url.searchParams.get('esito') ?? ''];
 </Base>
 
 <script>
+  // Domande di un capitolo in preparazione: ricarica ogni 20 secondi finché l'agente non le consegna.
+  if (document.querySelector('[data-attesa]')) {
+    const ricarica = () => {
+      const t = document.activeElement as HTMLElement | null;
+      if (t && /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName)) return;
+      const u = new URL(location.href);
+      u.searchParams.delete('esito');
+      u.hash = 'padronanza';
+      history.replaceState(null, '', u);
+      location.reload();
+    };
+    window.setInterval(ricarica, 20_000);
+  }
+
   // Scorciatoia: S porta alla simulazione (spenta mentre scrivi in un campo).
   document.addEventListener('keydown', (e) => {
     if (e.key.toLowerCase() !== 's' || e.metaKey || e.ctrlKey || e.altKey) return;
@@ -319,34 +413,174 @@ const esito = ESITI[Astro.url.searchParams.get('esito') ?? ''];
       grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
     }
   }
-  /* Capitoli come righe di un indice: filetti, numero in cifre, nessun riquadro */
+  /* Capitoli come righe di un indice: numero, titolo (link agli appunti), stato, "Allena" */
   .capitoli {
     list-style: none;
     margin: 0;
     padding: 0;
     border-bottom: var(--border);
   }
-  .capitoli > li {
+  .capitolo {
+    display: grid;
+    grid-template-columns: 1.75rem minmax(0, 1fr) auto auto;
+    grid-template-areas: 'n titolo stato allena';
+    gap: var(--space-1) var(--space-3);
+    align-items: center;
+    min-height: 52px;
+    padding: var(--space-2) 0;
     border-top: var(--border);
   }
-  .capitolo {
-    display: flex;
-    gap: var(--space-3);
-    align-items: baseline;
-    padding: var(--space-3) 0;
-    min-height: 48px;
-    color: var(--color-ink);
-    text-decoration: none;
-    transition: color var(--dur) var(--ease), padding var(--dur) var(--ease);
-  }
-  .capitolo:hover {
-    color: var(--color-accent);
-    padding-left: var(--space-2);
-  }
   .capitolo__n {
-    min-width: 1.75rem;
+    grid-area: n;
     color: var(--color-ink-faint);
     font-size: var(--text-xs);
+  }
+  .capitolo__titolo {
+    grid-area: titolo;
+    padding: var(--space-1) 0;
+    color: var(--color-ink);
+    text-decoration: none;
+    transition: color var(--dur) var(--ease);
+  }
+  .capitolo__titolo:hover {
+    color: var(--color-accent);
+    text-decoration: underline;
+  }
+  .capitolo__stato {
+    grid-area: stato;
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+  }
+  .capitolo__quota {
+    min-width: 2.5rem;
+    font-size: var(--text-xs);
+    color: var(--color-ink-muted);
+    text-align: right;
+  }
+  .capitolo__allena {
+    grid-area: allena;
+    margin: 0;
+  }
+  .allena {
+    min-height: 36px;
+    padding: 0 var(--space-3);
+    border: 1px solid var(--color-rule-strong);
+    border-radius: var(--radius-md);
+    background: transparent;
+    color: var(--color-ink);
+    font: inherit;
+    font-size: var(--text-sm);
+    font-weight: var(--weight-semibold);
+    cursor: pointer;
+    transition: background-color var(--dur) var(--ease), border-color var(--dur) var(--ease);
+  }
+  .allena:hover:not(:disabled) {
+    background: var(--color-primary);
+    border-color: var(--color-primary-edge);
+    color: var(--color-on-primary);
+  }
+  .allena:disabled {
+    opacity: 0.45;
+    cursor: wait;
+  }
+  .attesa {
+    font-size: var(--text-xs);
+    color: var(--color-ink-muted);
+    font-style: italic;
+  }
+  .capitolo--attesa .attesa::before {
+    content: '';
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    margin-right: 6px;
+    border-radius: 50%;
+    background: var(--color-primary);
+    vertical-align: middle;
+    animation: respira 1.4s ease-in-out infinite;
+  }
+  @keyframes respira {
+    50% { opacity: 0.25; }
+  }
+  @media (max-width: 560px) {
+    .capitolo {
+      grid-template-columns: 1.75rem minmax(0, 1fr) auto;
+      grid-template-areas:
+        'n titolo allena'
+        '. stato allena';
+    }
+    .capitolo__stato {
+      justify-self: start;
+    }
+  }
+
+  /* Riepilogo della padronanza: barra divisa per stati, legenda, capitolo da allenare */
+  .padronanza {
+    display: grid;
+    gap: var(--space-3);
+    padding-bottom: var(--space-2);
+  }
+  .padronanza__barra {
+    display: flex;
+    gap: 3px;
+    height: 10px;
+  }
+  .padronanza__barra i {
+    flex-basis: 0;
+    border-radius: 2px;
+  }
+  .p-solido { background: var(--color-success); }
+  .p-in-crescita { background: var(--color-warning); }
+  .p-debole { background: var(--color-danger); }
+  .p-mai-provato { background: var(--color-raised); box-shadow: inset 0 0 0 1px var(--color-rule-strong); }
+  .padronanza__legenda {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-1) var(--space-4);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    font-size: var(--text-xs);
+  }
+  .padronanza__legenda li {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+  }
+  .prossimo {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-2) var(--space-4);
+    margin: 0;
+    padding: var(--space-3) var(--space-4);
+    border-left: 3px solid var(--color-primary);
+    background: var(--color-surface);
+  }
+  .prossimo p {
+    flex: 1 1 16rem;
+  }
+  .prossimo__etichetta {
+    display: block;
+    font-size: var(--text-xs);
+    color: var(--color-ink-muted);
+  }
+  .prossimo strong {
+    font-family: var(--font-serif);
+    font-size: var(--text-lg);
+  }
+  .avviso-attesa {
+    padding: var(--space-3) var(--space-4);
+    border: 1px dashed var(--color-rule-strong);
+    border-radius: var(--radius-md);
+    color: var(--color-ink-muted);
+  }
+  .nota-padronanza {
+    font-size: var(--text-xs);
+    color: var(--color-ink-faint);
+    max-width: 70ch;
   }
   .vuoto {
     padding: var(--space-5);

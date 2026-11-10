@@ -3,7 +3,8 @@ import Base from '../layouts/Base.astro';
 import { getMaterie, CFU_TOTALI } from '../lib/percorso';
 import { getVoti, riepilogo, statoMateria, formatoMedia } from '../lib/voti';
 import { statoAgenti, getKit } from '../lib/coda';
-import { contaBanca, giorniDiStudio, ultimiEsiti, FORMATI, ORALE } from '../lib/simulazioni';
+import { contaBanca, giorniDiStudio, ultimiEsiti, padronanzaMateria, padronanzaTutte, FORMATI, ORALE, CAPITOLO } from '../lib/simulazioni';
+import { prossimoCapitolo, type MotivoCapitolo } from '../lib/calcoli';
 
 export const prerender = false;
 
@@ -11,7 +12,7 @@ const materie = await getMaterie();
 const voti = await getVoti();
 const r = riepilogo(materie, voti);
 const inCorso = materie.filter((m) => statoMateria(m, voti) === 'in-corso');
-const [agente, studio, esiti] = await Promise.all([statoAgenti(), giorniDiStudio(), ultimiEsiti()]);
+const [agente, studio, esiti, padronanze] = await Promise.all([statoAgenti(), giorniDiStudio(), ultimiEsiti(), padronanzaTutte()]);
 
 // Prossimo passo: la prima materia in corso con il kit d'esame pronto, altrimenti la prima con appunti.
 const conKit = await Promise.all(inCorso.map(async (m) => ({ m, kit: m.codice ? await getKit(m.codice) : null })));
@@ -20,7 +21,34 @@ const primoCapitolo = adesso?.m.appunti?.capitoli.find((c) => !/indice|mappa/i.t
 const banca = adesso?.m.codice ? await contaBanca(adesso.m.codice) : null;
 const orale = adesso?.m.esame.tipo === 'Orale';
 const simulabile = !!(adesso && banca && banca.totale > 0 && (orale || adesso.m.esame.tipo === 'Scritto'));
-const minuti = orale ? ORALE.minuti : FORMATI.breve.minuti;
+
+// Mossa mirata: se le simulazioni hanno già mostrato un capitolo debole (o ce n'è uno mai provato), si allena quello.
+// Alla prima simulazione, o quando resta solo da rinfrescare, meglio l'esame intero.
+const capitoliP =
+  simulabile && adesso?.m.codice
+    ? await padronanzaMateria(adesso.m.codice, orale ? 'orale' : 'scritto').then((mappa) =>
+        (adesso.m.appunti?.capitoli ?? []).flatMap((c) => {
+          const p = mappa.get(c.file);
+          return p ? [{ ...p, titolo: c.titolo, pronto: p.domande >= (orale ? CAPITOLO.minimoOrale : CAPITOLO.minimo) && !p.inPreparazione }] : [];
+        }),
+      )
+    : [];
+const haProvato = capitoliP.some((c) => c.risposte > 0);
+const scelta = haProvato ? prossimoCapitolo(capitoliP) : null;
+const mirata = scelta && scelta.motivo !== 'da-rinfrescare' ? scelta : null;
+// "Capitolo V, Sezione II: organi ausiliari" -> "organi ausiliari": il titolo resta leggibile anche nel riquadro.
+const titoloBreve = (t: string) => {
+  const s = t.replace(/^Capitolo\s+[IVXLC\d]+(,\s*Sezione\s+[IVXLC\d]+)?\s*[:—–-]\s*/i, '').trim();
+  return s.charAt(0).toUpperCase() + s.slice(1);
+};
+const MOTIVI: Record<MotivoCapitolo, (q: string) => string> = {
+  debole: (q) => `È il capitolo più debole: nelle simulazioni hai preso il ${q} dei punti.`,
+  'mai-provato': () => 'Non l\'hai ancora mai provato in una simulazione.',
+  'in-crescita': (q) => `Sei al ${q} dei punti: ancora un passo per renderlo solido.`,
+  'da-rinfrescare': () => '',
+};
+const minuti = mirata ? (orale ? Math.max(8, Math.round(ORALE.minuti * 2 / 3)) : CAPITOLO.scritto.minuti) : orale ? ORALE.minuti : FORMATI.breve.minuti;
+const appuntiMossa = mirata && adesso?.m.appunti ? `/appunti/${adesso.m.appunti.slug}/${mirata.capitolo.file}` : primoCapitolo && adesso?.m.appunti ? `/appunti/${adesso.m.appunti.slug}/${primoCapitolo.file}` : null;
 
 // Data e settimana del semestre, dalle date ufficiali del piano di studi ("14/09/2026 - 18/12/2026").
 const ora = new Date();
@@ -77,13 +105,15 @@ const giornoSettimana = (indietro: number) => nomiGiorni[(new Date(ora.getTime()
         </p>
         <h2 id="mossa-titolo" class="mossa__titolo">
           {simulabile ? (
-            <>{orale ? 'Interrogati su ' : 'Mettiti alla prova su '}<span class="evidenzia">{adesso.m.breve}</span></>
+            <>{orale ? 'Interrogati su ' : 'Mettiti alla prova su '}<span class="evidenzia">{mirata ? titoloBreve(mirata.capitolo.titolo) : adesso.m.breve}</span></>
           ) : (
             <>Ripassa <span class="evidenzia">{adesso.m.breve}</span></>
           )}
         </h2>
         <p class="mossa__testo">
-          {simulabile
+          {simulabile && mirata
+            ? `${MOTIVI[mirata.motivo](`${Math.round((mirata.capitolo.quota ?? 0) * 100)}%`)} ${orale ? 'Domande a voce solo su questo capitolo.' : 'Poche domande solo su questo capitolo.'}`
+            : simulabile
             ? orale
               ? `Tre domande a voce${agente.online ? ': il docente rilancia dove resti scoperto' : ''}. Poi rileggi i punti mancanti negli appunti.`
               : 'Sei domande in dieci minuti: la scelta multipla si corregge subito, le aperte le corregge l\'agente.'
@@ -98,17 +128,27 @@ const giornoSettimana = (indietro: number) => nomiGiorni[(new Date(ora.getTime()
               <input type="hidden" name="formato" value="breve" />
               {orale && <input type="hidden" name="modalita" value="orale" />}
               {orale && agente.online && <input type="hidden" name="dal_vivo" value="1" />}
+              {mirata && <input type="hidden" name="capitolo" value={mirata.capitolo.file} />}
               <button class="btn btn--primary btn--largo" type="submit" data-tasto="s">Inizia <span class="tasto" aria-hidden="true">S</span></button>
             </form>
           ) : (
             primoCapitolo && adesso.m.appunti && <a class="btn btn--primary btn--largo" href={`/appunti/${adesso.m.appunti.slug}/${primoCapitolo.file}`} data-tasto="s">Apri gli appunti <span class="tasto" aria-hidden="true">S</span></a>
           )}
-          {simulabile && primoCapitolo && adesso.m.appunti ? (
-            <a class="btn" href={`/appunti/${adesso.m.appunti.slug}/${primoCapitolo.file}`}>Appunti</a>
+          {simulabile && appuntiMossa ? (
+            <a class="btn" href={appuntiMossa}>Appunti</a>
           ) : (
             <a class="btn" href={`/materie/${adesso.m.slug}`}>Scheda</a>
           )}
         </div>
+        {mirata && (
+          <form method="post" action="/api/simulazioni" class="mossa__altro">
+            <input type="hidden" name="codice" value={adesso.m.codice!} />
+            <input type="hidden" name="formato" value="breve" />
+            {orale && <input type="hidden" name="modalita" value="orale" />}
+            {orale && agente.online && <input type="hidden" name="dal_vivo" value="1" />}
+            <button type="submit">oppure simula l'esame intero</button>
+          </form>
+        )}
       </section>
     )}
 
@@ -138,6 +178,7 @@ const giornoSettimana = (indietro: number) => nomiGiorni[(new Date(ora.getTime()
     <ul class="materie">
       {inCorso.map((m) => {
         const e = m.codice ? esiti.get(m.codice) : undefined;
+        const deboli = m.codice ? [...(padronanze.get(m.codice)?.values() ?? [])].filter((p) => p.stato === 'debole').length : 0;
         return (
           <li>
             <a class="materia" href={`/materie/${m.slug}`} style={`--c: var(--materia-${m.colore})`}>
@@ -151,6 +192,7 @@ const giornoSettimana = (indietro: number) => nomiGiorni[(new Date(ora.getTime()
                   <>
                     <span class="inchiostro" aria-hidden="true"><i style={`width: ${Math.round((e.voto / 30) * 100)}%`}></i></span>
                     <span class="materia__voto">{e.voto}/30 · {e.n === 1 ? '1 simulazione' : `${e.n} simulazioni`}</span>
+                    {deboli > 0 && <span class="materia__deboli">{deboli === 1 ? '1 capitolo debole' : `${deboli} capitoli deboli`}</span>}
                   </>
                 ) : (
                   <span class="materia__voto">mai simulata</span>
@@ -425,6 +467,27 @@ const giornoSettimana = (indietro: number) => nomiGiorni[(new Date(ora.getTime()
     display: block;
     height: 100%;
     background: var(--color-ink);
+  }
+  .mossa__altro {
+    margin: 0;
+  }
+  .mossa__altro button {
+    padding: var(--space-1) 0;
+    border: 0;
+    background: none;
+    font: inherit;
+    font-size: var(--text-sm);
+    color: var(--color-ink-muted);
+    text-decoration: underline;
+    text-underline-offset: 0.2em;
+    cursor: pointer;
+  }
+  .mossa__altro button:hover {
+    color: var(--color-ink);
+  }
+  .materia__deboli {
+    font-size: var(--text-xs);
+    color: var(--color-danger);
   }
   .materia__voto {
     font-size: var(--text-xs);

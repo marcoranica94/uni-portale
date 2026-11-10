@@ -173,3 +173,105 @@ export function metricheParlato(parole: Parola[], durataTotale: number | null): 
     intercalariUsati: usati,
   };
 }
+
+// ---------- Padronanza per capitolo ----------
+
+export type StatoPadronanza = 'mai-provato' | 'debole' | 'in-crescita' | 'solido';
+
+/** Sotto il 60% dei punti il capitolo è debole; dal 90% può essere solido. */
+export const SOGLIA_DEBOLE = 0.6;
+export const SOGLIA_SOLIDO = 0.9;
+/** "Solido" chiede prove sufficienti: almeno 8 punti in palio, cioè due domande aperte o equivalenti. */
+export const PROVA_SOLIDO = 8;
+/** Le risposte vecchie pesano meno: dopo 21 giorni valgono la metà. */
+export const MEZZA_VITA_GIORNI = 21;
+
+/** "09-parlamento.html; 10-parlamento.html" -> ["09-parlamento.html", "10-parlamento.html"] */
+export function capitoliDi(file: string): string[] {
+  return file
+    .split(';')
+    .map((f) => f.trim())
+    .filter(Boolean);
+}
+
+export interface EsitoRisposta {
+  /** Campo file della domanda: uno o più capitoli. */
+  file: string;
+  punti: number;
+  massimo: number;
+  /** Quando è stata fatta la simulazione (ISO). */
+  data: string;
+}
+
+export interface Padronanza {
+  stato: StatoPadronanza;
+  /** Quota dei punti presi, pesata per recenza (0-1); null se mai provato. */
+  quota: number | null;
+  risposte: number;
+  /** Punti in palio in tutto, senza pesi: misura quante prove ci sono. */
+  inPalio: number;
+  ultima: string | null;
+}
+
+export function statoPadronanza(quota: number | null, inPalio: number): StatoPadronanza {
+  if (quota === null || inPalio === 0) return 'mai-provato';
+  if (quota < SOGLIA_DEBOLE) return 'debole';
+  if (quota >= SOGLIA_SOLIDO && inPalio >= PROVA_SOLIDO) return 'solido';
+  return 'in-crescita';
+}
+
+/**
+ * Padronanza di ogni capitolo dagli esiti delle simulazioni corrette.
+ * Ogni risposta pesa quanto i suoi punti in palio (un'aperta vale quattro multiple) e perde metà del peso ogni 21 giorni;
+ * una domanda su due capitoli conta per entrambi.
+ */
+export function padronanzaCapitoli(esiti: EsitoRisposta[], adesso = new Date()): Map<string, Padronanza> {
+  const somme = new Map<string, { presi: number; pesi: number; risposte: number; inPalio: number; ultima: string }>();
+  for (const e of esiti) {
+    if (!(e.massimo > 0)) continue;
+    const giorni = Math.max(0, (adesso.getTime() - Date.parse(e.data)) / 86_400_000);
+    const peso = e.massimo * 0.5 ** (giorni / MEZZA_VITA_GIORNI);
+    const quota = Math.min(1, Math.max(0, e.punti / e.massimo));
+    for (const c of capitoliDi(e.file)) {
+      const s = somme.get(c) ?? { presi: 0, pesi: 0, risposte: 0, inPalio: 0, ultima: e.data };
+      s.presi += peso * quota;
+      s.pesi += peso;
+      s.risposte += 1;
+      s.inPalio += e.massimo;
+      if (e.data > s.ultima) s.ultima = e.data;
+      somme.set(c, s);
+    }
+  }
+  const esito = new Map<string, Padronanza>();
+  for (const [c, s] of somme) {
+    const quota = s.pesi > 0 ? s.presi / s.pesi : null;
+    esito.set(c, { stato: statoPadronanza(quota, s.inPalio), quota, risposte: s.risposte, inPalio: s.inPalio, ultima: s.ultima });
+  }
+  return esito;
+}
+
+export const MAI_PROVATO: Padronanza = { stato: 'mai-provato', quota: null, risposte: 0, inPalio: 0, ultima: null };
+
+export type MotivoCapitolo = 'debole' | 'mai-provato' | 'in-crescita' | 'da-rinfrescare';
+
+/**
+ * Quale capitolo allenare adesso, tra quelli pronti (con abbastanza domande), in quest'ordine:
+ * 1. il più debole (quota più bassa);
+ * 2. il primo mai provato, nell'ordine degli appunti (prima la copertura, poi la rifinitura);
+ * 3. quello in crescita con la quota più bassa;
+ * 4. il solido provato meno di recente, per rinfrescarlo.
+ */
+export function prossimoCapitolo<T extends Padronanza & { file: string; pronto: boolean }>(
+  capitoli: T[],
+): { capitolo: T; motivo: MotivoCapitolo } | null {
+  const pronti = capitoli.filter((c) => c.pronto);
+  const perQuota = (a: T, b: T) => (a.quota ?? 0) - (b.quota ?? 0) || (a.ultima ?? '').localeCompare(b.ultima ?? '');
+  const debole = pronti.filter((c) => c.stato === 'debole').sort(perQuota)[0];
+  if (debole) return { capitolo: debole, motivo: 'debole' };
+  const mai = pronti.find((c) => c.stato === 'mai-provato');
+  if (mai) return { capitolo: mai, motivo: 'mai-provato' };
+  const crescita = pronti.filter((c) => c.stato === 'in-crescita').sort(perQuota)[0];
+  if (crescita) return { capitolo: crescita, motivo: 'in-crescita' };
+  const solido = pronti.filter((c) => c.stato === 'solido').sort((a, b) => (a.ultima ?? '').localeCompare(b.ultima ?? ''))[0];
+  return solido ? { capitolo: solido, motivo: 'da-rinfrescare' } : null;
+}
