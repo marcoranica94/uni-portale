@@ -3,7 +3,7 @@
  * Correzione delle risposte aperte di una simulazione, con la rubrica della domanda
  * e il nucleo del kit come riferimento (niente conoscenze esterne).
  */
-import { CorrezioneModello, RichiestaCorrezione, type NomeAgente, type RisultatoCorrezione } from '../src/shared/schemi.ts';
+import { CorrezioneModello, CorrezioneOraleModello, RichiestaCorrezione, type NomeAgente, type RisultatoCorrezione } from '../src/shared/schemi.ts';
 import { genera } from './adattatori.ts';
 import { HOST } from './config.ts';
 import { leggiKit } from './kit.ts';
@@ -19,6 +19,16 @@ Regole:
 - Mantieni lo stesso "ordine" delle risposte ricevute.
 - "giudizio": valutazione complessiva in 2-3 frasi.`;
 
+const ISTRUZIONI_ORALE = (materia: string) => `${ISTRUZIONI(materia)}
+
+QUESTA È UN'INTERROGAZIONE ORALE: le risposte sono trascrizioni automatiche del parlato.
+- Ignora gli errori tipici della trascrizione (parole storpiate, punteggiatura): valuta il contenuto detto.
+- In più valuta l'ESPOSIZIONE di tutta l'interrogazione in "esposizione":
+  - "voto" da 1 a 10 su chiarezza, ordine del discorso, lessico tecnico della materia, fluidità e sicurezza;
+  - usa le "metriche" di ogni risposta: parole al minuto (ritmo adatto all'orale circa 110-160), pause oltre 2 secondi, intercalari (ehm, cioè, diciamo…), secondi prima di iniziare;
+  - "puntiForza" e "daMigliorare": osservazioni concrete, citando quando serve parole o abitudini della trascrizione;
+  - "commento": 2-3 frasi pratiche su come esporre meglio all'esame, con il tu.`;
+
 export async function correggi(richiestaGrezza: unknown, opz: { agente: NomeAgente; modello?: string; log?: (m: string) => void }): Promise<RisultatoCorrezione> {
   const richiesta = RichiestaCorrezione.parse(richiestaGrezza);
   const kit = await leggiKit(richiesta.codice);
@@ -30,15 +40,14 @@ export async function correggi(richiestaGrezza: unknown, opz: { agente: NomeAgen
     rispostaModello: r.rispostaModello,
     nucleo: kit.nuclei.find((n) => n.id === r.nucleo) ?? null,
     risposta: r.risposta,
+    ...(richiesta.modalita === 'orale' ? { metriche: r.metriche ?? null } : {}),
   }));
+  const orale = richiesta.modalita === 'orale';
   const inizio = Date.now();
-  const c = await genera({
-    agente: opz.agente,
-    modello: opz.modello,
-    istruzioni: ISTRUZIONI(kit.meta.materia),
-    contenuto: JSON.stringify(contenuto, null, 1),
-    schema: CorrezioneModello,
-  });
-  opz.log?.(`correzione: ${c.valutazioni.length} risposte in ${Math.round((Date.now() - inizio) / 1000)} s`);
+  const base = { agente: opz.agente, modello: opz.modello, contenuto: JSON.stringify(contenuto, null, 1) };
+  const c = orale
+    ? await genera({ ...base, istruzioni: ISTRUZIONI_ORALE(kit.meta.materia), schema: CorrezioneOraleModello })
+    : { ...(await genera({ ...base, istruzioni: ISTRUZIONI(kit.meta.materia), schema: CorrezioneModello })), esposizione: null };
+  opz.log?.(`correzione ${orale ? 'orale' : 'scritta'}: ${c.valutazioni.length} risposte in ${Math.round((Date.now() - inizio) / 1000)} s`);
   return { ...c, agente: `${opz.agente}@${HOST}` };
 }

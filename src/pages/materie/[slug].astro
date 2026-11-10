@@ -5,7 +5,7 @@ import TipoEsame from '../../components/TipoEsame.astro';
 import { getMaterie } from '../../lib/percorso';
 import { getVoti, statoMateria, votoTesto } from '../../lib/voti';
 import { getKit, ultimoLavoro, statoAgenti } from '../../lib/coda';
-import { contaBanca, storico, FORMATI } from '../../lib/simulazioni';
+import { contaBanca, storico, FORMATI, ORALE } from '../../lib/simulazioni';
 
 export const prerender = false;
 
@@ -27,6 +27,7 @@ const lavoroDomande = m.codice ? await ultimoLavoro('domande', m.codice) : null;
 const domandeInLavorazione = !!lavoroDomande && (lavoroDomande.stato === 'in_coda' || lavoroDomande.stato === 'in_corso');
 const simulazioni = m.codice ? await storico(m.codice) : [];
 const scritto = m.esame.tipo === 'Scritto';
+const oraleEsame = m.esame.tipo === 'Orale';
 const giorno = (iso: string) => new Date(iso).toLocaleDateString('it-IT', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Europe/Rome' });
 const ESITI: Record<string, string> = {
   'in-coda': "Richiesta inviata: l'agente locale preparerà il kit appena è acceso.",
@@ -120,11 +121,21 @@ const esito = ESITI[Astro.url.searchParams.get('esito') ?? ''];
 
       <section class="pannello simula" id="simula" aria-labelledby="simula-titolo">
         <h2 id="simula-titolo">Simulazione d'esame</h2>
-        {!scritto ? (
-          <p class="muted">Per gli esami orali la simulazione con la voce arriva con lo Sprint 4.</p>
+        {!scritto && !oraleEsame ? (
+          <p class="muted">Per questo tipo d'esame la simulazione non è ancora disponibile.</p>
         ) : !kit ? (
           <p class="muted">Prima serve il kit d'esame: dalle sue rubriche nascono le domande.</p>
         ) : banca && banca.lotto ? (
+          oraleEsame ? (
+          <form method="post" action="/api/simulazioni" class="avvio">
+            <input type="hidden" name="codice" value={m.codice!} />
+            <input type="hidden" name="modalita" value="orale" />
+            <input type="hidden" name="formato" value="breve" />
+            <p>Interrogazione di {ORALE.aperte} domande: le ascolti, rispondi a voce, la trascrizione arriva in pochi secondi. L'audio non viene salvato.</p>
+            <button class="btn btn--primary" type="submit">Inizia l'orale</button>
+            <p class="muted piccolo num">Banca: {banca.aperte} domande aperte, dal kit del {kit && giorno(kit.generato)}.</p>
+          </form>
+          ) : (
           <form method="post" action="/api/simulazioni" class="avvio">
             <input type="hidden" name="codice" value={m.codice!} />
             <div class="formati" role="radiogroup" aria-label="Formato">
@@ -139,6 +150,7 @@ const esito = ESITI[Astro.url.searchParams.get('esito') ?? ''];
             <button class="btn btn--primary" type="submit">Inizia</button>
             <p class="muted piccolo num">Banca: {banca.multiple} a scelta multipla e {banca.aperte} aperte, dal kit del {kit && giorno(kit.generato)}.</p>
           </form>
+          )
         ) : domandeInLavorazione ? (
           <p><Badge stato="in-coda" label={lavoroDomande!.stato === 'in_corso' ? 'Domande in preparazione' : 'Domande in coda'} /></p>
         ) : (
@@ -155,7 +167,7 @@ const esito = ESITI[Astro.url.searchParams.get('esito') ?? ''];
             {simulazioni.map((s) => (
               <li>
                 <a href={`/simulazioni/${s.id}`}>
-                  <span>{giorno(s.creata)} · {FORMATI[s.formato as keyof typeof FORMATI]?.etichetta ?? s.formato}</span>
+                  <span>{giorno(s.creata)} · {s.modalita === 'orale' ? 'Orale' : FORMATI[s.formato as keyof typeof FORMATI]?.etichetta ?? s.formato}</span>
                   <span class="num storico__esito">
                     {s.stato === 'corretta' ? `${s.voto}/30` : s.stato === 'in_correzione' ? 'In correzione' : 'Da finire'}
                   </span>

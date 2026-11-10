@@ -2,7 +2,10 @@
 import Base from '../../layouts/Base.astro';
 import Badge from '../../components/Badge.astro';
 import { getMaterie } from '../../lib/percorso';
-import { getSimulazione, FORMATI } from '../../lib/simulazioni';
+import { getSimulazione, FORMATI, ORALE } from '../../lib/simulazioni';
+import OraleInCorso from '../../components/OraleInCorso.astro';
+import MetricheParlato from '../../components/MetricheParlato.astro';
+import type { EsposizioneModello } from '../../shared/schemi';
 import { statoAgenti } from '../../lib/coda';
 
 export const prerender = false;
@@ -11,7 +14,9 @@ const dati = await getSimulazione(String(Astro.params.id));
 if (!dati) return new Response('Simulazione non trovata', { status: 404 });
 const { sim, risposte } = dati;
 const m = (await getMaterie()).find((x) => x.codice === sim.codice);
-const formato = FORMATI[sim.formato];
+const orale = sim.modalita === 'orale';
+const formato = orale ? { etichetta: ORALE.etichetta } : FORMATI[sim.formato];
+const esposizione = sim.esposizione ? (JSON.parse(sim.esposizione) as EsposizioneModello) : null;
 const scadenza = Date.parse(sim.creata) + sim.minuti * 60_000;
 const agente = sim.stato === 'in_correzione' ? await statoAgenti() : null;
 const appunti = m?.appunti ? `/appunti/${m.appunti.slug}` : null;
@@ -23,11 +28,13 @@ const sufficiente = (sim.voto ?? 0) >= 18;
 <Base title={`Simulazione · ${m?.breve ?? sim.codice}`}>
   <header class="intro" style={`--c: var(--materia-${m?.colore ?? 1})`}>
     <p class="etichetta"><span class="punto"></span><a href={m ? `/materie/${m.slug}` : '/'}>{m?.nome ?? sim.codice}</a></p>
-    <h1>{sim.stato === 'in_corso' ? 'Simulazione scritta' : 'Risultato della simulazione'}</h1>
-    <p class="muted">{formato.etichetta} · {risposte.length} domande · {sim.minuti} minuti</p>
+    <h1>{sim.stato === 'in_corso' ? (orale ? 'Interrogazione orale' : 'Simulazione scritta') : orale ? "Risultato dell'orale" : 'Risultato della simulazione'}</h1>
+    <p class="muted">{formato.etichetta} · {risposte.length} domande{orale ? ' · rispondi a voce, una domanda per volta' : ` · ${sim.minuti} minuti`}</p>
   </header>
 
-  {sim.stato === 'in_corso' ? (
+  {sim.stato === 'in_corso' && orale ? (
+    <OraleInCorso sim={sim} risposte={risposte} />
+  ) : sim.stato === 'in_corso' ? (
     <form method="post" action={`/api/simulazioni/${sim.id}/consegna`} class="esame" id="esame" data-id={sim.id} data-scadenza={scadenza}>
       <div class="barra-esame" role="status">
         <span class="progresso num" id="progresso">{risposte.length} domande</span>
@@ -78,7 +85,7 @@ const sufficiente = (sim.voto ?? 0) >= 18;
         {sim.stato === 'in_correzione' ? (
           <>
             <p class="esito__voto esito__voto--attesa">In correzione</p>
-            <p>Scelta multipla: <strong class="num">{sim.punti} su {risposte.filter((r) => r.domanda.tipo === 'multipla').length}</strong>. Le risposte aperte le sta correggendo l'agente locale.</p>
+            <p>{orale ? "Le risposte sono trascritte: l'agente locale sta valutando contenuto ed esposizione." : <>Scelta multipla: <strong class="num">{sim.punti} su {risposte.filter((r) => r.domanda.tipo === 'multipla').length}</strong>. Le risposte aperte le sta correggendo l'agente locale.</>}</p>
             <p class="cluster">
               <Badge stato={agente?.online ? 'online' : 'offline'} label={agente?.online ? 'Agente online: ricarica tra qualche minuto' : 'Agente offline: la correzione parte quando lo avvii'} />
               <a href="/agente">Come avviarlo</a>
@@ -91,6 +98,16 @@ const sufficiente = (sim.voto ?? 0) >= 18;
             </p>
             <p class="num"><strong>{sim.punti} punti su {sim.massimo}</strong> · {sufficiente ? 'sufficiente' : 'non sufficiente'} · stima: multipla 1 punto, aperta 4 punti</p>
             {sim.giudizio && <p class="esito__giudizio">{sim.giudizio}</p>}
+            {esposizione && (
+              <div class="esposizione">
+                <p class="esposizione__voto num"><span class="muted">Esposizione</span> <strong>{String(esposizione.voto).replace('.', ',')}/10</strong></p>
+                <div class="esposizione__liste">
+                  {esposizione.puntiForza.length > 0 && <div><h3>Funziona</h3><ul class="lista lista--ok">{esposizione.puntiForza.map((x) => <li>{x}</li>)}</ul></div>}
+                  {esposizione.daMigliorare.length > 0 && <div><h3>Da migliorare</h3><ul class="lista lista--errore">{esposizione.daMigliorare.map((x) => <li>{x}</li>)}</ul></div>}
+                </div>
+                <p class="commento">{esposizione.commento}</p>
+              </div>
+            )}
           </>
         )}
       </section>
@@ -127,6 +144,7 @@ const sufficiente = (sim.voto ?? 0) >= 18;
               ) : (
                 <>
                   <blockquote class="tua">{r.risposta ?? <span class="muted">Nessuna risposta.</span>}</blockquote>
+                  {r.metriche && <MetricheParlato metriche={r.metriche} />}
                   {r.esito && (
                     <div class="rubrica">
                       {r.esito.coperti && r.esito.coperti.length > 0 && (
@@ -527,6 +545,26 @@ const sufficiente = (sim.voto ?? 0) >= 18;
   }
   .esito__giudizio {
     line-height: 1.6;
+  }
+  .esposizione {
+    display: grid;
+    gap: var(--space-3);
+    margin-top: var(--space-3);
+    padding-top: var(--space-4);
+    border-top: var(--border);
+  }
+  .esposizione__voto strong {
+    font-family: var(--font-serif);
+    font-size: var(--text-xl);
+  }
+  .esposizione__liste {
+    display: grid;
+    gap: var(--space-4);
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr));
+  }
+  .esposizione h3 {
+    font-size: var(--text-sm);
+    margin-bottom: var(--space-1);
   }
   .risultati {
     list-style: none;
