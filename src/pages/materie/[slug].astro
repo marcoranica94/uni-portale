@@ -2,19 +2,30 @@
 import Base from '../../layouts/Base.astro';
 import Badge from '../../components/Badge.astro';
 import TipoEsame from '../../components/TipoEsame.astro';
-import { getMaterie, statoDidattico, type Materia } from '../../lib/percorso';
+import { getMaterie } from '../../lib/percorso';
+import { getVoti, statoMateria } from '../../lib/voti';
+import { getKit, ultimoLavoro, statoAgenti } from '../../lib/coda';
 
-export async function getStaticPaths() {
-  const materie = await getMaterie();
-  return materie.map((m) => ({ params: { slug: m.slug }, props: { m } }));
-}
+export const prerender = false;
 
-interface Props {
-  m: Materia;
-}
-const { m } = Astro.props;
+const m = (await getMaterie()).find((x) => x.slug === Astro.params.slug);
+if (!m) return new Response('Materia non trovata', { status: 404 });
+
 const base = m.appunti ? `/appunti/${m.appunti.slug}` : null;
 const mb = m.appunti?.pdf ? (m.appunti.pdf.bytes / 1024 / 1024).toLocaleString('it-IT', { maximumFractionDigits: 1 }) : null;
+const voti = await getVoti();
+const kit = m.codice ? await getKit(m.codice) : null;
+const lavoro = m.codice ? await ultimoLavoro('kit', m.codice) : null;
+const agente = await statoAgenti();
+const kitAggiornato = !!(kit && m.appunti && kit.impronta === m.appunti.impronta);
+const inLavorazione = lavoro && (lavoro.stato === 'in_coda' || lavoro.stato === 'in_corso');
+const dataIt = (iso: string) => new Date(iso).toLocaleString('it-IT', { dateStyle: 'short', timeStyle: 'short', timeZone: 'Europe/Rome' });
+const ESITI: Record<string, string> = {
+  'in-coda': "Richiesta inviata: l'agente locale preparerà il kit alla prossima accensione.",
+  'gia-in-coda': 'Il kit è già in preparazione.',
+  'senza-appunti': 'Servono gli appunti per preparare il kit.',
+};
+const esito = ESITI[Astro.url.searchParams.get('esito') ?? ''];
 ---
 
 <Base title={m.breve}>
@@ -22,7 +33,7 @@ const mb = m.appunti?.pdf ? (m.appunti.pdf.bytes / 1024 / 1024).toLocaleString('
     <p class="etichetta">{m.anno}º anno · {m.periodo}{m.date && ` · ${m.date}`}</p>
     <h1>{m.nome}</h1>
     <div class="cluster">
-      <Badge stato={statoDidattico(m)} />
+      <Badge stato={statoMateria(m, voti)} />
       <TipoEsame tipo={m.esame.tipo} dalCatalogo={m.esame.dalCatalogo} />
       <span class="muted num">{m.cfu} CFU{m.codice && ` · ${m.codice}`}</span>
     </div>
@@ -39,6 +50,36 @@ const mb = m.appunti?.pdf ? (m.appunti.pdf.bytes / 1024 / 1024).toLocaleString('
       <span class="btn btn--off" aria-disabled="true">PDF non ancora disponibile</span>
     )}
     <p id="simula-nota" class="muted nota">Le simulazioni arrivano con lo Sprint 3.</p>
+  </section>
+
+  <section class="kit" id="kit" aria-labelledby="kit-titolo">
+    <div class="kit__testa">
+      <h2 id="kit-titolo">Kit d'esame</h2>
+      <Badge stato={agente.online ? 'online' : 'offline'} />
+    </div>
+    {esito && <p class="kit__esito" role="status">{esito}</p>}
+    {!m.appunti ? (
+      <p class="muted">Il kit si prepara dagli appunti: per questa materia non ci sono ancora.</p>
+    ) : (
+      <>
+        <p class="muted">
+          {kit
+            ? <>Kit del {dataIt(kit.generato)} · {kit.nuclei} nuclei · {kit.agente}{kitAggiornato ? '' : ' · '}{!kitAggiornato && <strong class="kit__avviso">Appunti cambiati: aggiorna il kit</strong>}</>
+            : "Nessun kit ancora. Il kit raccoglie in un solo file concetti, autori, nessi e rubrica di correzione: da lì nascono domande e correzioni."}
+        </p>
+        {inLavorazione && (
+          <p><Badge stato="in-coda" label={lavoro!.stato === 'in_corso' ? `In preparazione (${lavoro!.agente})` : 'In coda'} /></p>
+        )}
+        {lavoro?.stato === 'errore' && <p class="kit__errore">Ultimo tentativo fallito: {lavoro.errore}</p>}
+        <form method="post" action="/api/lavori">
+          <input type="hidden" name="codice" value={m.codice!} />
+          <button class="btn" type="submit" disabled={!!inLavorazione}>
+            {kit ? 'Aggiorna il kit d\'esame' : 'Prepara kit d\'esame'}
+          </button>
+        </form>
+        {!agente.online && <p class="muted nota">Agente locale offline{agente.ultimo && ` (ultimo contatto ${dataIt(agente.ultimo)})`}: la richiesta resta in coda finché non avvii <code>uni-agent</code> sul PC.</p>}
+      </>
+    )}
   </section>
 
   <div class="colonne">
@@ -139,6 +180,39 @@ const mb = m.appunti?.pdf ? (m.appunti.pdf.bytes / 1024 / 1024).toLocaleString('
   .btn--off {
     opacity: 0.55;
     cursor: not-allowed;
+  }
+  .kit {
+    display: grid;
+    gap: var(--space-3);
+    padding: var(--space-4) var(--space-5);
+    background: var(--color-surface);
+    border: var(--border);
+    border-radius: var(--radius-md);
+  }
+  .kit__testa {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-3);
+    align-items: center;
+    justify-content: space-between;
+  }
+  .kit__esito {
+    color: var(--color-accent);
+    font-weight: var(--weight-medium);
+  }
+  .kit__avviso {
+    color: var(--color-warning);
+  }
+  .kit__errore {
+    color: var(--color-danger);
+    font-size: var(--text-sm);
+  }
+  .kit form {
+    margin: 0;
+  }
+  code {
+    font-family: var(--font-mono);
+    font-size: 0.9em;
   }
   .colonne {
     display: grid;

@@ -4,6 +4,7 @@
 import { readFile, writeFile, mkdir, rm, readdir, copyFile, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { improntaAppunti } from './impronta-appunti.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const progetto = path.resolve(here, '..');
@@ -61,7 +62,7 @@ for (const [codice, materia] of Object.entries(config)) {
     }
   }
 
-  risultato[codice] = { slug: materia.slug, capitoli, pdf };
+  risultato[codice] = { slug: materia.slug, capitoli, pdf, impronta: await improntaAppunti(origine) };
   console.log(`[appunti] ${materia.slug}: ${capitoli.length} pagine${pdf ? ', PDF incluso' : ''}`);
 }
 

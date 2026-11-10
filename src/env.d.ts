@@ -8,3 +8,10 @@ declare module 'cloudflare:workers' {
     ACCESS_AUD: string;
   };
 }
+
+declare namespace App {
+  interface Locals {
+    /** Chi ha superato Cloudflare Access: una persona (email) o il service token dell'agente. */
+    access?: { email: string | null; servizio: boolean };
+  }
+}

@@ -18,7 +18,10 @@ export const onRequest = defineMiddleware(async (ctx, next) => {
 
   chiavi ??= createRemoteJWKSet(new URL(`${env.ACCESS_TEAM_DOMAIN}/cdn-cgi/access/certs`));
   try {
-    await jwtVerify(token, chiavi, { issuer: env.ACCESS_TEAM_DOMAIN, audience: env.ACCESS_AUD });
+    const { payload } = await jwtVerify(token, chiavi, { issuer: env.ACCESS_TEAM_DOMAIN, audience: env.ACCESS_AUD });
+    const email = typeof payload.email === 'string' ? payload.email : null;
+    // Il token di un service token non ha email: ha common_name (il Client ID).
+    ctx.locals.access = { email, servizio: !email && typeof payload.common_name === 'string' };
   } catch {
     return new Response('Accesso non autorizzato.', { status: 403 });
   }

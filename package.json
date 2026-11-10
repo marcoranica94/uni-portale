@@ -12,7 +12,8 @@
     "build": "node scripts/sync-appunti.mjs && astro check && astro build",
     "preview": "astro preview",
     "check": "astro check",
-    "astro": "astro"
+    "astro": "astro",
+    "agente": "node agente/uni-agent.ts"
   },
   "dependencies": {
     "@astrojs/cloudflare": "^14.0.0",
@@ -21,11 +22,13 @@
     "astro": "^7.0.0",
     "jose": "^6.2.16",
     "wrangler": "^4.0.0",
-    "yaml": "^2.9.1"
+    "yaml": "^2.9.1",
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@astrojs/check": "^0.9.12",
     "@cloudflare/workers-types": "^5.20261109.1",
+    "@types/node": "^24.19.2",
     "typescript": "^6.0.3"
   },
   "packageManager": "pnpm@12.18.0"

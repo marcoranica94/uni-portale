@@ -5,7 +5,7 @@ import appuntiGenerati from '../data/appunti.generated.json';
 type Voce = CollectionEntry<'insegnamenti'>['data'];
 type Colore = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
 type ConfigMateria = { slug: string; breve?: string; colore?: Colore; appunti?: string; pdf?: string };
-type Appunti = { slug: string; capitoli: { file: string; titolo: string }[]; pdf: { file: string; bytes: number } | null };
+type Appunti = { slug: string; capitoli: { file: string; titolo: string }[]; pdf: { file: string; bytes: number } | null; impronta: string };
 
 export type Periodo = 'I semestre' | 'II semestre' | 'Annuale' | 'Da definire';
 export type TipoEsame = 'Scritto' | 'Orale' | 'Relazione e discussione' | 'Da definire';
