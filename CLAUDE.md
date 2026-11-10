@@ -58,9 +58,20 @@ Leggi il documento prima di modificarlo e passa sempre `if_version`.
 
 Non pubblicare mai `fonti/` né `lavorazione/ocr/`: sono materiale protetto e restano solo in locale.
 
-## Ambiente
+## Ambiente e comandi
 
-- Mac Intel Core i5-5257U (2015), macOS 12: niente Apple Silicon, quindi niente mlx-whisper né accelerazione utile per whisper.cpp. Nello Sprint 2 una prova confronta whisper.cpp locale con Whisper di Cloudflare Workers AI.
+Progetto in `piattaforma/`: Astro 7, adapter `@astrojs/cloudflare` 14, Wrangler 4, TypeScript 6 (`astro check` non supporta ancora TypeScript 7), pnpm 12, Node 24 LTS.
+
+| Comando | A cosa serve | Dove funziona |
+| --- | --- | --- |
+| `pnpm build` | controllo dei tipi + build | ovunque, anche sul Mac Intel |
+| `pnpm dev` | server di sviluppo dentro workerd | Windows x64, Linux, macOS 13.5+; **non** sul Mac Intel con macOS 12 |
+| `pnpm types` | genera `worker-configuration.d.ts` dai binding | come `pnpm dev`; il file generato va committato |
+| `pnpm wrangler deploy` | pubblicazione | ovunque; di norma la fa la GitHub Action |
+
+- Il Mac di casa è un Intel Core i5-5257U (2015) con macOS 12: Node 26 e workerd non partono. Lì si lavora con `pnpm build`; per `pnpm dev` si usa il PC Windows o la CI. Niente mlx-whisper né accelerazione utile per whisper.cpp (prova nello Sprint 2).
+- `prerenderEnvironment: 'node'` in `astro.config.mjs` serve proprio a generare le pagine statiche senza workerd.
+- pnpm 12 scarta le versioni pubblicate da troppo poco tempo e blocca gli script di installazione: le eccezioni stanno in `pnpm-workspace.yaml` (`allowBuilds`, `overrides`). Non aggiungere `minimumReleaseAgeExclude` per inseguire versioni uscite da poche ore.
 - `claude`, `codex` e `agy` sono installati; `gh` no.
 
 ## Questioni aperte

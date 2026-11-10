@@ -1,0 +1,7 @@
+allowBuilds:
+  esbuild: true
+  workerd: true
+# Solo versioni stabili: una dipendenza peer risolveva @emnapi a una beta 2.0 incompatibile.
+overrides:
+  '@emnapi/runtime': ^1.11.1
+  '@emnapi/core': ^1.11.1

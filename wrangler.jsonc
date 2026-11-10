@@ -1,0 +1,9 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "uni-portale",
+  "compatibility_date": "2026-11-01",
+  "compatibility_flags": ["nodejs_compat"],
+  // Il sito si serve solo da uni.marcoranica.com, protetto da Cloudflare Access.
+  "workers_dev": false
+  // Binding da aggiungere nello Sprint 1: D1 (DB).
+}
