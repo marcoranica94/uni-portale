@@ -75,4 +75,5 @@ jobs:
 
       - name: Deploy saltato
         if: env.HA_TOKEN != 'true'
-        run: echo "::notice::Segreti Cloudflare non configurati: build verificata, deploy saltato."
+        run: |
+          echo "::notice::Segreti Cloudflare non configurati, build verificata e deploy saltato."
