@@ -90,7 +90,14 @@ pnpm agente verifica                  # credenziali e collegamento
 - Usa `claude -p`, `codex exec`, `agy -p` con output JSON vincolato agli schemi di `src/shared/schemi.ts` (formato rigido: campi tutti obbligatori, `nullable` al posto di `optional`).
 - Il kit d'esame va in `<corso>/esame/kit-esame.json` (fonte per domande e correzioni) e `.md` (lettura); l'agente committa e pusha solo quei file. L'impronta degli appunti (`scripts/impronta-appunti.mjs`) dice se il kit è aggiornato.
 - Requisiti su un altro PC: repository clonato, Node 24 + pnpm (`pnpm install`), almeno una CLI tra claude/codex/agy con login fatto, `~/.config/uni-agent/access.env`.
-- Primo kit: Sociologia, 42 nuclei, ~12 minuti con Claude (10/11/2026).
+- Kit: Sociologia 42 nuclei (~12 min), Diritto pubblico 71 nuclei (~8 min), con Claude (10/11/2026). Banca Sociologia: 126 domande (~12 min).
+
+## Simulazioni d'esame
+
+- **Scritto** (`/simulazioni/[id]`): domande dalla banca della materia (lavoro `domande` dell'agente, dal kit), multipla corretta subito, aperte corrette dall'agente con la rubrica. Pesi stimati: multipla 1, aperta 4; voto = punti/massimo × 30.
+- **Orale** (esami orali): 3 domande aperte; il telefono registra, `/api/simulazioni/[id]/audio` trascrive con **Workers AI `@cf/openai/whisper-large-v3-turbo`** in italiano e scarta l'audio (mai salvato, niente R2); in D1 vanno solo trascrizione e metriche (`calcoli.ts/metricheParlato`). L'agente valuta contenuto (rubrica) ed esposizione (voto /10). Quota gratuita Workers AI: ~210 minuti di audio al giorno.
+- **Rubrica**: deve contenere solo ciò che la domanda chiede; in correzione un punto non richiesto non toglie punti.
+- **Collaudo**: audio di prova con `say -v Luca -o x.m4a --file-format=m4af --data-format=aac "..."` (le pause con `[[slnc 2500]]`), poi POST con `scripts/uni-curl.sh`. Le simulazioni di prova vanno eliminate a fine collaudo.
 
 ## Provare il sito online
 
