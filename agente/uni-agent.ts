@@ -54,7 +54,7 @@ async function giro(): Promise<boolean> {
     if (lavoro.tipo === 'kit' && lavoro.codice) {
       risultato = await generaKit(lavoro.codice, { agente, modello: values.modello, push, log });
     } else if (lavoro.tipo === 'domande' && lavoro.codice) {
-      risultato = await generaDomande(lavoro.codice, { agente, modello: values.modello, log });
+      risultato = await generaDomande(lavoro.codice, lavoro.richiesta, { agente, modello: values.modello, log });
     } else if (lavoro.tipo === 'correzione') {
       risultato = await correggi(lavoro.richiesta, { agente, modello: values.modello, log });
     }

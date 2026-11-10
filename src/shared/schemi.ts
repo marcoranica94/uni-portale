@@ -111,6 +111,15 @@ export const DomandeModello = z.object({ domande: z.array(DomandaModello).min(1)
 export const DomandaCompleta = DomandaModello.extend({ file: z.string(), pagine: z.string() });
 export type DomandaCompleta = z.infer<typeof DomandaCompleta>;
 
+/** Richiesta di rifornimento della banca: pochi nuclei, scelti tra i meno coperti. */
+export const RichiestaDomande = z.object({
+  nuclei: z.number().int().min(1).max(20).default(6),
+  /** Quante domande ci sono già per nucleo (id del kit -> numero). */
+  presenti: z.record(z.string(), z.number()).default({}),
+  istruzioni: z.string().default(''),
+});
+export type RichiestaDomande = z.infer<typeof RichiestaDomande>;
+
 export const RisultatoDomande = z.object({
   lotto: z.string(),
   agente: z.string(),
@@ -125,6 +134,8 @@ export const RichiestaCorrezione = z.object({
   simulazione: z.string(),
   codice: z.string(),
   modalita: z.enum(['scritto', 'orale']).default('scritto'),
+  /** Istruzioni d'esame scritte dallo studente per questa materia. */
+  istruzioni: z.string().default(''),
   risposte: z.array(
     z.object({
       ordine: z.number().int(),

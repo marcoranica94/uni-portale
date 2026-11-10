@@ -45,10 +45,13 @@ export async function correggi(richiestaGrezza: unknown, opz: { agente: NomeAgen
   }));
   const orale = richiesta.modalita === 'orale';
   const inizio = Date.now();
+  const indicazioni = richiesta.istruzioni
+    ? `\n\nIndicazioni dello studente su come si comporta il docente all'esame (applicale nel giudizio e nel tono, senza uscire dalla rubrica):\n${richiesta.istruzioni}`
+    : '';
   const base = { agente: opz.agente, modello: opz.modello, contenuto: JSON.stringify(contenuto, null, 1) };
   const c = orale
-    ? await genera({ ...base, istruzioni: ISTRUZIONI_ORALE(kit.meta.materia), schema: CorrezioneOraleModello })
-    : { ...(await genera({ ...base, istruzioni: ISTRUZIONI(kit.meta.materia), schema: CorrezioneModello })), esposizione: null };
+    ? await genera({ ...base, istruzioni: ISTRUZIONI_ORALE(kit.meta.materia) + indicazioni, schema: CorrezioneOraleModello })
+    : { ...(await genera({ ...base, istruzioni: ISTRUZIONI(kit.meta.materia) + indicazioni, schema: CorrezioneModello })), esposizione: null };
   opz.log?.(`correzione ${orale ? 'orale' : 'scritta'}: ${c.valutazioni.length} risposte in ${Math.round((Date.now() - inizio) / 1000)} s`);
   return { ...c, agente: `${opz.agente}@${HOST}` };
 }

@@ -2,6 +2,7 @@ import type { APIRoute } from 'astro';
 import { controllaOrigine } from '../../lib/origine';
 import { getMaterie } from '../../lib/percorso';
 import { accoda, getKit, ultimoLavoro } from '../../lib/coda';
+import { richiestaRifornimento } from '../../lib/simulazioni';
 
 export const prerender = false;
 
@@ -24,6 +25,6 @@ export const POST: APIRoute = async ({ request, url, locals }) => {
   const ultimo = await ultimoLavoro(tipo, codice);
   if (ultimo && (ultimo.stato === 'in_coda' || ultimo.stato === 'in_corso')) return torna('gia-in-coda');
 
-  await accoda(tipo, codice, tipo === 'kit' ? { impronta: materia.appunti.impronta } : {});
+  await accoda(tipo, codice, tipo === 'kit' ? { impronta: materia.appunti.impronta } : { ...(await richiestaRifornimento(codice)) });
   return torna(tipo === 'kit' ? 'in-coda' : 'domande-in-coda');
 };

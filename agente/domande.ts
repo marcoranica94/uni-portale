@@ -3,7 +3,7 @@
  * Banca di domande: dal kit d'esame (non dagli appunti) genera per ogni nucleo
  * domande a scelta multipla e aperte con rubrica, a blocchi di nuclei.
  */
-import { DomandeModello, type DomandaCompleta, type NomeAgente, type RisultatoDomande } from '../src/shared/schemi.ts';
+import { DomandeModello, RichiestaDomande, type DomandaCompleta, type NomeAgente, type RisultatoDomande } from '../src/shared/schemi.ts';
 import { genera } from './adattatori.ts';
 import { HOST } from './config.ts';
 import { leggiKit } from './kit.ts';
@@ -19,11 +19,27 @@ Per OGNI nucleo produci:
 Regole: italiano corretto; niente fatti, date o autori che non siano nel nucleo; ogni domanda indica il proprio "nucleo" (es. "N07"); niente domande su indici, legende o convenzioni grafiche.
 Formato dell'esame reale: ${formato}`;
 
-export async function generaDomande(codice: string, opz: { agente: NomeAgente; modello?: string; log?: (m: string) => void }): Promise<RisultatoDomande> {
+/**
+ * Rifornimento della banca: pochi nuclei per volta (di default 6, cioè circa 18 domande),
+ * scelti tra quelli con meno domande già in banca. Niente generazione di massa.
+ */
+export async function generaDomande(
+  codice: string,
+  richiestaGrezza: unknown,
+  opz: { agente: NomeAgente; modello?: string; log?: (m: string) => void },
+): Promise<RisultatoDomande> {
   const log = opz.log ?? (() => {});
+  const richiesta = RichiestaDomande.parse(richiestaGrezza ?? {});
   const kit = await leggiKit(codice);
-  const nuclei = kit.nuclei.filter((n) => n.puntiChiave.length > 0);
-  const formato = `${kit.formatoEsame.tipo}: ${kit.formatoEsame.descrizione}`;
+  const candidati = kit.nuclei.filter((n) => n.puntiChiave.length > 0);
+  const nuclei = candidati
+    .map((n) => ({ n, presenti: richiesta.presenti[n.id] ?? 0, caso: Math.random() }))
+    .sort((a, b) => a.presenti - b.presenti || a.caso - b.caso)
+    .slice(0, richiesta.nuclei)
+    .map((x) => x.n);
+  const formato = `${kit.formatoEsame.tipo}: ${kit.formatoEsame.descrizione}${
+    richiesta.istruzioni ? `\n\nIndicazioni dello studente sull'esame reale (seguile per stile, tipo e difficoltà delle domande, purché restino dentro i nuclei):\n${richiesta.istruzioni}` : ''
+  }`;
   const tutte: DomandaCompleta[] = [];
 
   for (let i = 0; i < nuclei.length; i += NUCLEI_PER_BLOCCO) {

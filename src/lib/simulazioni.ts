@@ -1,7 +1,7 @@
 import { env } from 'cloudflare:workers';
 import type { D1PreparedStatement } from '@cloudflare/workers-types';
-import type { DomandaCompleta, RichiestaCorrezione, RisultatoCorrezione } from '../shared/schemi';
-import { accoda } from './coda';
+import type { DomandaCompleta, RichiestaCorrezione, RichiestaDomande, RisultatoCorrezione } from '../shared/schemi';
+import { accoda, getKit, ultimoLavoro } from './coda';
 import { votoDa } from './calcoli';
 export { domandaValida, votoDa } from './calcoli';
 
@@ -21,6 +21,33 @@ export const PUNTI = { multipla: 1, aperta: 4 } as const;
 
 const adesso = () => new Date().toISOString();
 
+// ---------- Istruzioni d'esame (profilo per materia) ----------
+
+export interface Profilo {
+  istruzioni: string;
+  domandeOrale: number;
+  multipleScritto: number;
+  aperteScritto: number;
+}
+const PROFILO_BASE: Profilo = { istruzioni: '', domandeOrale: 3, multipleScritto: 10, aperteScritto: 3 };
+
+export async function getProfilo(codice: string): Promise<Profilo> {
+  const r = await env.DB.prepare('SELECT istruzioni, domande_orale, multiple_scritto, aperte_scritto FROM profili_esame WHERE codice = ?')
+    .bind(codice)
+    .first<{ istruzioni: string; domande_orale: number; multiple_scritto: number; aperte_scritto: number }>();
+  return r ? { istruzioni: r.istruzioni, domandeOrale: r.domande_orale, multipleScritto: r.multiple_scritto, aperteScritto: r.aperte_scritto } : PROFILO_BASE;
+}
+
+export async function salvaProfilo(codice: string, p: Profilo) {
+  await env.DB.prepare(
+    `INSERT INTO profili_esame (codice, istruzioni, domande_orale, multiple_scritto, aperte_scritto, aggiornato) VALUES (?, ?, ?, ?, ?, ?)
+     ON CONFLICT(codice) DO UPDATE SET istruzioni = excluded.istruzioni, domande_orale = excluded.domande_orale,
+       multiple_scritto = excluded.multiple_scritto, aperte_scritto = excluded.aperte_scritto, aggiornato = excluded.aggiornato`,
+  )
+    .bind(codice, p.istruzioni.slice(0, 4000), p.domandeOrale, p.multipleScritto, p.aperteScritto, adesso())
+    .run();
+}
+
 // ---------- Banca di domande ----------
 
 export async function ultimoLotto(codice: string): Promise<string | null> {
@@ -28,14 +55,43 @@ export async function ultimoLotto(codice: string): Promise<string | null> {
   return r?.lotto ?? null;
 }
 
+/** Banca di una materia: totale e domande mai uscite, per tipo (tutti i rifornimenti). */
 export async function contaBanca(codice: string) {
-  const lotto = await ultimoLotto(codice);
-  if (!lotto) return { lotto: null, multiple: 0, aperte: 0 };
-  const { results } = await env.DB.prepare('SELECT tipo, COUNT(*) AS n FROM domande WHERE codice = ? AND lotto = ? GROUP BY tipo')
-    .bind(codice, lotto)
-    .all<{ tipo: string; n: number }>();
-  const n = (t: string) => results.find((r) => r.tipo === t)?.n ?? 0;
-  return { lotto, multiple: n('multipla'), aperte: n('aperta') };
+  const { results } = await env.DB.prepare(
+    'SELECT tipo, COUNT(*) AS n, SUM(CASE WHEN usata = 0 THEN 1 ELSE 0 END) AS nuove FROM domande WHERE codice = ? GROUP BY tipo',
+  )
+    .bind(codice)
+    .all<{ tipo: string; n: number; nuove: number }>();
+  const riga = (t: string) => results.find((r) => r.tipo === t);
+  return {
+    totale: results.reduce((x, r) => x + r.n, 0),
+    multiple: riga('multipla')?.n ?? 0,
+    aperte: riga('aperta')?.n ?? 0,
+    nuoveMultiple: riga('multipla')?.nuove ?? 0,
+    nuoveAperte: riga('aperta')?.nuove ?? 0,
+  };
+}
+
+/** Rifornimento: pochi nuclei, scelti dall'agente tra i meno coperti (presenti = domande già in banca per nucleo). */
+export async function richiestaRifornimento(codice: string): Promise<RichiestaDomande> {
+  const { results } = await env.DB.prepare('SELECT nucleo, COUNT(*) AS n FROM domande WHERE codice = ? GROUP BY nucleo')
+    .bind(codice)
+    .all<{ nucleo: string; n: number }>();
+  const profilo = await getProfilo(codice);
+  return { nuclei: 6, presenti: Object.fromEntries(results.map((r) => [r.nucleo, r.n])), istruzioni: profilo.istruzioni };
+}
+
+/** Se le domande mai uscite non bastano per altre due simulazioni, chiede all'agente un rifornimento. */
+export async function riforniscoSeServe(codice: string, modalita: Modalita) {
+  const [banca, profilo, kit, ultimo] = await Promise.all([contaBanca(codice), getProfilo(codice), getKit(codice), ultimoLavoro('domande', codice)]);
+  if (!kit || (ultimo && (ultimo.stato === 'in_coda' || ultimo.stato === 'in_corso'))) return false;
+  const servono =
+    modalita === 'orale'
+      ? banca.nuoveAperte < profilo.domandeOrale * 2
+      : banca.nuoveAperte < profilo.aperteScritto * 2 || banca.nuoveMultiple < profilo.multipleScritto * 2;
+  if (!servono) return false;
+  await accoda('domande', codice, await richiestaRifornimento(codice));
+  return true;
 }
 
 /** Sostituisce la banca attiva con un nuovo lotto (le domande vecchie restano per lo storico). */
@@ -109,13 +165,17 @@ const daRiga = (r: RigaDomanda): Domanda => ({
 
 /** Crea una simulazione pescando le domande meno usate della banca attiva. */
 export async function creaSimulazione(codice: string, formato: Formato, modalita: Modalita = 'scritto'): Promise<string | null> {
-  const lotto = await ultimoLotto(codice);
-  if (!lotto) return null;
-  const f = modalita === 'orale' ? { multiple: 0, aperte: ORALE.aperte, minuti: ORALE.minuti } : FORMATI[formato];
+  const p = await getProfilo(codice);
+  const f =
+    modalita === 'orale'
+      ? { multiple: 0, aperte: p.domandeOrale, minuti: ORALE.minuti }
+      : formato === 'completo'
+        ? { multiple: p.multipleScritto, aperte: p.aperteScritto, minuti: FORMATI.completo.minuti }
+        : FORMATI.breve;
   const pesca = async (tipo: 'multipla' | 'aperta', n: number) =>
     (
-      await env.DB.prepare('SELECT id FROM domande WHERE codice = ? AND lotto = ? AND tipo = ? ORDER BY usata ASC, RANDOM() LIMIT ?')
-        .bind(codice, lotto, tipo, n)
+      await env.DB.prepare('SELECT id FROM domande WHERE codice = ? AND tipo = ? ORDER BY usata ASC, RANDOM() LIMIT ?')
+        .bind(codice, tipo, n)
         .all<{ id: string }>()
     ).results.map((r) => r.id);
   const scelte = [...(await pesca('multipla', f.multiple)).map((id) => ({ id, tipo: 'multipla' as const })), ...(await pesca('aperta', f.aperte)).map((id) => ({ id, tipo: 'aperta' as const }))];
@@ -127,6 +187,7 @@ export async function creaSimulazione(codice: string, formato: Formato, modalita
     ...scelte.map((s, i) => env.DB.prepare('INSERT INTO risposte (simulazione, ordine, domanda, massimo) VALUES (?, ?, ?, ?)').bind(id, i + 1, s.id, PUNTI[s.tipo])),
     ...scelte.map((s) => env.DB.prepare('UPDATE domande SET usata = usata + 1 WHERE id = ?').bind(s.id)),
   ]);
+  await riforniscoSeServe(codice, modalita);
   return id;
 }
 
@@ -246,7 +307,7 @@ export async function consegna(id: string, valori: Map<number, string>): Promise
   await env.DB.batch(aggiornamenti);
 
   if (daCorreggere.length) {
-    const richiesta: RichiestaCorrezione = { simulazione: id, codice: dati.sim.codice, modalita: dati.sim.modalita, risposte: daCorreggere };
+    const richiesta: RichiestaCorrezione = { simulazione: id, codice: dati.sim.codice, modalita: dati.sim.modalita, istruzioni: (await getProfilo(dati.sim.codice)).istruzioni, risposte: daCorreggere };
     await accoda('correzione', dati.sim.codice, richiesta);
   }
   return stato;

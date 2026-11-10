@@ -5,7 +5,7 @@ import TipoEsame from '../../components/TipoEsame.astro';
 import { getMaterie } from '../../lib/percorso';
 import { getVoti, statoMateria, votoTesto } from '../../lib/voti';
 import { getKit, ultimoLavoro, statoAgenti } from '../../lib/coda';
-import { contaBanca, storico, FORMATI, ORALE } from '../../lib/simulazioni';
+import { contaBanca, storico, FORMATI, ORALE, getProfilo } from '../../lib/simulazioni';
 
 export const prerender = false;
 
@@ -23,6 +23,7 @@ const agente = await statoAgenti();
 const kitAggiornato = !!(kit && m.appunti && kit.impronta === m.appunti.impronta);
 const inLavorazione = !!lavoro && (lavoro.stato === 'in_coda' || lavoro.stato === 'in_corso');
 const banca = m.codice ? await contaBanca(m.codice) : null;
+const profilo = m.codice ? await getProfilo(m.codice) : null;
 const lavoroDomande = m.codice ? await ultimoLavoro('domande', m.codice) : null;
 const domandeInLavorazione = !!lavoroDomande && (lavoroDomande.stato === 'in_coda' || lavoroDomande.stato === 'in_corso');
 const simulazioni = m.codice ? await storico(m.codice) : [];
@@ -34,7 +35,8 @@ const ESITI: Record<string, string> = {
   'gia-in-coda': 'Il kit è già in preparazione.',
   'senza-appunti': 'Servono gli appunti per preparare il kit.',
   'senza-kit': 'Prepara prima il kit d\'esame: le domande nascono da lì.',
-  'domande-in-coda': "Richiesta inviata: l'agente locale preparerà la banca di domande appena è acceso.",
+  'domande-in-coda': "Richiesta inviata: l'agente locale preparerà nuove domande appena è acceso.",
+  'profilo-salvato': "Istruzioni salvate: valgono per le prossime domande e correzioni.",
   'senza-domande': 'La banca di domande è vuota: preparala prima.',
   'simulazione-eliminata': 'Simulazione eliminata dallo storico.',
 };
@@ -125,15 +127,15 @@ const esito = ESITI[Astro.url.searchParams.get('esito') ?? ''];
           <p class="muted">Per questo tipo d'esame la simulazione non è ancora disponibile.</p>
         ) : !kit ? (
           <p class="muted">Prima serve il kit d'esame: dalle sue rubriche nascono le domande.</p>
-        ) : banca && banca.lotto ? (
+        ) : banca && banca.totale > 0 ? (
           oraleEsame ? (
           <form method="post" action="/api/simulazioni" class="avvio">
             <input type="hidden" name="codice" value={m.codice!} />
             <input type="hidden" name="modalita" value="orale" />
             <input type="hidden" name="formato" value="breve" />
-            <p>Interrogazione di {ORALE.aperte} domande: le ascolti, rispondi a voce, la trascrizione arriva in pochi secondi. L'audio non viene salvato.</p>
+            <p>Interrogazione di {profilo?.domandeOrale ?? ORALE.aperte} domande: le ascolti, rispondi a voce, la trascrizione arriva in pochi secondi. L'audio non viene salvato.</p>
             <button class="btn btn--primary" type="submit">Inizia l'orale</button>
-            <p class="muted piccolo num">Banca: {banca.aperte} domande aperte, dal kit del {kit && giorno(kit.generato)}.</p>
+            <p class="muted piccolo num">Domande pronte: {banca.nuoveAperte} mai uscite su {banca.aperte}. Quando scarseggiano, l'agente ne prepara altre da solo.</p>
           </form>
           ) : (
           <form method="post" action="/api/simulazioni" class="avvio">
@@ -143,12 +145,12 @@ const esito = ESITI[Astro.url.searchParams.get('esito') ?? ''];
                 <label class="formato">
                   <input type="radio" name="formato" value={k} checked={i === 0} />
                   <span class="formato__nome">{FORMATI[k].etichetta}</span>
-                  <span class="muted num">{FORMATI[k].multiple + FORMATI[k].aperte} domande · {FORMATI[k].minuti} min</span>
+                  <span class="muted num">{k === 'completo' && profilo ? profilo.multipleScritto + profilo.aperteScritto : FORMATI[k].multiple + FORMATI[k].aperte} domande · {FORMATI[k].minuti} min</span>
                 </label>
               ))}
             </div>
             <button class="btn btn--primary" type="submit">Inizia</button>
-            <p class="muted piccolo num">Banca: {banca.multiple} a scelta multipla e {banca.aperte} aperte, dal kit del {kit && giorno(kit.generato)}.</p>
+            <p class="muted piccolo num">Domande pronte: {banca.nuoveMultiple + banca.nuoveAperte} mai uscite su {banca.totale}. Quando scarseggiano, l'agente ne prepara altre da solo.</p>
           </form>
           )
         ) : domandeInLavorazione ? (
@@ -157,7 +159,7 @@ const esito = ESITI[Astro.url.searchParams.get('esito') ?? ''];
           <form method="post" action="/api/lavori">
             <input type="hidden" name="codice" value={m.codice!} />
             <input type="hidden" name="tipo" value="domande" />
-            <p class="muted">Il kit è pronto: chiedi all'agente locale di preparare la banca di domande.</p>
+            <p class="muted">Il kit è pronto: chiedi all'agente locale le prime domande (circa 18, su pochi argomenti; poi si rifornisce da solo).</p>
             <button class="btn" type="submit">Prepara le domande</button>
           </form>
         )}
@@ -177,6 +179,37 @@ const esito = ESITI[Astro.url.searchParams.get('esito') ?? ''];
           </ul>
         )}
       </section>
+      {m.codice && profilo && (
+        <details class="pannello istruzioni" id="istruzioni" open={!profilo.istruzioni}>
+          <summary>Istruzioni d'esame {profilo.istruzioni && <span class="muted">· attive</span>}</summary>
+          <form method="post" action="/api/profili">
+            <input type="hidden" name="codice" value={m.codice} />
+            <label class="campo">
+              <span>Come si svolge l'esame e come deve comportarsi il docente</span>
+              <textarea name="istruzioni" rows="7" maxlength="4000" placeholder="Es.: il docente parte sempre da una definizione e poi chiede collegamenti tra capitoli; vuole articoli della Costituzione citati con il numero; domande brevi a catena; severo sul lessico giuridico; niente domande sulle legende.">{profilo.istruzioni}</textarea>
+            </label>
+            <div class="numeri">
+              {oraleEsame ? (
+                <label class="campo"><span>Domande per orale</span><input type="number" name="domande_orale" min="1" max="8" value={profilo.domandeOrale} /></label>
+              ) : (
+                <>
+                  <label class="campo"><span>Multiple (completo)</span><input type="number" name="multiple_scritto" min="0" max="30" value={profilo.multipleScritto} /></label>
+                  <label class="campo"><span>Aperte (completo)</span><input type="number" name="aperte_scritto" min="0" max="8" value={profilo.aperteScritto} /></label>
+                </>
+              )}
+            </div>
+            <p class="muted piccolo">Valgono per le domande generate da ora in poi e per tutte le correzioni.</p>
+            <button class="btn" type="submit">Salva istruzioni</button>
+          </form>
+          {banca && banca.totale > 0 && !domandeInLavorazione && (
+            <form method="post" action="/api/lavori" class="aggiungi">
+              <input type="hidden" name="codice" value={m.codice} />
+              <input type="hidden" name="tipo" value="domande" />
+              <button class="link" type="submit">Prepara subito altre domande con queste istruzioni</button>
+            </form>
+          )}
+        </details>
+      )}
     </aside>
   </div>
 
@@ -361,6 +394,63 @@ const esito = ESITI[Astro.url.searchParams.get('esito') ?? ''];
   }
   .piccolo {
     font-size: var(--text-sm);
+  }
+  .istruzioni {
+    padding: 0 var(--space-5);
+  }
+  .istruzioni summary {
+    min-height: var(--tap-min);
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-weight: var(--weight-semibold);
+    cursor: pointer;
+  }
+  .istruzioni form {
+    display: grid;
+    gap: var(--space-3);
+    padding-bottom: var(--space-4);
+    margin: 0;
+  }
+  .istruzioni .aggiungi {
+    padding-top: 0;
+  }
+  .campo {
+    display: grid;
+    gap: var(--space-1);
+    font-size: var(--text-sm);
+    font-weight: var(--weight-medium);
+    color: var(--color-ink-muted);
+  }
+  .campo textarea,
+  .campo input {
+    font: inherit;
+    font-size: var(--text-base);
+    color: var(--color-ink);
+    background: var(--color-surface-muted);
+    border: 1px solid var(--color-rule-strong);
+    border-radius: var(--radius-md);
+    padding: var(--space-2) var(--space-3);
+    width: 100%;
+  }
+  .campo input {
+    min-height: var(--tap-min);
+    max-width: 8rem;
+  }
+  .numeri {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-4);
+  }
+  .link {
+    background: none;
+    border: none;
+    padding: 0;
+    font: inherit;
+    font-size: var(--text-sm);
+    color: var(--color-accent);
+    text-decoration: underline;
+    cursor: pointer;
   }
   .storico {
     list-style: none;
