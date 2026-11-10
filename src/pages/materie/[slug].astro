@@ -117,8 +117,7 @@ const esito =
               {oraleEsame && agente.online && <input type="hidden" name="dal_vivo" value="1" />}
               <p>
                 <span class="prossimo__etichetta">Da allenare adesso</span>
-                <strong>{prossimo.capitolo.titolo}</strong>
-                <span class="muted">: {MOTIVI[prossimo.motivo]}{prossimo.capitolo.quota !== null && ` (${percento(prossimo.capitolo.quota)} dei punti)`}.</span>
+                <strong>{prossimo.capitolo.titolo}</strong><span class="muted">: {MOTIVI[prossimo.motivo]}{prossimo.capitolo.quota !== null && ` (${percento(prossimo.capitolo.quota)} dei punti)`}.</span>
               </p>
               <button class="btn" type="submit" disabled={prossimo.capitolo.inPreparazione}>Allena questo</button>
             </form>
