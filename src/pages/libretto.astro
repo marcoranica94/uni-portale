@@ -3,11 +3,25 @@ import Base from '../layouts/Base.astro';
 import Badge from '../components/Badge.astro';
 import TipoEsame from '../components/TipoEsame.astro';
 import { getMaterie, CFU_TOTALI } from '../lib/percorso';
+import { getVoti, riepilogo, votoTesto, formatoMedia, dataLeggibile } from '../lib/voti';
 
-// I voti arriveranno dal database D1 (task t009): per ora tutti gli esami risultano da sostenere.
-const materie = (await getMaterie()).filter((m) => m.codice !== null || m.cfu > 0);
-const superati = 0;
-const cfuConseguiti = 0;
+export const prerender = false;
+
+const materie = (await getMaterie()).filter((m) => m.codice);
+const voti = await getVoti();
+const r = riepilogo(materie, voti);
+const daRegistrare = materie.filter((m) => !voti.has(m.codice!));
+const oggi = new Date().toISOString().slice(0, 10);
+
+const MESSAGGI: Record<string, { testo: string; ok: boolean }> = {
+  salvato: { testo: 'Voto salvato.', ok: true },
+  eliminato: { testo: 'Voto eliminato.', ok: true },
+  'voto-non-valido': { testo: 'Il voto deve essere un numero intero tra 18 e 30.', ok: false },
+  'lode-solo-con-30': { testo: 'La lode si può indicare solo con 30.', ok: false },
+  'data-non-valida': { testo: 'Data non valida: usa il selettore della data.', ok: false },
+  'insegnamento-non-valido': { testo: 'Insegnamento non trovato nel piano di studi.', ok: false },
+};
+const esito = MESSAGGI[Astro.url.searchParams.get('esito') ?? ''];
 ---
 
 <Base title="Libretto">
@@ -16,14 +30,45 @@ const cfuConseguiti = 0;
     <h1>Libretto</h1>
   </header>
 
-  <section class="riepilogo" aria-label="Riepilogo">
-    <div><span class="eyebrow">Esami superati</span><span class="valore num">{superati}</span></div>
-    <div><span class="eyebrow">CFU</span><span class="valore num">{cfuConseguiti} <small>/ {CFU_TOTALI}</small></span></div>
-    <div><span class="eyebrow">Media ponderata</span><span class="valore num">–</span></div>
-    <div><span class="eyebrow">Base di laurea</span><span class="valore num">–</span></div>
-  </section>
+  {esito && <p class:list={['avviso', esito.ok ? 'avviso--ok' : 'avviso--errore']} role="status">{esito.testo}</p>}
 
-  <p class="nota">La registrazione dei voti arriva con il collegamento al database, in questo stesso sprint.</p>
+  <section class="riepilogo" aria-label="Riepilogo">
+    <div><span class="eyebrow">Esami superati</span><span class="valore num">{r.superati} <small>/ {materie.length}</small></span></div>
+    <div><span class="eyebrow">CFU</span><span class="valore num">{r.cfu} <small>/ {CFU_TOTALI}</small></span></div>
+    <div><span class="eyebrow">Media ponderata</span><span class="valore num">{formatoMedia(r.media)}</span></div>
+    <div><span class="eyebrow">Base di laurea</span><span class="valore num">{r.baseLaurea ?? '–'} {r.baseLaurea !== null && <small>/ 110</small>}</span></div>
+  </section>
+  <p class="nota">Stima: la lode vale 30 nella media (il Regolamento non lo specifica). Alla base si aggiungono fino a 5 punti per la tesi e 1 per un periodo all'estero.</p>
+
+  <details class="registra" open={r.superati === 0}>
+    <summary>Registra un voto</summary>
+    <form method="post" action="/api/voti" class="modulo">
+      <input type="hidden" name="azione" value="salva" />
+      <label class="campo campo--largo">
+        <span>Insegnamento</span>
+        <select name="codice" id="codice" required>
+          {daRegistrare.map((m) => <option value={m.codice!}>{m.nome} ({m.anno}º anno, {m.cfu} CFU)</option>)}
+        </select>
+      </label>
+      <label class="campo">
+        <span>Voto</span>
+        <select name="voto" id="voto">
+          {Array.from({ length: 13 }, (_, i) => 30 - i).map((v) => <option value={v}>{v}</option>)}
+        </select>
+      </label>
+      <label class="campo campo--check"><input type="checkbox" name="lode" id="lode" /> <span>Lode</span></label>
+      <label class="campo campo--check"><input type="checkbox" name="idoneo" id="idoneo" /> <span>Idoneità senza voto</span></label>
+      <label class="campo">
+        <span>Data</span>
+        <input type="date" name="data" id="data" value={oggi} max={oggi} required />
+      </label>
+      <label class="campo campo--largo">
+        <span>Note (facoltative)</span>
+        <input type="text" name="note" id="note" maxlength="500" />
+      </label>
+      <button class="btn btn--primary" type="submit">Salva voto</button>
+    </form>
+  </details>
 
   <div class="tabella-wrap">
     <table class="tabella">
@@ -35,31 +80,78 @@ const cfuConseguiti = 0;
           <th scope="col" class="num">CFU</th>
           <th scope="col">Esame</th>
           <th scope="col">Voto</th>
+          <th scope="col">Data</th>
           <th scope="col">Stato</th>
         </tr>
       </thead>
       <tbody>
-        {materie.map((m) => (
-          <tr>
-            <th scope="row">
-              <a href={`/materie/${m.slug}`}>{m.nome}</a>
-              {m.sceltaVincolata && <span class="muted scelta"> · uno a scelta</span>}
-            </th>
-            <td class="num" data-label="Anno">{m.anno}º</td>
-            <td class="num" data-label="CFU">{m.cfu}</td>
-            <td data-label="Esame"><TipoEsame tipo={m.esame.tipo} dalCatalogo={m.esame.dalCatalogo} /></td>
-            <td class="num" data-label="Voto">–</td>
-            <td data-label="Stato"><Badge stato="da-sostenere" /></td>
-          </tr>
-        ))}
+        {materie.map((m) => {
+          const v = voti.get(m.codice!);
+          return (
+            <tr>
+              <th scope="row">
+                <a href={`/materie/${m.slug}`}>{m.nome}</a>
+                {m.sceltaVincolata && <span class="muted scelta"> · uno a scelta</span>}
+              </th>
+              <td class="num" data-label="Anno">{m.anno}º</td>
+              <td class="num" data-label="CFU">{m.cfu}</td>
+              <td data-label="Esame"><TipoEsame tipo={m.esame.tipo} dalCatalogo={m.esame.dalCatalogo} /></td>
+              <td class="num voto" data-label="Voto">{v ? votoTesto(v) : '–'}</td>
+              <td class="num" data-label="Data">{v ? dataLeggibile(v.data) : '–'}</td>
+              <td data-label="Stato">
+                {v ? (
+                  <div class="stato">
+                    <Badge stato="superato" />
+                    <form method="post" action="/api/voti" class="elimina" onsubmit="return confirm('Eliminare questo voto?')">
+                      <input type="hidden" name="azione" value="elimina" />
+                      <input type="hidden" name="codice" value={m.codice!} />
+                      <button type="submit" class="link">Elimina</button>
+                    </form>
+                  </div>
+                ) : (
+                  <Badge stato="da-sostenere" />
+                )}
+              </td>
+            </tr>
+          );
+        })}
       </tbody>
     </table>
   </div>
 </Base>
 
+<script>
+  // Lode solo con 30; con l'idoneità voto e lode non si usano.
+  const voto = document.getElementById('voto') as HTMLSelectElement | null;
+  const lode = document.getElementById('lode') as HTMLInputElement | null;
+  const idoneo = document.getElementById('idoneo') as HTMLInputElement | null;
+  const aggiorna = () => {
+    if (!voto || !lode || !idoneo) return;
+    voto.disabled = idoneo.checked;
+    lode.disabled = idoneo.checked || voto.value !== '30';
+    if (lode.disabled) lode.checked = false;
+  };
+  voto?.addEventListener('change', aggiorna);
+  idoneo?.addEventListener('change', aggiorna);
+  aggiorna();
+</script>
+
 <style>
   .intro {
     gap: var(--space-2);
+  }
+  .avviso {
+    padding: var(--space-3) var(--space-4);
+    border-radius: var(--radius-md);
+    font-weight: var(--weight-medium);
+  }
+  .avviso--ok {
+    color: var(--color-success);
+    background: var(--color-success-soft);
+  }
+  .avviso--errore {
+    color: var(--color-danger);
+    background: var(--color-danger-soft);
   }
   .riepilogo {
     display: grid;
@@ -86,6 +178,74 @@ const cfuConseguiti = 0;
   .nota {
     color: var(--color-ink-muted);
     font-size: var(--text-sm);
+  }
+  .registra {
+    background: var(--color-surface);
+    border: var(--border);
+    border-radius: var(--radius-md);
+    padding: var(--space-3) var(--space-4);
+  }
+  .registra summary {
+    cursor: pointer;
+    font-weight: var(--weight-semibold);
+    min-height: var(--tap-min);
+    display: flex;
+    align-items: center;
+  }
+  .modulo {
+    display: grid;
+    gap: var(--space-3) var(--space-4);
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 9rem), 1fr));
+    align-items: end;
+    padding-top: var(--space-3);
+  }
+  .campo {
+    display: grid;
+    gap: var(--space-1);
+    font-size: var(--text-sm);
+    color: var(--color-ink-muted);
+    min-width: 0;
+  }
+  .campo--largo {
+    grid-column: 1 / -1;
+  }
+  .campo--check {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    min-height: var(--tap-min);
+    color: var(--color-ink);
+  }
+  .campo select,
+  .campo input[type='date'],
+  .campo input[type='text'] {
+    font: inherit;
+    font-size: var(--text-base);
+    color: var(--color-ink);
+    background: var(--color-paper);
+    border: 1px solid var(--color-rule-strong);
+    border-radius: var(--radius-md);
+    min-height: var(--tap-min);
+    padding: 0 var(--space-3);
+    width: 100%;
+  }
+  .campo input[type='checkbox'] {
+    width: 20px;
+    height: 20px;
+    accent-color: var(--color-accent);
+  }
+  .btn {
+    min-height: var(--tap-min);
+    padding: 0 var(--space-5);
+    border-radius: var(--radius-md);
+    font: inherit;
+    font-weight: var(--weight-semibold);
+    cursor: pointer;
+  }
+  .btn--primary {
+    background: var(--color-accent);
+    border: 1px solid var(--color-accent);
+    color: var(--color-on-accent);
   }
   .tabella-wrap {
     overflow-x: auto;
@@ -127,9 +287,34 @@ const cfuConseguiti = 0;
   .tabella tbody tr:last-child > * {
     border-bottom: none;
   }
+  .voto {
+    font-weight: var(--weight-semibold);
+  }
   .scelta {
     font-size: var(--text-sm);
     font-weight: var(--weight-regular);
+  }
+  .stato {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    align-items: center;
+  }
+  .elimina {
+    margin: 0;
+  }
+  .link {
+    background: none;
+    border: none;
+    padding: 0;
+    font: inherit;
+    font-size: var(--text-sm);
+    color: var(--color-ink-muted);
+    text-decoration: underline;
+    cursor: pointer;
+  }
+  .link:hover {
+    color: var(--color-danger);
   }
 
   /* Telefono: ogni riga diventa una scheda */

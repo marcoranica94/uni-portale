@@ -3,9 +3,15 @@ import Base from '../layouts/Base.astro';
 import Card from '../components/Card.astro';
 import Badge from '../components/Badge.astro';
 import TipoEsame from '../components/TipoEsame.astro';
-import { getMaterie, statoDidattico } from '../lib/percorso';
+import { getMaterie, CFU_TOTALI } from '../lib/percorso';
+import { getVoti, riepilogo, statoMateria } from '../lib/voti';
 
-const inCorso = (await getMaterie()).filter((m) => statoDidattico(m) === 'in-corso');
+export const prerender = false;
+
+const materie = await getMaterie();
+const voti = await getVoti();
+const r = riepilogo(materie, voti);
+const inCorso = materie.filter((m) => statoMateria(m, voti) === 'in-corso');
 ---
 
 <Base title="Uni">
@@ -20,8 +26,8 @@ const inCorso = (await getMaterie()).filter((m) => statoDidattico(m) === 'in-cor
       <p>Le simulazioni d'esame saranno disponibili da fine dicembre: prima lo scritto di Sociologia, poi l'orale di Diritto pubblico.</p>
     </Card>
     <Card tone="muted" title="CFU conseguiti" eyebrow="Percorso">
-      <p class="figure num">0 <span class="muted">/ 180</span></p>
-      <div class="bar" role="img" aria-label="0 CFU conseguiti su 180"><span style="width: 0%"></span></div>
+      <p class="figure num">{r.cfu} <span class="muted">/ {CFU_TOTALI}</span></p>
+      <div class="bar" role="img" aria-label={`${r.cfu} CFU conseguiti su ${CFU_TOTALI}`}><span style={`width: ${Math.round((r.cfu / CFU_TOTALI) * 100)}%`}></span></div>
     </Card>
   </section>
 

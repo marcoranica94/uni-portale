@@ -1,9 +1,19 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "uni-portale",
+  "account_id": "24c34273b949d8648adc8ae4ec697b69",
   "compatibility_date": "2026-11-01",
   "compatibility_flags": ["nodejs_compat"],
   // Il sito si serve solo da uni.marcoranica.com, protetto da Cloudflare Access.
-  "workers_dev": false
-  // Binding da aggiungere nello Sprint 1: D1 (DB).
+  "workers_dev": false,
+  "preview_urls": false,
+  "routes": [{ "pattern": "uni.marcoranica.com", "custom_domain": true }],
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "uni-portale",
+      "database_id": "ad0d3cfe-a6f0-48b8-9a30-556d3db0fbb5",
+      "migrations_dir": "migrations"
+    }
+  ]
 }

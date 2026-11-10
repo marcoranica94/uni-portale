@@ -2,7 +2,12 @@
 import Base from '../layouts/Base.astro';
 import Badge from '../components/Badge.astro';
 import TipoEsame from '../components/TipoEsame.astro';
-import { getMaterie, statoDidattico, ORDINE_PERIODI, CFU_TOTALI } from '../lib/percorso';
+import { getMaterie, ORDINE_PERIODI, CFU_TOTALI } from '../lib/percorso';
+import { getVoti, statoMateria, votoTesto } from '../lib/voti';
+
+export const prerender = false;
+
+const voti = await getVoti();
 
 const materie = await getMaterie();
 const anni = [1, 2, 3].map((anno) => {
@@ -39,7 +44,7 @@ const anni = [1, 2, 3].map((anno) => {
                 <li class:list={['voce', { 'voce--scelta': m.sceltaVincolata }]} style={`--c: var(--materia-${m.colore}); --c-soft: var(--materia-${m.colore}-soft)`}>
                   <a class="voce__nome" href={`/materie/${m.slug}`}>{m.nome}</a>
                   <div class="voce__meta">
-                    <Badge stato={statoDidattico(m)} />
+                    <Badge stato={statoMateria(m, voti)} label={m.codice && voti.has(m.codice) ? `Superato · ${votoTesto(voti.get(m.codice)!)}` : undefined} />
                     <TipoEsame tipo={m.esame.tipo} dalCatalogo={m.esame.dalCatalogo} />
                     <span class="muted num">{m.cfu} CFU</span>
                     {m.sceltaVincolata && <span class="scelta">uno a scelta</span>}
