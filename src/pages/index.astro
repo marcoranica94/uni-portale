@@ -145,7 +145,7 @@ const altre = inCorso
               {orale && <input type="hidden" name="modalita" value="orale" />}
               {orale && agente.online && <input type="hidden" name="dal_vivo" value="1" />}
               {mirata && <input type="hidden" name="argomento" value={mirata.capitolo.id} />}
-              <button class="btn btn--primary btn--largo" type="submit" data-tasto="s">{orale ? "Inizia l'interrogazione" : 'Inizia la prova'} <span class="tasto" aria-hidden="true">S</span></button>
+              <button class="btn btn--primary btn--largo" type="submit" data-tasto="s">Inizia <span class="tasto" aria-hidden="true">S</span></button>
             </form>
           ) : (
             appuntiMossa && <a class="btn btn--primary btn--largo" href={appuntiMossa} data-tasto="s">Apri gli appunti <span class="tasto" aria-hidden="true">S</span></a>
