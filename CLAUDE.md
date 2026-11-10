@@ -73,6 +73,17 @@ Progetto in `piattaforma/`: Astro 7, adapter `@astrojs/cloudflare` 14, Wrangler 
 - `prerenderEnvironment: 'node'` in `astro.config.mjs` serve proprio a generare le pagine statiche senza workerd.
 - pnpm 12 scarta le versioni pubblicate da troppo poco tempo e blocca gli script di installazione: le eccezioni stanno in `pnpm-workspace.yaml` (`allowBuilds`, `overrides`). Non aggiungere `minimumReleaseAgeExclude` per inseguire versioni uscite da poche ore.
 - `claude`, `codex` e `agy` sono installati; `gh` no.
+- Bash di sistema è la 3.2: niente array, niente `$(...)` annidati complessi; per logica articolata usa uno script.
+
+## Provare il sito online
+
+Il sito è dietro Cloudflare Access. Per provarlo da qui si usa il service token `uni-agent` (policy "Agente locale", azione Service Auth):
+
+- credenziali in `~/.config/uni-agent/access.env` (`CF_ACCESS_CLIENT_ID`, `CF_ACCESS_CLIENT_SECRET`), file con permessi 600;
+- `piattaforma/scripts/uni-curl.sh /percorso [opzioni di curl]` chiama il sito con il token e risolve il nome con 1.1.1.1;
+- **mai stampare, copiare o committare il secret**; al massimo verificarne lunghezza e formato;
+- le scritture reali (voti) si fanno solo se l'utente lo chiede: i dati sono suoi.
+
 
 ## Questioni aperte
 
