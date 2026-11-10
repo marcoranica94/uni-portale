@@ -1,0 +1,283 @@
+---
+import Base from '../layouts/Base.astro';
+import Badge from '../components/Badge.astro';
+import { getMaterie } from '../lib/percorso';
+import { statoAgenti, ultimiLavori } from '../lib/coda';
+
+export const prerender = false;
+
+const agente = await statoAgenti();
+const lavori = await ultimiLavori(8);
+const materie = await getMaterie();
+const nomeMateria = (codice: string | null) => materie.find((m) => m.codice === codice)?.breve ?? codice ?? '–';
+const dataIt = (iso: string) => new Date(iso).toLocaleString('it-IT', { dateStyle: 'short', timeStyle: 'short', timeZone: 'Europe/Rome' });
+const STATI: Record<string, { label: string; stato: 'in-coda' | 'in-corso' | 'superato' | 'debole' }> = {
+  in_coda: { label: 'In coda', stato: 'in-coda' },
+  in_corso: { label: 'In lavorazione', stato: 'in-corso' },
+  completato: { label: 'Completato', stato: 'superato' },
+  errore: { label: 'Errore', stato: 'debole' },
+};
+const TIPI: Record<string, string> = { kit: "Kit d'esame", domande: 'Domande', correzione: 'Correzione' };
+---
+
+<Base title="Agente locale">
+  <header class="stack intro">
+    <p class="eyebrow">Istruzioni</p>
+    <h1>Agente locale</h1>
+    <p class="muted">Kit d'esame, domande e correzioni non li prepara il sito: li prepara il tuo PC con Claude, Codex o Antigravity, usando i tuoi abbonamenti.</p>
+  </header>
+
+  <section class="stato" aria-labelledby="stato-titolo">
+    <div class="stato__testa">
+      <h2 id="stato-titolo">Stato</h2>
+      <Badge stato={agente.online ? 'online' : 'offline'} />
+    </div>
+    <p class="muted">
+      {agente.ultimo
+        ? <>Ultimo contatto: <strong>{dataIt(agente.ultimo)}</strong> da <code>{agente.id}</code>.</>
+        : "L'agente non si è ancora mai collegato."}
+    </p>
+    {lavori.length > 0 && (
+      <ul class="lavori">
+        {lavori.map((l) => (
+          <li>
+            <span class="lavori__cosa">{TIPI[l.tipo] ?? l.tipo} · {nomeMateria(l.codice)}</span>
+            <span class="muted num">{dataIt(l.creato)}</span>
+            <Badge stato={(STATI[l.stato] ?? STATI.in_coda).stato} label={(STATI[l.stato] ?? STATI.in_coda).label} />
+            {l.errore && l.stato !== 'completato' && <span class="lavori__errore">{l.errore}</span>}
+          </li>
+        ))}
+      </ul>
+    )}
+  </section>
+
+  <section class="stack" aria-labelledby="come">
+    <h2 id="come">Come funziona</h2>
+    <ol class="passi">
+      <li><strong>Dal telefono o dal sito</strong> chiedi qualcosa, per esempio "Prepara kit d'esame". La richiesta resta <em>in coda</em> qui sul sito.</li>
+      <li><strong>Sul PC</strong> gira <code>uni-agent</code>: ogni 20 secondi chiede al sito se c'è lavoro, lo esegue con l'agente scelto e consegna il risultato.</li>
+      <li><strong>Il risultato</strong> compare sul sito; i kit vengono anche salvati nel repository con un commit.</li>
+    </ol>
+    <p class="muted">Il telefono non si collega mai al PC: entrambi parlano solo con questo sito, protetto da Cloudflare Access. Se il PC è spento, le richieste aspettano in coda.</p>
+  </section>
+
+  <section class="stack" aria-labelledby="avvio">
+    <h2 id="avvio">Avviare l'agente</h2>
+    <p>Dal terminale, nella cartella del repository:</p>
+    <div class="cmd">
+      <pre><code>cd ~/Documents/unibg/piattaforma
+pnpm agente watch --agente claude</code></pre>
+      <button type="button" class="copia" data-testo="cd ~/Documents/unibg/piattaforma && pnpm agente watch --agente claude">Copia</button>
+    </div>
+    <p class="muted">Lascia la finestra aperta; Ctrl+C per fermarlo. Al posto di <code>claude</code> puoi usare <code>codex</code> o <code>agy</code>.</p>
+
+    <h3>Altri comandi</h3>
+    <dl class="comandi">
+      <div><dt><code>pnpm agente verifica</code></dt><dd>Controlla credenziali e collegamento: il sito ti vede online.</dd></div>
+      <div><dt><code>pnpm agente once</code></dt><dd>Esegue un solo giro di coda e si ferma.</dd></div>
+      <div><dt><code>pnpm agente kit sociologia</code></dt><dd>Genera un kit senza passare dalla coda (il sito non lo registra).</dd></div>
+      <div><dt><code>--modello &lt;nome&gt;</code></dt><dd>Usa un modello specifico dell'agente scelto.</dd></div>
+      <div><dt><code>--no-push</code></dt><dd>Committa il kit ma non lo pubblica su GitHub.</dd></div>
+    </dl>
+  </section>
+
+  <section class="stack" aria-labelledby="agenti">
+    <h2 id="agenti">Quale agente</h2>
+    <div class="tabella-wrap">
+      <table class="tabella">
+        <thead>
+          <tr><th scope="col">Agente</th><th scope="col">Opzione</th><th scope="col">Abbonamento</th><th scope="col">Note</th></tr>
+        </thead>
+        <tbody>
+          <tr><th scope="row">Claude Code</th><td><code>--agente claude</code></td><td>Claude</td><td>Predefinito. Kit di Sociologia: 42 nuclei in circa 12 minuti.</td></tr>
+          <tr><th scope="row">Codex</th><td><code>--agente codex</code></td><td>ChatGPT</td><td>Quando la quota ChatGPT è esaurita risponde con un errore: il lavoro torna in coda.</td></tr>
+          <tr><th scope="row">Antigravity</th><td><code>--agente agy</code></td><td>Google</td><td>Alternativa per confrontare i risultati.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="stack" aria-labelledby="nuovo-pc">
+    <h2 id="nuovo-pc">Su un altro PC (Mac o Windows)</h2>
+    <p>Una volta sola:</p>
+    <ol class="passi">
+      <li>Clona il repository: <code>git clone git@github.com:marcoranica94/unibg.git</code></li>
+      <li>Installa <strong>Node 24</strong> e <strong>pnpm</strong>, poi nella cartella <code>piattaforma</code> esegui <code>pnpm install</code>.</li>
+      <li>Installa almeno uno tra Claude Code, Codex e Antigravity e fai il login.</li>
+      <li>
+        Crea il file delle credenziali del service token <code>uni-agent</code> (Cloudflare Zero Trust → Service Tokens):
+        <ul>
+          <li>Mac e Linux: <code>~/.config/uni-agent/access.env</code></li>
+          <li>Windows: <code>C:\Users\&lt;nome&gt;\.config\uni-agent\access.env</code></li>
+        </ul>
+        con due righe:
+        <pre><code>CF_ACCESS_CLIENT_ID=…
+CF_ACCESS_CLIENT_SECRET=…</code></pre>
+        Il secret non va mai committato né incollato in chat.
+      </li>
+      <li>Avvia con <code>pnpm agente verifica</code>, poi <code>pnpm agente watch</code>.</li>
+    </ol>
+    <p class="muted">Due PC accesi insieme non fanno danni: ogni richiesta la prende uno solo.</p>
+  </section>
+
+  <section class="stack" aria-labelledby="problemi">
+    <h2 id="problemi">Se qualcosa non va</h2>
+    <dl class="comandi">
+      <div><dt>"Cloudflare Access ha rifiutato il service token"</dt><dd>Controlla in Zero Trust che la policy "Agente locale" dell'applicazione Uni abbia azione <em>Service Auth</em> e includa il token <code>uni-agent</code>; verifica il file delle credenziali.</dd></div>
+      <div><dt>Lavoro in errore</dt><dd>Leggi il messaggio qui sopra nello stato. Ogni lavoro si riprova fino a 3 volte; dopo resta in errore e lo puoi richiedere di nuovo dalla pagina della materia.</dd></div>
+      <div><dt>Agente offline ma il terminale è aperto</dt><dd>Il PC potrebbe essere in stop o senza rete: l'agente riprende da solo quando torna la connessione.</dd></div>
+      <div><dt>"usage limit" di Codex o Claude</dt><dd>Quota dell'abbonamento esaurita: riavvia con un altro agente, ad esempio <code>--agente agy</code>.</dd></div>
+    </dl>
+  </section>
+</Base>
+
+<script>
+  document.querySelectorAll<HTMLButtonElement>('.copia').forEach((b) => {
+    b.addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(b.dataset.testo ?? '');
+        b.textContent = 'Copiato';
+      } catch {
+        b.textContent = 'Seleziona e copia';
+      }
+      setTimeout(() => (b.textContent = 'Copia'), 2000);
+    });
+  });
+</script>
+
+<style>
+  .intro {
+    gap: var(--space-2);
+  }
+  .stato {
+    display: grid;
+    gap: var(--space-3);
+    padding: var(--space-4) var(--space-5);
+    background: var(--color-surface);
+    border: var(--border);
+    border-radius: var(--radius-md);
+  }
+  .stato__testa {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-3);
+    align-items: center;
+    justify-content: space-between;
+  }
+  .lavori {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    border-top: var(--border);
+  }
+  .lavori li {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-1) var(--space-3);
+    align-items: center;
+    padding: var(--space-2) 0;
+    border-bottom: var(--border);
+  }
+  .lavori__cosa {
+    font-weight: var(--weight-medium);
+    flex: 1 1 12rem;
+  }
+  .lavori__errore {
+    flex-basis: 100%;
+    color: var(--color-danger);
+    font-size: var(--text-sm);
+    overflow-wrap: anywhere;
+  }
+  .passi {
+    margin: 0;
+    padding-left: var(--space-5);
+    display: grid;
+    gap: var(--space-3);
+    max-width: 65ch;
+  }
+  .passi ul {
+    margin: var(--space-2) 0;
+    padding-left: var(--space-5);
+  }
+  code {
+    font-family: var(--font-mono);
+    font-size: 0.9em;
+    overflow-wrap: anywhere;
+  }
+  pre {
+    margin: var(--space-2) 0;
+    padding: var(--space-3) var(--space-4);
+    background: var(--color-surface-muted);
+    border: var(--border);
+    border-radius: var(--radius-md);
+    overflow-x: auto;
+    font-size: var(--text-sm);
+  }
+  pre code {
+    overflow-wrap: normal;
+  }
+  .cmd {
+    position: relative;
+  }
+  .copia {
+    position: absolute;
+    top: var(--space-2);
+    right: var(--space-2);
+    min-height: 32px;
+    padding: 0 var(--space-3);
+    font: inherit;
+    font-size: var(--text-sm);
+    color: var(--color-ink);
+    background: var(--color-surface);
+    border: 1px solid var(--color-rule-strong);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+  }
+  .comandi {
+    margin: 0;
+    display: grid;
+    gap: var(--space-3);
+  }
+  .comandi > div {
+    display: grid;
+    gap: var(--space-1);
+    padding-bottom: var(--space-3);
+    border-bottom: var(--border);
+  }
+  .comandi dt {
+    font-weight: var(--weight-semibold);
+  }
+  .comandi dd {
+    margin: 0;
+    color: var(--color-ink-muted);
+  }
+  .tabella-wrap {
+    overflow-x: auto;
+    background: var(--color-surface);
+    border: var(--border);
+    border-radius: var(--radius-md);
+  }
+  .tabella {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: var(--text-sm);
+  }
+  .tabella th,
+  .tabella td {
+    padding: var(--space-3) var(--space-4);
+    text-align: left;
+    border-bottom: var(--border);
+    vertical-align: top;
+  }
+  .tabella thead th {
+    font-size: var(--text-xs);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--color-ink-faint);
+    background: var(--color-surface-muted);
+  }
+  .tabella tbody tr:last-child > * {
+    border-bottom: none;
+  }
+</style>

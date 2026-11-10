@@ -5,6 +5,7 @@ import Badge from '../components/Badge.astro';
 import TipoEsame from '../components/TipoEsame.astro';
 import { getMaterie, CFU_TOTALI } from '../lib/percorso';
 import { getVoti, riepilogo, statoMateria } from '../lib/voti';
+import { statoAgenti } from '../lib/coda';
 
 export const prerender = false;
 
@@ -12,6 +13,7 @@ const materie = await getMaterie();
 const voti = await getVoti();
 const r = riepilogo(materie, voti);
 const inCorso = materie.filter((m) => statoMateria(m, voti) === 'in-corso');
+const agente = await statoAgenti();
 ---
 
 <Base title="Uni">
@@ -19,6 +21,10 @@ const inCorso = materie.filter((m) => statoMateria(m, voti) === 'in-corso');
     <p class="eyebrow">1º anno · Scienze politiche e strategie globali</p>
     <h1>Oggi</h1>
     <p class="muted">Il ripasso quotidiano arriva con lo Sprint 6; per ora qui trovi le materie in corso.</p>
+    <p class="cluster agente">
+      <Badge stato={agente.online ? 'online' : 'offline'} />
+      <a href="/agente">Agente locale: stato e istruzioni</a>
+    </p>
   </header>
 
   <section class="summary" aria-label="Riepilogo del percorso">

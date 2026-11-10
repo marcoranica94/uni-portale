@@ -78,6 +78,7 @@ const esito = ESITI[Astro.url.searchParams.get('esito') ?? ''];
           </button>
         </form>
         {!agente.online && <p class="muted nota">Agente locale offline{agente.ultimo && ` (ultimo contatto ${dataIt(agente.ultimo)})`}: la richiesta resta in coda finché non avvii <code>uni-agent</code> sul PC.</p>}
+        <p class="nota"><a href="/agente">Come avviare l'agente locale</a></p>
       </>
     )}
   </section>

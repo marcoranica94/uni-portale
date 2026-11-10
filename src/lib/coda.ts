@@ -104,3 +104,13 @@ export async function salvaKit(codice: string, k: { impronta: string; nuclei: nu
     .bind(codice, k.impronta, k.nuclei, k.commit, k.agente, k.generato)
     .run();
 }
+
+/** Ultimi lavori, per la pagina dell'agente. */
+export async function ultimiLavori(limite = 10) {
+  const { results } = await env.DB.prepare(
+    'SELECT id, tipo, codice, stato, agente, errore, creato, concluso FROM lavori ORDER BY creato DESC LIMIT ?',
+  )
+    .bind(limite)
+    .all<{ id: string; tipo: string; codice: string | null; stato: string; agente: string | null; errore: string | null; creato: string; concluso: string | null }>();
+  return results;
+}
