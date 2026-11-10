@@ -1,0 +1,71 @@
+# Pubblica il portale uni.marcoranica.com su Cloudflare Workers.
+# Scarica solo ciò che serve (sparse checkout, nessuna storia): la storia completa del repository pesa ~0,9 GB.
+# Segreti richiesti nel repository GitHub: CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID.
+name: Deploy portale
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'piattaforma/**'
+      - 'percorso/**'
+      - 'scienze-politiche/*/appunti/**'
+      - '.github/workflows/deploy-portale.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-portale
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      HA_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN != '' }}
+    defaults:
+      run:
+        working-directory: piattaforma
+    steps:
+      - name: Checkout parziale
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 1
+          filter: blob:none
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            /piattaforma/
+            /percorso/
+            /scienze-politiche/*/appunti/
+
+      - name: pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          package_json_file: piattaforma/package.json
+
+      - name: Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: piattaforma/pnpm-lock.yaml
+
+      - name: Dipendenze
+        run: pnpm install --frozen-lockfile
+
+      - name: Build (appunti + controllo tipi + build)
+        run: pnpm build
+
+      - name: Deploy su Cloudflare
+        if: env.HA_TOKEN == 'true'
+        run: pnpm wrangler deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+      - name: Deploy saltato
+        if: env.HA_TOKEN != 'true'
+        run: echo "::notice::Segreti Cloudflare non configurati: build verificata, deploy saltato."
