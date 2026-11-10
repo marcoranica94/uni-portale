@@ -154,3 +154,19 @@ function kitMarkdown(meta: { materia: string; codice: string; impronta: string; 
   if (kit.collegamenti.length) r.push('## Collegamenti tra capitoli', '', ...kit.collegamenti.map((x) => `- ${x}`), '');
   return r.join('\n');
 }
+
+/** Kit d'esame salvato nel repository, letto da domande e correzioni. */
+export interface KitSalvato extends KitModello {
+  meta: { codice: string; materia: string; impronta: string; generato: string; agente: string; appunti: string };
+}
+
+export async function leggiKit(codice: string): Promise<KitSalvato> {
+  const materia = configMaterie()[codice];
+  if (!materia?.appunti) throw new Error(`Nessuna cartella di appunti configurata per ${codice}.`);
+  const file = path.join(path.dirname(path.join(REPO, materia.appunti)), 'esame', 'kit-esame.json');
+  try {
+    return JSON.parse(await readFile(file, 'utf8')) as KitSalvato;
+  } catch {
+    throw new Error(`Kit d'esame non trovato in ${path.relative(REPO, file)}: esegui "git pull" o rigenera il kit dal portale.`);
+  }
+}

@@ -1,0 +1,680 @@
+---
+import Base from '../../layouts/Base.astro';
+import Badge from '../../components/Badge.astro';
+import { getMaterie } from '../../lib/percorso';
+import { getSimulazione, FORMATI } from '../../lib/simulazioni';
+import { statoAgenti } from '../../lib/coda';
+
+export const prerender = false;
+
+const dati = await getSimulazione(String(Astro.params.id));
+if (!dati) return new Response('Simulazione non trovata', { status: 404 });
+const { sim, risposte } = dati;
+const m = (await getMaterie()).find((x) => x.codice === sim.codice);
+const formato = FORMATI[sim.formato];
+const scadenza = Date.parse(sim.creata) + sim.minuti * 60_000;
+const agente = sim.stato === 'in_correzione' ? await statoAgenti() : null;
+const appunti = m?.appunti ? `/appunti/${m.appunti.slug}` : null;
+const titoloPagina = (file: string) => m?.appunti?.capitoli.find((c) => c.file === file)?.titolo ?? file;
+const lettera = (i: number) => String.fromCharCode(65 + i);
+const sufficiente = (sim.voto ?? 0) >= 18;
+---
+
+<Base title={`Simulazione · ${m?.breve ?? sim.codice}`}>
+  <header class="intro" style={`--c: var(--materia-${m?.colore ?? 1})`}>
+    <p class="etichetta"><span class="punto"></span><a href={m ? `/materie/${m.slug}` : '/'}>{m?.nome ?? sim.codice}</a></p>
+    <h1>{sim.stato === 'in_corso' ? 'Simulazione scritta' : 'Risultato della simulazione'}</h1>
+    <p class="muted">{formato.etichetta} · {risposte.length} domande · {sim.minuti} minuti</p>
+  </header>
+
+  {sim.stato === 'in_corso' ? (
+    <form method="post" action={`/api/simulazioni/${sim.id}/consegna`} class="esame" id="esame" data-id={sim.id} data-scadenza={scadenza}>
+      <div class="barra-esame" role="status">
+        <span class="progresso num" id="progresso">{risposte.length} domande</span>
+        <span class="tempo num" id="tempo" aria-live="off"></span>
+      </div>
+
+      {risposte.map((r, i) => (
+        <fieldset class="domanda pannello" data-indice={i}>
+          <legend class="domanda__numero num">Domanda {r.ordine} di {risposte.length}</legend>
+          <p class="domanda__testo">{r.domanda.testo}</p>
+          {r.domanda.tipo === 'multipla' ? (
+            <div class="opzioni">
+              {r.domanda.opzioni.map((o, j) => (
+                <label class="opzione">
+                  <input type="radio" name={`r-${r.ordine}`} value={j} />
+                  <span class="opzione__lettera">{lettera(j)}</span>
+                  <span>{o}</span>
+                </label>
+              ))}
+            </div>
+          ) : (
+            <div class="aperta">
+              <textarea name={`r-${r.ordine}`} rows="9" placeholder="Scrivi la risposta come all'esame: definizioni, autori, nessi, esempi." aria-label={`Risposta alla domanda ${r.ordine}`}></textarea>
+              <div class="aperta__strumenti">
+                <button type="button" class="btn detta" hidden>Detta</button>
+                <span class="muted conta num" aria-live="off"></span>
+              </div>
+            </div>
+          )}
+        </fieldset>
+      ))}
+
+      <nav class="comandi" aria-label="Navigazione tra le domande">
+        <button type="button" class="btn" id="indietro">Indietro</button>
+        <div class="pallini" id="pallini" aria-hidden="true"></div>
+        <button type="button" class="btn btn--primary" id="avanti">Avanti</button>
+      </nav>
+
+      <div class="consegna pannello" id="consegna">
+        <p><strong>Pronto a consegnare?</strong> <span class="muted" id="riepilogo-risposte"></span></p>
+        <p class="muted">Le domande a scelta multipla si correggono subito; le aperte le corregge l'agente locale con la rubrica del kit d'esame.</p>
+        <button class="btn btn--primary" type="submit">Consegna</button>
+      </div>
+    </form>
+  ) : (
+    <>
+      <section class="esito pannello" aria-label="Esito">
+        {sim.stato === 'in_correzione' ? (
+          <>
+            <p class="esito__voto esito__voto--attesa">In correzione</p>
+            <p>Scelta multipla: <strong class="num">{sim.punti} su {risposte.filter((r) => r.domanda.tipo === 'multipla').length}</strong>. Le risposte aperte le sta correggendo l'agente locale.</p>
+            <p class="cluster">
+              <Badge stato={agente?.online ? 'online' : 'offline'} label={agente?.online ? 'Agente online: ricarica tra qualche minuto' : 'Agente offline: la correzione parte quando lo avvii'} />
+              <a href="/agente">Come avviarlo</a>
+            </p>
+          </>
+        ) : (
+          <>
+            <p class:list={['esito__voto num', sufficiente ? 'esito__voto--ok' : 'esito__voto--ko']}>
+              {sim.voto}<small>/30</small>
+            </p>
+            <p class="num"><strong>{sim.punti} punti su {sim.massimo}</strong> · {sufficiente ? 'sufficiente' : 'non sufficiente'} · stima: multipla 1 punto, aperta 4 punti</p>
+            {sim.giudizio && <p class="esito__giudizio">{sim.giudizio}</p>}
+          </>
+        )}
+      </section>
+
+      <ol class="risultati">
+        {risposte.map((r) => {
+          const giusta = r.domanda.tipo === 'multipla' && r.risposta !== null && Number(r.risposta) === r.domanda.corretta;
+          return (
+            <li class="risultato pannello">
+              <div class="risultato__testa">
+                <span class="muted num">Domanda {r.ordine}</span>
+                {r.punti !== null ? (
+                  <span class:list={['punti num', r.punti >= r.massimo ? 'punti--ok' : r.punti > 0 ? 'punti--parziale' : 'punti--ko']}>
+                    {r.punti >= r.massimo ? '✓' : r.punti > 0 ? '◐' : '✕'} {r.punti}/{r.massimo}
+                  </span>
+                ) : (
+                  <Badge stato="in-coda" label="In correzione" />
+                )}
+              </div>
+              <p class="risultato__domanda">{r.domanda.testo}</p>
+
+              {r.domanda.tipo === 'multipla' ? (
+                <ul class="scelte">
+                  {r.domanda.opzioni.map((o, j) => (
+                    <li class:list={['scelta', { 'scelta--giusta': j === r.domanda.corretta, 'scelta--sbagliata': r.risposta !== null && Number(r.risposta) === j && !giusta }]}>
+                      <span class="opzione__lettera">{lettera(j)}</span>
+                      <span>{o}</span>
+                      {j === r.domanda.corretta && <span class="scelta__nota">giusta</span>}
+                      {r.risposta !== null && Number(r.risposta) === j && !giusta && <span class="scelta__nota">la tua</span>}
+                    </li>
+                  ))}
+                  {r.risposta === null && <li class="muted">Nessuna risposta.</li>}
+                </ul>
+              ) : (
+                <>
+                  <blockquote class="tua">{r.risposta ?? <span class="muted">Nessuna risposta.</span>}</blockquote>
+                  {r.esito && (
+                    <div class="rubrica">
+                      {r.esito.coperti && r.esito.coperti.length > 0 && (
+                        <div><h3>Hai coperto</h3><ul class="lista lista--ok">{r.esito.coperti.map((x) => <li>{x}</li>)}</ul></div>
+                      )}
+                      {r.esito.mancanti && r.esito.mancanti.length > 0 && (
+                        <div><h3>Manca</h3><ul class="lista lista--ko">{r.esito.mancanti.map((x) => <li>{x}</li>)}</ul></div>
+                      )}
+                      {r.esito.errori && r.esito.errori.length > 0 && (
+                        <div><h3>Errori</h3><ul class="lista lista--errore">{r.esito.errori.map((x) => <li>{x}</li>)}</ul></div>
+                      )}
+                      {r.esito.commento && <p class="commento">{r.esito.commento}</p>}
+                    </div>
+                  )}
+                </>
+              )}
+
+              {(r.domanda.spiegazione || r.domanda.rispostaModello) && (
+                <details class="approfondisci">
+                  <summary>{r.domanda.tipo === 'multipla' ? 'Spiegazione' : 'Risposta modello'}</summary>
+                  <p>{r.domanda.tipo === 'multipla' ? r.domanda.spiegazione : r.domanda.rispostaModello}</p>
+                </details>
+              )}
+              {appunti && r.domanda.file && (
+                <p class="rileggi">Rileggi: <a href={`${appunti}/${r.domanda.file}`}>{titoloPagina(r.domanda.file)}</a>{r.domanda.pagine && <span class="muted"> · {r.domanda.pagine}</span>}</p>
+              )}
+            </li>
+          );
+        })}
+      </ol>
+
+      <div class="fine">
+        {m && <a class="btn btn--primary" href={`/materie/${m.slug}#simula`}>Nuova simulazione</a>}
+        <form method="post" action={`/api/simulazioni/${sim.id}/elimina`} onsubmit="return confirm('Eliminare questa simulazione dallo storico?')">
+          <button type="submit" class="link">Elimina dallo storico</button>
+        </form>
+      </div>
+    </>
+  )}
+</Base>
+
+<script>
+  const form = document.getElementById('esame') as HTMLFormElement | null;
+  if (form) {
+    const id = form.dataset.id!;
+    const chiave = `simulazione:${id}`;
+    const domande = Array.from(form.querySelectorAll<HTMLFieldSetElement>('.domanda'));
+    const indietro = document.getElementById('indietro') as HTMLButtonElement;
+    const avanti = document.getElementById('avanti') as HTMLButtonElement;
+    const consegnaBox = document.getElementById('consegna') as HTMLElement;
+    const progresso = document.getElementById('progresso') as HTMLElement;
+    const pallini = document.getElementById('pallini') as HTMLElement;
+    const riepilogo = document.getElementById('riepilogo-risposte') as HTMLElement;
+    let attuale = 0;
+
+    form.classList.add('esame--js');
+
+    // Ripristino delle risposte salvate su questo dispositivo
+    try {
+      const salvate = JSON.parse(localStorage.getItem(chiave) ?? '{}') as Record<string, string>;
+      for (const [nome, valore] of Object.entries(salvate)) {
+        const campi = form.querySelectorAll<HTMLInputElement | HTMLTextAreaElement>(`[name="${nome}"]`);
+        campi.forEach((c) => {
+          if (c instanceof HTMLInputElement && c.type === 'radio') c.checked = c.value === valore;
+          else c.value = valore;
+        });
+      }
+    } catch {}
+
+    const valoriCorrenti = () => {
+      const fd = new FormData(form);
+      const v: Record<string, string> = {};
+      fd.forEach((x, k) => {
+        if (typeof x === 'string' && x !== '') v[k] = x;
+      });
+      return v;
+    };
+    const risposta = (i: number) => {
+      const nome = domande[i].querySelector<HTMLInputElement | HTMLTextAreaElement>('[name]')!.name;
+      return valoriCorrenti()[nome];
+    };
+
+    const disegnaPallini = () => {
+      pallini.replaceChildren(
+        ...domande.map((_, i) => {
+          const b = document.createElement('span');
+          b.className = 'pallino' + (i === attuale ? ' pallino--attuale' : '') + (risposta(i) ? ' pallino--fatto' : '');
+          return b;
+        }),
+      );
+    };
+
+    const mostra = (i: number) => {
+      attuale = Math.max(0, Math.min(domande.length, i));
+      domande.forEach((d, j) => (d.hidden = j !== attuale));
+      const fine = attuale === domande.length;
+      consegnaBox.hidden = !fine;
+      indietro.disabled = attuale === 0;
+      avanti.hidden = fine;
+      avanti.textContent = attuale === domande.length - 1 ? 'Rivedi e consegna' : 'Avanti';
+      progresso.textContent = fine ? 'Consegna' : `Domanda ${attuale + 1} di ${domande.length}`;
+      const date = domande.filter((_, j) => risposta(j)).length;
+      riepilogo.textContent = `${date} risposte date su ${domande.length}.`;
+      disegnaPallini();
+      window.scrollTo({ top: 0 });
+    };
+
+    indietro.addEventListener('click', () => mostra(attuale - 1));
+    avanti.addEventListener('click', () => mostra(attuale + 1));
+
+    form.addEventListener('input', (e) => {
+      try {
+        localStorage.setItem(chiave, JSON.stringify(valoriCorrenti()));
+      } catch {}
+      const t = e.target as HTMLElement;
+      if (t instanceof HTMLTextAreaElement) {
+        const conta = t.closest('.aperta')?.querySelector('.conta');
+        if (conta) conta.textContent = `${t.value.trim() ? t.value.trim().split(/\s+/).length : 0} parole`;
+      }
+      disegnaPallini();
+    });
+    form.addEventListener('submit', () => {
+      try {
+        localStorage.removeItem(chiave);
+      } catch {}
+    });
+
+    // Tempo che resta (l'esame non si chiude da solo: avvisa e basta)
+    const tempo = document.getElementById('tempo') as HTMLElement;
+    const scadenza = Number(form.dataset.scadenza);
+    const aggiornaTempo = () => {
+      const s = Math.round((scadenza - Date.now()) / 1000);
+      if (s <= 0) {
+        tempo.textContent = 'Tempo scaduto';
+        tempo.classList.add('tempo--scaduto');
+        return;
+      }
+      tempo.textContent = `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+      tempo.classList.toggle('tempo--poco', s < 120);
+    };
+    aggiornaTempo();
+    setInterval(aggiornaTempo, 1000);
+
+    // Dettatura con il riconoscimento vocale del browser (se disponibile)
+    const Riconoscimento = (window as unknown as { SpeechRecognition?: new () => any; webkitSpeechRecognition?: new () => any }).SpeechRecognition ??
+      (window as unknown as { webkitSpeechRecognition?: new () => any }).webkitSpeechRecognition;
+    if (Riconoscimento) {
+      form.querySelectorAll<HTMLButtonElement>('.detta').forEach((b) => {
+        b.hidden = false;
+        const area = b.closest('.aperta')!.querySelector('textarea')!;
+        let rec: any = null;
+        b.addEventListener('click', () => {
+          if (rec) {
+            rec.stop();
+            return;
+          }
+          rec = new Riconoscimento();
+          rec.lang = 'it-IT';
+          rec.continuous = true;
+          rec.interimResults = false;
+          rec.onresult = (ev: any) => {
+            for (let k = ev.resultIndex; k < ev.results.length; k++) {
+              if (ev.results[k].isFinal) area.value = `${area.value}${area.value && !area.value.endsWith(' ') ? ' ' : ''}${ev.results[k][0].transcript.trim()}`;
+            }
+            area.dispatchEvent(new Event('input', { bubbles: true }));
+          };
+          rec.onend = () => {
+            rec = null;
+            b.textContent = 'Detta';
+            b.classList.remove('detta--attiva');
+          };
+          rec.start();
+          b.textContent = 'Ferma la dettatura';
+          b.classList.add('detta--attiva');
+        });
+      });
+    }
+
+    mostra(0);
+  }
+</script>
+
+<style>
+  .intro {
+    display: grid;
+    gap: var(--space-2);
+  }
+  .etichetta {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-size: var(--text-sm);
+    font-weight: var(--weight-semibold);
+  }
+  .etichetta a {
+    color: var(--color-ink);
+    text-decoration: none;
+  }
+  .etichetta a:hover {
+    text-decoration: underline;
+  }
+  .esame {
+    display: grid;
+    gap: var(--space-4);
+    max-width: 48rem;
+  }
+  .barra-esame {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--space-3) var(--space-4);
+    background: var(--color-surface);
+    border: var(--border);
+    border-radius: var(--radius-lg);
+    font-weight: var(--weight-semibold);
+  }
+  .tempo {
+    font-variant-numeric: tabular-nums;
+  }
+  .tempo--poco {
+    color: var(--color-warning);
+  }
+  .tempo--scaduto {
+    color: var(--color-danger);
+  }
+  .domanda {
+    margin: 0;
+    display: grid;
+    gap: var(--space-4);
+    padding: var(--space-5);
+    min-width: 0;
+  }
+  .domanda__numero {
+    float: left;
+    padding: 0;
+    font-size: var(--text-sm);
+    font-weight: var(--weight-semibold);
+    color: var(--color-ink-muted);
+  }
+  .domanda__testo {
+    clear: both;
+    font-family: var(--font-serif);
+    font-size: var(--text-xl);
+    line-height: 1.35;
+  }
+  .opzioni {
+    display: grid;
+    gap: var(--space-2);
+  }
+  .opzione {
+    position: relative;
+    display: flex;
+    gap: var(--space-3);
+    align-items: flex-start;
+    padding: var(--space-3) var(--space-4);
+    min-height: var(--tap-min);
+    border: 1px solid var(--color-rule-strong);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    line-height: 1.4;
+  }
+  .opzione:hover {
+    background: var(--color-surface-muted);
+  }
+  .opzione input {
+    position: absolute;
+    opacity: 0;
+    inset: 0;
+    margin: 0;
+    cursor: pointer;
+  }
+  .opzione:has(input:checked) {
+    border-color: var(--color-accent);
+    background: var(--color-accent-soft);
+    box-shadow: inset 0 0 0 1px var(--color-accent);
+  }
+  .opzione:has(input:focus-visible) {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+  }
+  .opzione__lettera {
+    display: grid;
+    place-items: center;
+    flex: none;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    border: 1px solid var(--color-rule-strong);
+    font-size: var(--text-sm);
+    font-weight: var(--weight-semibold);
+  }
+  .opzione:has(input:checked) .opzione__lettera {
+    background: var(--color-accent);
+    border-color: var(--color-accent);
+    color: var(--color-on-accent);
+  }
+  .aperta {
+    display: grid;
+    gap: var(--space-2);
+  }
+  textarea {
+    width: 100%;
+    font: inherit;
+    font-size: var(--text-base);
+    line-height: 1.55;
+    color: var(--color-ink);
+    background: var(--color-surface-muted);
+    border: 1px solid var(--color-rule-strong);
+    border-radius: var(--radius-md);
+    padding: var(--space-3);
+    resize: vertical;
+  }
+  .aperta__strumenti {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: var(--space-3);
+  }
+  .detta--attiva {
+    border-color: var(--color-danger);
+    color: var(--color-danger);
+  }
+  .conta {
+    font-size: var(--text-sm);
+  }
+  .comandi {
+    display: none;
+  }
+  .esame--js .comandi {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: var(--space-3);
+  }
+  .pallini {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    justify-content: center;
+  }
+  .pallini :global(.pallino) {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    border: 1.5px solid var(--color-rule-strong);
+  }
+  .pallini :global(.pallino--fatto) {
+    background: var(--color-ink-muted);
+    border-color: var(--color-ink-muted);
+  }
+  .pallini :global(.pallino--attuale) {
+    border-color: var(--color-accent);
+    box-shadow: 0 0 0 2px var(--color-accent-soft);
+  }
+  .consegna {
+    display: grid;
+    gap: var(--space-3);
+    padding: var(--space-5);
+    justify-items: start;
+  }
+
+  /* Risultati */
+  .esito {
+    display: grid;
+    gap: var(--space-2);
+    padding: var(--space-5);
+    max-width: 48rem;
+  }
+  .esito__voto {
+    font-family: var(--font-serif);
+    font-size: 3rem;
+    font-weight: var(--weight-semibold);
+    line-height: 1;
+  }
+  .esito__voto small {
+    font-size: var(--text-xl);
+    color: var(--color-ink-muted);
+  }
+  .esito__voto--ok {
+    color: var(--color-success);
+  }
+  .esito__voto--ko {
+    color: var(--color-danger);
+  }
+  .esito__voto--attesa {
+    font-size: var(--text-2xl);
+    color: var(--color-accent);
+  }
+  .esito__giudizio {
+    line-height: 1.6;
+  }
+  .risultati {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: var(--space-4);
+    max-width: 48rem;
+  }
+  .risultato {
+    display: grid;
+    gap: var(--space-3);
+    padding: var(--space-5);
+  }
+  .risultato__testa {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: var(--space-3);
+    font-size: var(--text-sm);
+  }
+  .punti {
+    font-weight: var(--weight-bold);
+  }
+  .punti--ok {
+    color: var(--color-success);
+  }
+  .punti--parziale {
+    color: var(--color-warning);
+  }
+  .punti--ko {
+    color: var(--color-danger);
+  }
+  .risultato__domanda {
+    font-family: var(--font-serif);
+    font-size: var(--text-lg);
+    line-height: 1.4;
+  }
+  .scelte {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: var(--space-2);
+  }
+  .scelta {
+    display: flex;
+    gap: var(--space-3);
+    align-items: flex-start;
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius-md);
+    line-height: 1.4;
+  }
+  .scelta--giusta {
+    background: var(--color-success-soft);
+  }
+  .scelta--sbagliata {
+    background: var(--color-danger-soft);
+  }
+  .scelta__nota {
+    margin-left: auto;
+    font-size: var(--text-xs);
+    font-weight: var(--weight-bold);
+    white-space: nowrap;
+  }
+  .scelta--giusta .scelta__nota {
+    color: var(--color-success);
+  }
+  .scelta--sbagliata .scelta__nota {
+    color: var(--color-danger);
+  }
+  .tua {
+    margin: 0;
+    padding: var(--space-3) var(--space-4);
+    background: var(--color-surface-muted);
+    border-radius: var(--radius-md);
+    white-space: pre-wrap;
+    line-height: 1.55;
+  }
+  .rubrica {
+    display: grid;
+    gap: var(--space-3);
+  }
+  .rubrica h3 {
+    font-size: var(--text-sm);
+    margin-bottom: var(--space-1);
+  }
+  .lista {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: grid;
+    gap: var(--space-1);
+  }
+  .lista li {
+    position: relative;
+    padding-left: 1.5rem;
+    line-height: 1.45;
+  }
+  .lista li::before {
+    position: absolute;
+    left: 0;
+    font-weight: var(--weight-bold);
+  }
+  .lista--ok li::before {
+    content: '✓';
+    color: var(--color-success);
+  }
+  .lista--ko li::before {
+    content: '✕';
+    color: var(--color-danger);
+  }
+  .lista--errore li::before {
+    content: '!';
+    color: var(--color-warning);
+  }
+  .commento {
+    color: var(--color-ink-muted);
+    line-height: 1.55;
+  }
+  .approfondisci summary {
+    cursor: pointer;
+    font-weight: var(--weight-semibold);
+    color: var(--color-accent);
+    min-height: 32px;
+  }
+  .approfondisci p {
+    margin-top: var(--space-2);
+    line-height: 1.55;
+  }
+  .rileggi {
+    font-size: var(--text-sm);
+    padding-top: var(--space-3);
+    border-top: var(--border);
+  }
+  .fine {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-4);
+  }
+  .fine form {
+    margin: 0;
+  }
+  .link {
+    background: none;
+    border: none;
+    padding: 0;
+    font: inherit;
+    font-size: var(--text-sm);
+    color: var(--color-ink-muted);
+    text-decoration: underline;
+    cursor: pointer;
+  }
+  .link:hover {
+    color: var(--color-danger);
+  }
+</style>

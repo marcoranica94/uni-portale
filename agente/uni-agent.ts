@@ -14,6 +14,8 @@ import { NomeAgente, type Lavoro, type TipoLavoro } from '../src/shared/schemi.t
 import { post } from './api.ts';
 import { configMaterie, HOST, VERSIONE } from './config.ts';
 import { generaKit } from './kit.ts';
+import { generaDomande } from './domande.ts';
+import { correggi } from './correzione.ts';
 
 const { values, positionals } = parseArgs({
   allowPositionals: true,
@@ -34,7 +36,7 @@ if (!sceltaAgente.success) {
 const agente = sceltaAgente.data;
 const intervallo = Math.max(5, Number(values.intervallo) || 20) * 1000;
 const push = !values['no-push'];
-const TIPI: TipoLavoro[] = ['kit'];
+const TIPI: TipoLavoro[] = ['correzione', 'kit', 'domande'];
 
 const ora = () => new Date().toLocaleTimeString('it-IT');
 const log = (msg: string) => console.log(`[${ora()}] ${msg}`);
@@ -48,8 +50,15 @@ async function giro(): Promise<boolean> {
     post('/api/agente/battito', { agente, host: HOST, versione: VERSIONE }).catch(() => {});
   }, 60_000);
   try {
+    let risultato: unknown = null;
     if (lavoro.tipo === 'kit' && lavoro.codice) {
-      const risultato = await generaKit(lavoro.codice, { agente, modello: values.modello, push, log });
+      risultato = await generaKit(lavoro.codice, { agente, modello: values.modello, push, log });
+    } else if (lavoro.tipo === 'domande' && lavoro.codice) {
+      risultato = await generaDomande(lavoro.codice, { agente, modello: values.modello, log });
+    } else if (lavoro.tipo === 'correzione') {
+      risultato = await correggi(lavoro.richiesta, { agente, modello: values.modello, log });
+    }
+    if (risultato) {
       await post('/api/agente/completa', { id: lavoro.id, risultato });
       log(`lavoro ${lavoro.id.slice(0, 8)} completato`);
     } else {

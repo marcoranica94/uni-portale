@@ -5,6 +5,7 @@ import TipoEsame from '../../components/TipoEsame.astro';
 import { getMaterie } from '../../lib/percorso';
 import { getVoti, statoMateria, votoTesto } from '../../lib/voti';
 import { getKit, ultimoLavoro, statoAgenti } from '../../lib/coda';
+import { contaBanca, storico, FORMATI } from '../../lib/simulazioni';
 
 export const prerender = false;
 
@@ -21,11 +22,20 @@ const lavoro = m.codice ? await ultimoLavoro('kit', m.codice) : null;
 const agente = await statoAgenti();
 const kitAggiornato = !!(kit && m.appunti && kit.impronta === m.appunti.impronta);
 const inLavorazione = !!lavoro && (lavoro.stato === 'in_coda' || lavoro.stato === 'in_corso');
+const banca = m.codice ? await contaBanca(m.codice) : null;
+const lavoroDomande = m.codice ? await ultimoLavoro('domande', m.codice) : null;
+const domandeInLavorazione = !!lavoroDomande && (lavoroDomande.stato === 'in_coda' || lavoroDomande.stato === 'in_corso');
+const simulazioni = m.codice ? await storico(m.codice) : [];
+const scritto = m.esame.tipo === 'Scritto';
 const giorno = (iso: string) => new Date(iso).toLocaleDateString('it-IT', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Europe/Rome' });
 const ESITI: Record<string, string> = {
   'in-coda': "Richiesta inviata: l'agente locale preparerà il kit appena è acceso.",
   'gia-in-coda': 'Il kit è già in preparazione.',
   'senza-appunti': 'Servono gli appunti per preparare il kit.',
+  'senza-kit': 'Prepara prima il kit d\'esame: le domande nascono da lì.',
+  'domande-in-coda': "Richiesta inviata: l'agente locale preparerà la banca di domande appena è acceso.",
+  'senza-domande': 'La banca di domande è vuota: preparala prima.',
+  'simulazione-eliminata': 'Simulazione eliminata dallo storico.',
 };
 const esito = ESITI[Astro.url.searchParams.get('esito') ?? ''];
 ---
@@ -108,9 +118,52 @@ const esito = ESITI[Astro.url.searchParams.get('esito') ?? ''];
         )}
       </section>
 
-      <section class="pannello simula" aria-labelledby="simula-titolo">
+      <section class="pannello simula" id="simula" aria-labelledby="simula-titolo">
         <h2 id="simula-titolo">Simulazione d'esame</h2>
-        <p class="muted">Disponibile da dicembre: prima lo scritto di Sociologia, poi l'orale di Diritto pubblico.</p>
+        {!scritto ? (
+          <p class="muted">Per gli esami orali la simulazione con la voce arriva con lo Sprint 4.</p>
+        ) : !kit ? (
+          <p class="muted">Prima serve il kit d'esame: dalle sue rubriche nascono le domande.</p>
+        ) : banca && banca.lotto ? (
+          <form method="post" action="/api/simulazioni" class="avvio">
+            <input type="hidden" name="codice" value={m.codice!} />
+            <div class="formati" role="radiogroup" aria-label="Formato">
+              {(Object.keys(FORMATI) as (keyof typeof FORMATI)[]).map((k, i) => (
+                <label class="formato">
+                  <input type="radio" name="formato" value={k} checked={i === 0} />
+                  <span class="formato__nome">{FORMATI[k].etichetta}</span>
+                  <span class="muted num">{FORMATI[k].multiple + FORMATI[k].aperte} domande · {FORMATI[k].minuti} min</span>
+                </label>
+              ))}
+            </div>
+            <button class="btn btn--primary" type="submit">Inizia</button>
+            <p class="muted piccolo num">Banca: {banca.multiple} a scelta multipla e {banca.aperte} aperte, dal kit del {kit && giorno(kit.generato)}.</p>
+          </form>
+        ) : domandeInLavorazione ? (
+          <p><Badge stato="in-coda" label={lavoroDomande!.stato === 'in_corso' ? 'Domande in preparazione' : 'Domande in coda'} /></p>
+        ) : (
+          <form method="post" action="/api/lavori">
+            <input type="hidden" name="codice" value={m.codice!} />
+            <input type="hidden" name="tipo" value="domande" />
+            <p class="muted">Il kit è pronto: chiedi all'agente locale di preparare la banca di domande.</p>
+            <button class="btn" type="submit">Prepara le domande</button>
+          </form>
+        )}
+        {lavoroDomande?.stato === 'errore' && <p class="kit__errore">Preparazione delle domande non riuscita: {lavoroDomande.errore}</p>}
+        {simulazioni.length > 0 && (
+          <ul class="storico">
+            {simulazioni.map((s) => (
+              <li>
+                <a href={`/simulazioni/${s.id}`}>
+                  <span>{giorno(s.creata)} · {FORMATI[s.formato as keyof typeof FORMATI]?.etichetta ?? s.formato}</span>
+                  <span class="num storico__esito">
+                    {s.stato === 'corretta' ? `${s.voto}/30` : s.stato === 'in_correzione' ? 'In correzione' : 'Da finire'}
+                  </span>
+                </a>
+              </li>
+            ))}
+          </ul>
+        )}
       </section>
     </aside>
   </div>
@@ -251,9 +304,73 @@ const esito = ESITI[Astro.url.searchParams.get('esito') ?? ''];
     border-top: var(--border);
     font-size: var(--text-sm);
   }
-  .simula {
-    background: var(--color-surface-muted);
-    border-style: dashed;
+  .simula form {
+    margin: 0;
+    display: grid;
+    gap: var(--space-3);
+  }
+  .formati {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-2);
+  }
+  .formato {
+    position: relative;
+    display: grid;
+    gap: 2px;
+    padding: var(--space-3);
+    border: 1px solid var(--color-rule-strong);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    font-size: var(--text-sm);
+  }
+  .formato input {
+    position: absolute;
+    opacity: 0;
+    inset: 0;
+    margin: 0;
+    cursor: pointer;
+  }
+  .formato:has(input:checked) {
+    border-color: var(--color-accent);
+    background: var(--color-accent-soft);
+    box-shadow: inset 0 0 0 1px var(--color-accent);
+  }
+  .formato:has(input:focus-visible) {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+  }
+  .formato__nome {
+    font-size: var(--text-base);
+    font-weight: var(--weight-semibold);
+  }
+  .avvio .btn--primary {
+    justify-self: start;
+  }
+  .piccolo {
+    font-size: var(--text-sm);
+  }
+  .storico {
+    list-style: none;
+    margin: 0;
+    padding: var(--space-3) 0 0;
+    border-top: var(--border);
+    display: grid;
+  }
+  .storico a {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--space-3);
+    padding: var(--space-2) 0;
+    font-size: var(--text-sm);
+    color: var(--color-ink);
+    text-decoration: none;
+  }
+  .storico a:hover {
+    color: var(--color-accent);
+  }
+  .storico__esito {
+    font-weight: var(--weight-semibold);
   }
   .esame {
     max-width: 72ch;

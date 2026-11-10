@@ -89,3 +89,73 @@ export const RichiestaErrore = z.object({
   messaggio: z.string().max(2000),
   ritenta: z.boolean(),
 });
+
+// ---------- Banca di domande (lavoro "domande") ----------
+
+export const DomandaModello = z
+  .object({
+    nucleo: z.string().describe('Id del nucleo del kit, es. "N07"'),
+    tipo: z.enum(['multipla', 'aperta']),
+    testo: z.string(),
+    opzioni: z.array(z.string()).describe('Quattro opzioni per la multipla; vuoto per l\'aperta'),
+    corretta: z.number().int().nullable().describe('Indice (da 0) dell\'opzione giusta; null per l\'aperta'),
+    spiegazione: z.string().describe('Perché la risposta giusta è giusta e le altre no (multipla); vuoto per l\'aperta'),
+    puntiChiave: z.array(z.string()).describe('Rubrica dell\'aperta: elementi verificabili; vuoto per la multipla'),
+    rispostaModello: z.string().describe('Risposta modello breve per l\'aperta; vuoto per la multipla'),
+  })
+  .strict();
+export type DomandaModello = z.infer<typeof DomandaModello>;
+
+export const DomandeModello = z.object({ domande: z.array(DomandaModello).min(1) }).strict();
+
+export const DomandaCompleta = DomandaModello.extend({ file: z.string(), pagine: z.string() });
+export type DomandaCompleta = z.infer<typeof DomandaCompleta>;
+
+export const RisultatoDomande = z.object({
+  lotto: z.string(),
+  agente: z.string(),
+  domande: z.array(DomandaCompleta).min(1),
+});
+export type RisultatoDomande = z.infer<typeof RisultatoDomande>;
+
+// ---------- Correzione delle risposte aperte (lavoro "correzione") ----------
+
+/** Ciò che il sito mette nella richiesta del lavoro di correzione. */
+export const RichiestaCorrezione = z.object({
+  simulazione: z.string(),
+  codice: z.string(),
+  risposte: z.array(
+    z.object({
+      ordine: z.number().int(),
+      nucleo: z.string(),
+      domanda: z.string(),
+      puntiChiave: z.array(z.string()),
+      rispostaModello: z.string(),
+      risposta: z.string(),
+      massimo: z.number(),
+    }),
+  ),
+});
+export type RichiestaCorrezione = z.infer<typeof RichiestaCorrezione>;
+
+export const CorrezioneModello = z
+  .object({
+    valutazioni: z.array(
+      z
+        .object({
+          ordine: z.number().int(),
+          punti: z.number().describe('Da 0 al massimo indicato per la domanda, anche con mezzi punti'),
+          coperti: z.array(z.string()).describe('Punti chiave presenti nella risposta'),
+          mancanti: z.array(z.string()).describe('Punti chiave assenti o sbagliati'),
+          errori: z.array(z.string()).describe('Errori concettuali o attribuzioni sbagliate'),
+          commento: z.string().describe('Due-tre frasi su come migliorare la risposta'),
+        })
+        .strict(),
+    ),
+    giudizio: z.string().describe('Giudizio complessivo in 2-3 frasi, in italiano'),
+  })
+  .strict();
+export type CorrezioneModello = z.infer<typeof CorrezioneModello>;
+
+export const RisultatoCorrezione = CorrezioneModello.extend({ agente: z.string() });
+export type RisultatoCorrezione = z.infer<typeof RisultatoCorrezione>;
