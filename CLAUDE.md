@@ -45,7 +45,7 @@ Leggi il documento prima di modificarlo e passa sempre `if_version`.
 - **Simulazioni:** avvio con un tocco, già impostate come l'esame reale; nessun modulo lungo. Banca di domande pre-generata per poter iniziare anche a PC spento.
 - **Voce:** nello scritto si usa la dettatura del browser; nell'orale la trascrizione con tempi per parola serve a misurare pause, ritmo e intercalari.
 - **Versioni:** usa sempre l'ultima versione stabile di framework, librerie, CLI e runtime (niente beta, RC o canary), verificandola al momento.
-- **Interfaccia:** testi in italiano, mobile-first, PWA; palette carta `#FAFAF7`, inchiostro `#1A1A1A`, accento `#1F4E8C`; serif per i titoli, sans per l'interfaccia.
+- **Interfaccia:** testi in italiano, mobile-first, PWA. Direzione "taccuino notturno" (10/11/2026, `src/styles/tokens.css`): carta e inchiostro caldi, tema chiaro e scuro; giallo evidenziatore solo per l'azione principale e "dove sei ora"; righe e filetti più che riquadri; Newsreader per titoli e domande, IBM Plex Sans per l'interfaccia, IBM Plex Mono per le cifre grandi (non dentro le frasi). Animazioni solo dove informano (agente acceso, registrazione, attesa del docente, avanzamento). Niente emoji come icone. Scorciatoie da tastiera spente mentre si scrive in un campo.
 
 ## File
 
