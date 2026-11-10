@@ -97,6 +97,8 @@ pnpm agente verifica                  # credenziali e collegamento
 - **Scritto** (`/simulazioni/[id]`): domande dalla banca della materia (lavoro `domande` dell'agente, dal kit), multipla corretta subito, aperte corrette dall'agente con la rubrica. Pesi stimati: multipla 1, aperta 4; voto = punti/massimo × 30.
 - **Orale** (esami orali): 3 domande aperte; il telefono registra, `/api/simulazioni/[id]/audio` trascrive con **Workers AI `@cf/openai/whisper-large-v3-turbo`** in italiano e scarta l'audio (mai salvato, niente R2); in D1 vanno solo trascrizione e metriche (`calcoli.ts/metricheParlato`). L'agente valuta contenuto (rubrica) ed esposizione (voto /10). Quota gratuita Workers AI: ~210 minuti di audio al giorno.
 - **Rubrica**: deve contenere solo ciò che la domanda chiede; in correzione un punto non richiesto non toglie punti.
+- **Istruzioni d'esame** (tabella `profili_esame`, sezione nella scheda materia): testo libero dello studente + numero di domande; entrano nel prompt di generazione e di correzione.
+- **Banca a rifornimento**: mai generare tutta la banca in una volta. Ogni lavoro `domande` prepara ~18 domande su 6 nuclei meno coperti; il sito ne accoda un altro quando le domande mai uscite non bastano per due simulazioni (risparmia la quota degli abbonamenti).
 - **Collaudo**: audio di prova con `say -v Luca -o x.m4a --file-format=m4af --data-format=aac "..."` (le pause con `[[slnc 2500]]`), poi POST con `scripts/uni-curl.sh`. Le simulazioni di prova vanno eliminate a fine collaudo.
 
 ## Provare il sito online
