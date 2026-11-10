@@ -26,10 +26,7 @@ const esito = MESSAGGI[Astro.url.searchParams.get('esito') ?? ''];
 
 <Base title="Libretto">
   <header class="intro">
-    <div>
-      <p class="eyebrow">Carriera</p>
-      <h1>Libretto</h1>
-    </div>
+    <h1>Libretto</h1>
   </header>
 
   {esito && <p class:list={['avviso', esito.ok ? 'avviso--ok' : 'avviso--errore']} role="status">{esito.testo}</p>}
