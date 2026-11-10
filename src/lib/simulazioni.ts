@@ -58,7 +58,7 @@ export async function ultimoLotto(codice: string): Promise<string | null> {
 /** Banca di una materia: totale e domande mai uscite, per tipo (tutti i rifornimenti). */
 export async function contaBanca(codice: string) {
   const { results } = await env.DB.prepare(
-    'SELECT tipo, COUNT(*) AS n, SUM(CASE WHEN usata = 0 THEN 1 ELSE 0 END) AS nuove FROM domande WHERE codice = ? GROUP BY tipo',
+    'SELECT tipo, COUNT(*) AS n, SUM(CASE WHEN usata = 0 THEN 1 ELSE 0 END) AS nuove FROM domande WHERE codice = ? AND archiviata = 0 GROUP BY tipo',
   )
     .bind(codice)
     .all<{ tipo: string; n: number; nuove: number }>();
@@ -74,7 +74,7 @@ export async function contaBanca(codice: string) {
 
 /** Rifornimento: pochi nuclei, scelti dall'agente tra i meno coperti (presenti = domande già in banca per nucleo). */
 export async function richiestaRifornimento(codice: string): Promise<RichiestaDomande> {
-  const { results } = await env.DB.prepare('SELECT nucleo, COUNT(*) AS n FROM domande WHERE codice = ? GROUP BY nucleo')
+  const { results } = await env.DB.prepare('SELECT nucleo, COUNT(*) AS n FROM domande WHERE codice = ? AND archiviata = 0 GROUP BY nucleo')
     .bind(codice)
     .all<{ nucleo: string; n: number }>();
   const profilo = await getProfilo(codice);
@@ -174,7 +174,7 @@ export async function creaSimulazione(codice: string, formato: Formato, modalita
         : FORMATI.breve;
   const pesca = async (tipo: 'multipla' | 'aperta', n: number) =>
     (
-      await env.DB.prepare('SELECT id FROM domande WHERE codice = ? AND tipo = ? ORDER BY usata ASC, RANDOM() LIMIT ?')
+      await env.DB.prepare('SELECT id FROM domande WHERE codice = ? AND tipo = ? AND archiviata = 0 ORDER BY usata ASC, RANDOM() LIMIT ?')
         .bind(codice, tipo, n)
         .all<{ id: string }>()
     ).results.map((r) => r.id);
