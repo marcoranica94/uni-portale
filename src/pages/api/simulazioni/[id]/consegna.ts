@@ -8,7 +8,8 @@ export const prerender = false;
 export const POST: APIRoute = async ({ request, url, locals, params }) => {
   const bloccata = controllaOrigine({ request, url, locals });
   if (bloccata) return bloccata;
-  const dati = await request.formData();
+  // Un modulo vuoto (l'orale non ha campi: le trascrizioni sono già salvate) non deve far fallire la consegna.
+  const dati = await request.formData().catch(() => new FormData());
   const valori = new Map<number, string>();
   for (const [k, v] of dati.entries()) {
     const m = k.match(/^r-(\d+)$/);
