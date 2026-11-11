@@ -17,10 +17,15 @@ set +a
 HOST="uni.marcoranica.com"
 PERCORSO="${1:-/}"
 shift || true
-IP="$(dig +short "$HOST" @1.1.1.1 | head -1)"
+# Con dig si risolve con 1.1.1.1 (niente cache locali); senza dig si usa il DNS di sistema.
+RISOLVI=""
+if command -v dig >/dev/null 2>&1; then
+  IP="$(dig +short "$HOST" @1.1.1.1 | head -1)"
+  [ -n "$IP" ] && RISOLVI="--resolve $HOST:443:$IP"
+fi
 
 exec curl -s --max-time 30 \
-  --resolve "$HOST:443:$IP" \
+  $RISOLVI \
   -H "CF-Access-Client-Id: $CF_ACCESS_CLIENT_ID" \
   -H "CF-Access-Client-Secret: $CF_ACCESS_CLIENT_SECRET" \
   "$@" "https://$HOST$PERCORSO"

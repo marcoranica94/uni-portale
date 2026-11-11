@@ -1,0 +1,2 @@
+# Gli script di shell devono avere fine riga Unix anche con core.autocrlf=true (WSL, Windows).
+*.sh text eol=lf
