@@ -18,6 +18,7 @@ const ore = Array.from({ length: 33 }, (_, i) => {
     Su iPhone le notifiche arrivano solo dall'app: tocca Condividi, poi «Aggiungi alla schermata Home», e apri il portale da lì.
   </p>
   <p class="promemoria__testo" data-caso="nonsupportato" hidden>Questo browser non riceve notifiche.</p>
+  <p class="promemoria__testo" data-caso="nonpronto" hidden>Le notifiche non rispondono in questo momento: ricarica la pagina.</p>
   <p class="promemoria__testo" data-caso="bloccate" hidden>Le notifiche del portale sono bloccate: riattivale nelle impostazioni del browser o del telefono.</p>
 
   <div data-caso="spente" hidden>
@@ -57,12 +58,18 @@ const ore = Array.from({ length: 33 }, (_, i) => {
       return r.json().catch(() => ({}));
     };
     const dispositivo = () => (ios ? 'iPhone' : /Android/.test(navigator.userAgent) ? 'Android' : /Mac/.test(navigator.userAgent) ? 'Mac' : 'Computer');
+    // Il service worker può non attivarsi (es. sessione di Access scaduta): non si aspetta all'infinito.
+    const pronto = () =>
+      Promise.race([
+        navigator.serviceWorker.ready,
+        new Promise<never>((_, no) => setTimeout(() => no(new Error('service worker non pronto')), 8000)),
+      ]);
     const chiaveBinaria = (b64: string) => Uint8Array.from(atob(b64.replace(/-/g, '+').replace(/_/g, '/')), (c) => c.charCodeAt(0));
 
     async function stato() {
       if (!supportato) return mostra(ios && !standalone ? 'iphone' : 'nonsupportato');
       if (Notification.permission === 'denied') return mostra('bloccate');
-      const reg = await navigator.serviceWorker.ready;
+      const reg = await pronto();
       const iscr = await reg.pushManager.getSubscription();
       if (!iscr) return mostra('spente');
       mostra('attive');
@@ -75,7 +82,7 @@ const ore = Array.from({ length: 33 }, (_, i) => {
     }
 
     async function iscrivi(esistente?: PushSubscription) {
-      const reg = await navigator.serviceWorker.ready;
+      const reg = await pronto();
       let iscr = esistente ?? null;
       if (!iscr) {
         const { chiave } = (await (await fetch('/api/notifiche', { credentials: 'same-origin' })).json()) as { chiave: string };
@@ -91,7 +98,7 @@ const ore = Array.from({ length: 33 }, (_, i) => {
       b.disabled = true;
       di('');
       try {
-        const reg = await navigator.serviceWorker.ready;
+        const reg = await pronto();
         if (b.dataset.azione === 'attiva') {
           const permesso = await Notification.requestPermission();
           if (permesso !== 'granted') {
@@ -123,13 +130,13 @@ const ore = Array.from({ length: 33 }, (_, i) => {
     });
 
     sceltaOra.addEventListener('change', async () => {
-      const iscr = await (await navigator.serviceWorker.ready).pushManager.getSubscription();
+      const iscr = await (await pronto()).pushManager.getSubscription();
       if (!iscr) return;
       await iscrivi(iscr);
       di(`Promemoria spostato alle ${sceltaOra.value}.`);
     });
 
-    stato().catch(() => mostra('nonsupportato'));
+    stato().catch(() => mostra('nonpronto'));
   }
 </script>
 
