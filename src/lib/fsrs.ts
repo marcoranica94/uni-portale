@@ -1,6 +1,6 @@
 /**
  * Pianificazione dei ripassi con FSRS (ts-fsrs): nessuna dipendenza da Cloudflare, si prova con node:test.
- * Ritenzione desiderata 90%; passi di apprendimento brevi (1 e 10 minuti) perché una carta sbagliata
+ * Ritenzione desiderata 90%; passi di apprendimento brevi (1 e 10 minuti, che il modello non può saltare) perché una carta sbagliata
  * torni nella stessa sessione; nessuna casualità, così i pulsanti dicono esattamente quando torna.
  */
 import { DefaultScheduler, Rating } from 'ts-fsrs';
@@ -19,7 +19,7 @@ type CartaFsrs = ReturnType<Pianificatore['newCard']>;
 
 let pianificatore: Promise<Pianificatore> | null = null;
 const pianifica = () =>
-  (pianificatore ??= DefaultScheduler({ version: 'FSRS-7', desiredRetention: 0.9, enableFuzz: false, enableShortTerm: true, learningSteps: ['1m', '10m'], relearningSteps: ['10m'], maximumInterval: 365 }));
+  (pianificatore ??= DefaultScheduler({ version: 'FSRS-7', allowModelOverride: false, desiredRetention: 0.9, enableFuzz: false, enableShortTerm: true, learningSteps: ['1m', '10m'], relearningSteps: ['10m'], maximumInterval: 365 }));
 
 /** Stato FSRS salvato in D1 (JSON): le date tornano oggetti Date. */
 function leggi(json: string | null, adesso: Date, p: Pianificatore): CartaFsrs {
