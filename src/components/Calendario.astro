@@ -107,7 +107,9 @@ const virgola = (n: number) => n.toLocaleString('it-IT', { maximumFractionDigits
               {sett.map(({ data, giorno }) => {
                 const etichetta = data === sett[0].data || giornoMese(data) === 1 ? breve(data) : String(giornoMese(data));
                 const descr = !giorno
-                  ? 'passato'
+                  ? data < oggi
+                    ? 'passato'
+                    : "dopo l'appello"
                   : giorno.tipo === 'studio'
                     ? giorno.capitoli.map((f) => `capitolo ${numero(f)}, ${titolo(f)}`).join('; ')
                     : giorno.tipo === 'prova'
