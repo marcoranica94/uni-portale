@@ -1,10 +1,10 @@
 /**
  * Notifiche Web Push (t037): promemoria serale di studio e avviso di correzione pronta.
  * Le chiavi VAPID nascono nel Worker al primo uso (WebCrypto) e restano in D1: nessun segreto da configurare.
- * La cifratura dei messaggi la fa PushForge (Web Crypto, compatibile con i Worker).
+ * Cifratura standard aes128gcm e firma VAPID in lib/webpush.ts (solo WebCrypto).
  */
 import { env } from 'cloudflare:workers';
-import { buildPushHTTPRequest } from '@pushforge/builder';
+import { richiestaPush, b64url, daB64url } from './webpush';
 import { giornoRoma, giorniDiStudio, appelliFissati, pianoMateria } from './simulazioni';
 import { riepilogoRipasso } from './ripasso';
 import { minutiRipasso } from './calcoli';
@@ -25,13 +25,6 @@ export interface Messaggio {
   /** Notifiche con lo stesso tag si sostituiscono invece di accumularsi. */
   tag: string;
 }
-
-const b64url = (buf: ArrayBuffer | Uint8Array) =>
-  btoa(String.fromCharCode(...new Uint8Array(buf)))
-    .replace(/\+/g, '-')
-    .replace(/\//g, '_')
-    .replace(/=+$/, '');
-const daB64url = (s: string) => Uint8Array.from(atob(s.replace(/-/g, '+').replace(/_/g, '/')), (c) => c.charCodeAt(0));
 
 /** Chiavi VAPID: chiave privata (JWK) e pubblica (punto non compresso in base64url, per il browser). */
 async function chiavi(): Promise<{ privata: JsonWebKey; pubblica: string }> {
@@ -80,13 +73,8 @@ interface RigaIscrizione {
 
 /** Invia a un dispositivo; un'iscrizione scaduta (404/410) si cancella. Restituisce lo stato HTTP del servizio push. */
 async function invia(r: RigaIscrizione, m: Messaggio): Promise<number> {
-  const { privata } = await chiavi();
   try {
-    const richiesta = await buildPushHTTPRequest({
-      privateJWK: privata,
-      subscription: { endpoint: r.endpoint, keys: { p256dh: r.p256dh, auth: r.auth } },
-      message: { payload: { ...m }, adminContact: CONTATTO, options: { ttl: 12 * 3600, urgency: 'normal', topic: m.tag.slice(0, 32) } },
-    });
+    const richiesta = await richiestaPush(r, m, await chiavi(), { contatto: CONTATTO, ttl: 12 * 3600, argomento: m.tag });
     const risposta = await fetch(richiesta.endpoint, { method: 'POST', headers: richiesta.headers, body: richiesta.body });
     if (risposta.status === 404 || risposta.status === 410) await togliIscrizione(r.endpoint);
     else if (!risposta.ok) await env.DB.prepare('UPDATE iscrizioni_push SET errori = errori + 1 WHERE endpoint = ?').bind(r.endpoint).run();
