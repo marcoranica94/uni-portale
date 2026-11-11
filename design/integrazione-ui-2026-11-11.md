@@ -28,6 +28,8 @@ Esito locale conclusivo: build di produzione completata con zero errori, avvisi 
 
 La build di produzione continua a usare `astro.config.mjs` e Cloudflare Workers; nessuna fixture è inclusa nel suo output. Pubblicazione tramite la GitHub Action esistente, senza migrazioni aggiuntive.
 
+Il primo controllo sul sito pubblicato ha confermato viste e interazioni con i dati reali. Sono stati poi aumentati il contrasto delle etichette di stato sul verde d’aula e quello delle scorciatoie sui pulsanti scuri, emersi nelle schermate con preparazione e carte di ripasso effettive.
+
 ## Board
 
 Attività: integrazione UI approvata dall’utente l’11 novembre. La board esterna non è aggiornabile in questa sessione: manca ArtifactData e non ci sono documenti collegati. Questo limite non è stato aggirato dichiarando aggiornamenti non eseguiti.

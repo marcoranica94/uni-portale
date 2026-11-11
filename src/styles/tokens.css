@@ -20,6 +20,10 @@
   --color-on-aula: #e9f2ec;
   --color-aula-tenue: #a9c4b5;
   --color-aula-filo: rgb(255 255 255 / 0.14);
+  /* Testi di stato sul verde d'aula, leggibili in entrambi i temi. */
+  --color-aula-success: #8de0ae;
+  --color-aula-warning: #f0bd52;
+  --color-aula-danger: #ffb4a8;
 
   /* Testo: inchiostro verde scuro */
   --color-ink: #182c24;
