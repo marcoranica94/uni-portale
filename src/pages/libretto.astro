@@ -114,7 +114,7 @@ const esito = MESSAGGI[Astro.url.searchParams.get('esito') ?? ''];
                       )}
                       {v.lode ? <>30<span class="lode">e lode</span></> : votoTesto(v)}
                     </span>
-                    <form method="post" action="/api/voti" class="elimina" onsubmit="return confirm('Eliminare questo voto?')">
+                    <form method="post" action="/api/voti" class="elimina" data-conferma={`Eliminare il voto di ${m.nome}?`} data-conferma-dettaglio="La materia torna da sostenere e la media si ricalcola." data-conferma-azione="Elimina voto">
                       <input type="hidden" name="azione" value="elimina" />
                       <input type="hidden" name="codice" value={m.codice!} />
                       <button type="submit" class="link">Elimina</button>

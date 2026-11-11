@@ -312,7 +312,7 @@ const esito =
                       {s.stato === 'corretta' ? `${s.voto}/30` : s.stato === 'in_correzione' ? 'In correzione' : <a href={`/simulazioni/${s.id}`}>Riprendi</a>}
                     </td>
                     <td class="storico__azione">
-                      <form method="post" action={`/api/simulazioni/${s.id}/elimina`} onsubmit="return confirm('Eliminare questa simulazione dallo storico?')">
+                      <form method="post" action={`/api/simulazioni/${s.id}/elimina`} data-conferma={`Eliminare la simulazione del ${giorno(s.creata)}?`} data-conferma-dettaglio="Spariscono anche le risposte, la correzione e le carte di ripasso nate dai suoi errori. Le domande tornano disponibili nella banca." data-conferma-azione="Elimina simulazione">
                         <button type="submit" class="elimina" aria-label={`Elimina la simulazione del ${giorno(s.creata)}`} title="Elimina">
                           <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" /></svg>
                         </button>
@@ -324,7 +324,7 @@ const esito =
             </tbody>
           </table>
           {nonFinite > 1 && (
-            <form method="post" action="/api/simulazioni/non-finite" class="storico__pulisci" onsubmit={`return confirm('Eliminare le ${nonFinite} simulazioni da finire?')`}>
+            <form method="post" action="/api/simulazioni/non-finite" class="storico__pulisci" data-conferma={`Eliminare le ${nonFinite} simulazioni da finire?`} data-conferma-dettaglio="Sono quelle mai consegnate: le simulazioni corrette restano nello storico." data-conferma-azione={`Elimina le ${nonFinite} da finire`}>
               <input type="hidden" name="codice" value={m.codice!} />
               <button type="submit" class="link">Elimina le {nonFinite} da finire</button>
             </form>

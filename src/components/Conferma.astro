@@ -1,0 +1,148 @@
+---
+/**
+ * Finestra di conferma condivisa, al posto del confirm() del browser.
+ * Un modulo la chiede con gli attributi:
+ *   data-conferma="Eliminare questa simulazione?"        domanda (obbligatoria)
+ *   data-conferma-dettaglio="Spariscono anche…"          cosa si perde (facoltativo)
+ *   data-conferma-azione="Elimina simulazione"            testo del pulsante (default "Elimina")
+ * Senza JavaScript il modulo parte senza conferma, come prima con onsubmit.
+ */
+---
+
+<dialog class="conferma" id="conferma" aria-labelledby="conferma-titolo" aria-describedby="conferma-dettaglio">
+  <form method="dialog" class="conferma__corpo">
+    <h2 class="conferma__titolo" id="conferma-titolo"></h2>
+    <p class="conferma__dettaglio" id="conferma-dettaglio"></p>
+    <div class="conferma__azioni">
+      <button class="btn" type="submit" value="annulla" autofocus>Annulla</button>
+      <button class="btn conferma__elimina" type="submit" value="conferma" data-conferma-pulsante>Elimina</button>
+    </div>
+  </form>
+</dialog>
+
+<script>
+  const dialogo = document.querySelector<HTMLDialogElement>('#conferma');
+  const titolo = dialogo?.querySelector<HTMLElement>('#conferma-titolo');
+  const dettaglio = dialogo?.querySelector<HTMLElement>('#conferma-dettaglio');
+  const pulsante = dialogo?.querySelector<HTMLButtonElement>('[data-conferma-pulsante]');
+  const confermati = new WeakSet<HTMLFormElement>();
+  let inAttesa: { modulo: HTMLFormElement; invio: HTMLElement | null } | null = null;
+
+  const invia = (modulo: HTMLFormElement, invio: HTMLElement | null) => {
+    confermati.add(modulo);
+    if (invio instanceof HTMLButtonElement || invio instanceof HTMLInputElement) modulo.requestSubmit(invio);
+    else modulo.requestSubmit();
+  };
+
+  document.addEventListener('submit', (e) => {
+    const modulo = e.target;
+    if (!(modulo instanceof HTMLFormElement) || !modulo.dataset.conferma) return;
+    if (confermati.has(modulo)) { confermati.delete(modulo); return; }
+    e.preventDefault();
+    const domanda = modulo.dataset.conferma;
+    if (!dialogo || !titolo || !dettaglio || !pulsante || typeof dialogo.showModal !== 'function') {
+      if (window.confirm(domanda)) invia(modulo, e.submitter);
+      return;
+    }
+    titolo.textContent = domanda;
+    dettaglio.textContent = modulo.dataset.confermaDettaglio ?? '';
+    dettaglio.hidden = !modulo.dataset.confermaDettaglio;
+    pulsante.textContent = modulo.dataset.confermaAzione ?? 'Elimina';
+    inAttesa = { modulo, invio: e.submitter };
+    dialogo.returnValue = '';
+    dialogo.showModal();
+  });
+
+  dialogo?.addEventListener('close', () => {
+    const attesa = inAttesa;
+    inAttesa = null;
+    if (attesa && dialogo.returnValue === 'conferma') invia(attesa.modulo, attesa.invio);
+  });
+
+  // Un tocco fuori dalla finestra equivale ad Annulla (il corpo copre tutta la finestra).
+  dialogo?.addEventListener('click', (e) => { if (e.target === dialogo) dialogo.close(); });
+</script>
+
+<style>
+  .conferma {
+    width: min(460px, calc(100% - 40px));
+    padding: 0;
+    margin: auto;
+    border: var(--border);
+    border-radius: 18px;
+    background: var(--color-surface);
+    color: var(--color-ink);
+    box-shadow: var(--shadow-raised);
+  }
+  .conferma::backdrop {
+    background: rgb(7 26 18 / 0.4);
+    backdrop-filter: blur(4px);
+  }
+  .conferma__corpo {
+    padding: var(--space-5) var(--space-5) var(--space-5);
+  }
+  .conferma__titolo {
+    margin: 0;
+    font-size: var(--text-xl);
+    font-weight: var(--weight-bold);
+    line-height: 1.25;
+  }
+  .conferma__dettaglio {
+    margin: var(--space-2) 0 0;
+    color: var(--color-ink-muted);
+    line-height: var(--leading-normal);
+  }
+  .conferma__azioni {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--space-2);
+    margin-top: var(--space-5);
+  }
+  .conferma__elimina,
+  .conferma__elimina:hover {
+    background: var(--color-danger);
+    border-color: var(--color-danger);
+    color: var(--color-paper);
+  }
+  .conferma__elimina:hover {
+    filter: brightness(0.92);
+  }
+  .conferma__elimina:focus-visible {
+    outline-color: var(--color-danger);
+  }
+
+  /* Telefono: pannello dal basso, a portata di pollice; l'azione sopra, Annulla sotto. */
+  @media (max-width: 599px) {
+    .conferma {
+      width: 100%;
+      max-width: none;
+      margin: auto 0 0;
+      border-width: 1px 0 0;
+      border-radius: 18px 18px 0 0;
+    }
+    .conferma__corpo {
+      padding-bottom: calc(var(--space-5) + env(safe-area-inset-bottom));
+    }
+    .conferma__azioni {
+      flex-direction: column-reverse;
+    }
+    .conferma__azioni .btn {
+      width: 100%;
+    }
+  }
+
+  /* Apertura: risponde al gesto e mostra da dove arriva la finestra. */
+  @media (prefers-reduced-motion: no-preference) {
+    .conferma[open] {
+      transition: opacity 160ms var(--ease), translate 160ms var(--ease);
+    }
+    @starting-style {
+      .conferma[open] { opacity: 0; translate: 0 8px; }
+    }
+    @media (max-width: 599px) {
+      @starting-style {
+        .conferma[open] { opacity: 1; translate: 0 100%; }
+      }
+    }
+  }
+</style>

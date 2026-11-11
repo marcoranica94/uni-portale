@@ -7,6 +7,7 @@ import Nav from '../components/Nav.astro';
 import SceltaTema from '../components/SceltaTema.astro';
 import Promemoria from '../components/Promemoria.astro';
 import Ricerca from '../components/Ricerca.astro';
+import Conferma from '../components/Conferma.astro';
 
 interface Props {
   title: string;
@@ -57,6 +58,7 @@ const { title, description = 'Portale di studio personale - Scienze politiche e 
         </details>
       </footer>
     </main>
+    <Conferma />
     {Astro.url.pathname.replace(/\/$/, '') !== '/cerca' && (
       <dialog class="ricerca-dialogo" id="ricerca-dialogo" aria-labelledby="cerca-titolo">
         <button class="ricerca-chiudi" type="button" aria-label="Chiudi ricerca" data-chiudi-ricerca>Chiudi <span aria-hidden="true">×</span></button>

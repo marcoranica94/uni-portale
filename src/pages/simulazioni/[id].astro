@@ -189,7 +189,7 @@ const sufficiente = (sim.voto ?? 0) >= 18;
 
       <div class="fine">
         {m && <a class="btn btn--primary" href={`/materie/${m.slug}#simula`}>Nuova simulazione</a>}
-        <form method="post" action={`/api/simulazioni/${sim.id}/elimina`} onsubmit="return confirm('Eliminare questa simulazione dallo storico?')">
+        <form method="post" action={`/api/simulazioni/${sim.id}/elimina`} data-conferma="Eliminare questa simulazione?" data-conferma-dettaglio="Spariscono anche le risposte, la correzione e le carte di ripasso nate dai suoi errori. Le domande tornano disponibili nella banca." data-conferma-azione="Elimina simulazione">
           <button type="submit" class="link">Elimina dallo storico</button>
         </form>
       </div>
