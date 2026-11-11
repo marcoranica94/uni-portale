@@ -15,6 +15,7 @@ Decidi se fare UNA domanda di approfondimento, come farebbe un docente vero:
 - falla se manca un punto chiave importante, se c'è un'imprecisione da far correggere, o per chiedere un collegamento o un esempio;
 - deve essere breve (una frase), diretta, nel registro di un'interrogazione, senza suggerire la risposta;
 - resta dentro il nucleo del kit: niente argomenti esterni;
+- se "nucleo" è null la domanda è la PRIMA DOMANDA A TEMA LIBERO scelta dallo studente (es. un approfondimento personale): parti da ciò che ha detto e proponi UN collegamento con un argomento del programma, scegliendolo tra quelli in "programma";
 - se la risposta è completa e corretta, "serve" = false e "domanda" vuota.${istruzioni ? `\n\nIndicazioni dello studente su come si comporta il docente all'esame:\n${istruzioni}` : ''}`;
 
 export async function generaApprofondimento(
@@ -29,7 +30,15 @@ export async function generaApprofondimento(
     modello: opz.modello,
     istruzioni: ISTRUZIONI(kit.meta.materia, r.istruzioni),
     contenuto: JSON.stringify(
-      { domanda: r.domanda, puntiChiave: r.puntiChiave, rispostaModello: r.rispostaModello, nucleo: kit.nuclei.find((n) => n.id === r.nucleo) ?? null, risposta: r.risposta },
+      {
+        domanda: r.domanda,
+        puntiChiave: r.puntiChiave,
+        rispostaModello: r.rispostaModello,
+        nucleo: kit.nuclei.find((n) => n.id === r.nucleo) ?? null,
+        // Tema libero: il docente propone collegamenti scegliendo tra gli argomenti del programma.
+        ...(kit.nuclei.some((n) => n.id === r.nucleo) ? {} : { programma: kit.nuclei.map((n) => `${n.id} ${n.titolo}`) }),
+        risposta: r.risposta,
+      },
       null,
       1,
     ),

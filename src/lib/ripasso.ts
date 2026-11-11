@@ -14,7 +14,8 @@ const ANTICIPO_MINUTI = 20;
 export async function carteDaSimulazione(id: string) {
   const dati = await getSimulazione(id);
   if (!dati) return;
-  const errori = dati.risposte.filter((r) => daRipassare(r.punti, r.massimo));
+  // La prima domanda a tema libero non diventa una carta: non ha una risposta giusta da ricordare.
+  const errori = dati.risposte.filter((r) => daRipassare(r.punti, r.massimo) && r.domanda.nucleo !== 'APERTURA');
   if (!errori.length) return;
   const ora = new Date().toISOString();
   await env.DB.batch(

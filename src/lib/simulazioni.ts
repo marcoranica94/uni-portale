@@ -34,9 +34,11 @@ export interface Profilo {
   dataAppello: string | null;
   /** Giorni della settimana in cui studia: 1 = lunedì … 7 = domenica. */
   giorniStudio: number[];
+  /** Prima domanda fissa dell'orale (vuota se non c'è). */
+  domandaApertura: string;
 }
 const TUTTI_I_GIORNI = [1, 2, 3, 4, 5, 6, 7];
-const PROFILO_BASE: Profilo = { istruzioni: '', domandeOrale: 3, multipleScritto: 10, aperteScritto: 3, dataAppello: null, giorniStudio: TUTTI_I_GIORNI };
+const PROFILO_BASE: Profilo = { istruzioni: '', domandeOrale: 3, multipleScritto: 10, aperteScritto: 3, dataAppello: null, giorniStudio: TUTTI_I_GIORNI, domandaApertura: '' };
 
 interface RigaProfilo {
   codice: string;
@@ -46,6 +48,7 @@ interface RigaProfilo {
   aperte_scritto: number;
   data_appello: string | null;
   giorni_studio: string;
+  domanda_apertura: string | null;
 }
 const daRigaProfilo = (r: RigaProfilo): Profilo => ({
   istruzioni: r.istruzioni,
@@ -54,6 +57,7 @@ const daRigaProfilo = (r: RigaProfilo): Profilo => ({
   aperteScritto: r.aperte_scritto,
   dataAppello: r.data_appello,
   giorniStudio: leggiGiorniStudio(r.giorni_studio),
+  domandaApertura: r.domanda_apertura ?? '',
 });
 
 export async function getProfilo(codice: string): Promise<Profilo> {
@@ -78,13 +82,61 @@ export async function salvaAppello(codice: string, dataAppello: string | null, g
 }
 
 export async function salvaProfilo(codice: string, p: Omit<Profilo, 'dataAppello' | 'giorniStudio'>) {
-  await env.DB.prepare(
-    `INSERT INTO profili_esame (codice, istruzioni, domande_orale, multiple_scritto, aperte_scritto, aggiornato) VALUES (?, ?, ?, ?, ?, ?)
-     ON CONFLICT(codice) DO UPDATE SET istruzioni = excluded.istruzioni, domande_orale = excluded.domande_orale,
-       multiple_scritto = excluded.multiple_scritto, aperte_scritto = excluded.aperte_scritto, aggiornato = excluded.aggiornato`,
-  )
-    .bind(codice, p.istruzioni.slice(0, 4000), p.domandeOrale, p.multipleScritto, p.aperteScritto, adesso())
-    .run();
+  const apertura = p.domandaApertura.trim().slice(0, 600);
+  await env.DB.batch([
+    env.DB.prepare(
+      `INSERT INTO profili_esame (codice, istruzioni, domande_orale, multiple_scritto, aperte_scritto, domanda_apertura, aggiornato) VALUES (?, ?, ?, ?, ?, ?, ?)
+       ON CONFLICT(codice) DO UPDATE SET istruzioni = excluded.istruzioni, domande_orale = excluded.domande_orale,
+         multiple_scritto = excluded.multiple_scritto, aperte_scritto = excluded.aperte_scritto,
+         domanda_apertura = excluded.domanda_apertura, aggiornato = excluded.aggiornato`,
+    ).bind(codice, p.istruzioni.slice(0, 4000), p.domandeOrale, p.multipleScritto, p.aperteScritto, apertura, adesso()),
+    ...(await istruzioniApertura(codice, apertura)),
+  ]);
+}
+
+/** Nucleo convenzionale della prima domanda fissa: non è un argomento del kit. */
+export const APERTURA = 'APERTURA';
+
+/** Rubrica della prima domanda a tema libero: valuta la scelta, i contenuti e i collegamenti, non un contenuto fisso. */
+const RUBRICA_APERTURA = [
+  "Dichiara con precisione l'argomento scelto (es. il presidente o il testo approfondito) e perché",
+  'Espone i contenuti principali con riferimenti concreti (testi, date, contesto)',
+  "Collega l'argomento ad almeno due istituti o concetti del programma del corso",
+  'Usa il lessico tecnico corretto',
+];
+
+/**
+ * La prima domanda fissa vive nella banca come domanda aperta con nucleo APERTURA.
+ * Un id per testo: se lo studente la cambia, la vecchia si archivia e lo storico resta coerente.
+ */
+async function istruzioniApertura(codice: string, testo: string): Promise<D1PreparedStatement[]> {
+  const archivia = env.DB.prepare('UPDATE domande SET archiviata = 1 WHERE codice = ? AND nucleo = ?').bind(codice, APERTURA);
+  if (!testo) return [archivia];
+  const impronta = [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(testo)))]
+    .slice(0, 6)
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('');
+  const id = `apertura-${codice}-${impronta}`;
+  return [
+    archivia,
+    env.DB.prepare(
+      `INSERT INTO domande (id, codice, nucleo, tipo, testo, punti_chiave, risposta_modello, lotto) VALUES (?, ?, ?, 'aperta', ?, ?, ?, 'apertura')
+       ON CONFLICT(id) DO UPDATE SET archiviata = 0`,
+    ).bind(
+      id,
+      codice,
+      APERTURA,
+      testo,
+      JSON.stringify(RUBRICA_APERTURA),
+      "Risposta personale: dipende dall'argomento scelto dallo studente. Conta che la scelta sia chiara, i contenuti concreti e i collegamenti con il programma corretti.",
+    ),
+  ];
+}
+
+/** Id della prima domanda fissa attiva della materia, se c'è. */
+async function idApertura(codice: string): Promise<string | null> {
+  const r = await env.DB.prepare('SELECT id FROM domande WHERE codice = ? AND nucleo = ? AND archiviata = 0 LIMIT 1').bind(codice, APERTURA).first<{ id: string }>();
+  return r?.id ?? null;
 }
 
 // ---------- Banca di domande ----------
@@ -97,7 +149,7 @@ export async function ultimoLotto(codice: string): Promise<string | null> {
 /** Banca di una materia: totale e domande mai uscite, per tipo (tutti i rifornimenti). */
 export async function contaBanca(codice: string) {
   const { results } = await env.DB.prepare(
-    'SELECT tipo, COUNT(*) AS n, SUM(CASE WHEN usata = 0 THEN 1 ELSE 0 END) AS nuove FROM domande WHERE codice = ? AND archiviata = 0 GROUP BY tipo',
+    `SELECT tipo, COUNT(*) AS n, SUM(CASE WHEN usata = 0 THEN 1 ELSE 0 END) AS nuove FROM domande WHERE codice = ? AND archiviata = 0 AND nucleo != 'APERTURA' GROUP BY tipo`,
   )
     .bind(codice)
     .all<{ tipo: string; n: number; nuove: number }>();
@@ -113,7 +165,7 @@ export async function contaBanca(codice: string) {
 
 /** Rifornimento: pochi nuclei, scelti dall'agente tra i meno coperti (presenti = domande già in banca per nucleo). */
 export async function richiestaRifornimento(codice: string): Promise<RichiestaDomande> {
-  const { results } = await env.DB.prepare('SELECT nucleo, COUNT(*) AS n FROM domande WHERE codice = ? AND archiviata = 0 GROUP BY nucleo')
+  const { results } = await env.DB.prepare("SELECT nucleo, COUNT(*) AS n FROM domande WHERE codice = ? AND archiviata = 0 AND nucleo != 'APERTURA' GROUP BY nucleo")
     .bind(codice)
     .all<{ nucleo: string; n: number }>();
   const [profilo, materie] = await Promise.all([getProfilo(codice), getMaterie()]);
@@ -239,13 +291,16 @@ export async function creaSimulazione(
     n <= 0
       ? []
       : (
-          await env.DB.prepare(`SELECT id FROM domande WHERE codice = ? AND tipo = ? AND archiviata = 0${filt ? ` AND ${filt.sql}` : ''} ORDER BY usata ASC, RANDOM() LIMIT ?`)
+          await env.DB.prepare(`SELECT id FROM domande WHERE codice = ? AND tipo = ? AND archiviata = 0 AND nucleo != 'APERTURA'${filt ? ` AND ${filt.sql}` : ''} ORDER BY usata ASC, RANDOM() LIMIT ?`)
             .bind(...(filt ? [codice, tipo, filt.valore, n] : [codice, tipo, n]))
             .all<{ id: string }>()
         ).results.map((r) => r.id);
+  // Orale completo: se lo studente ha fissato una prima domanda, esce sempre per prima e conta tra le domande dell'orale.
+  const apertura = modalita === 'orale' && !bersaglio ? await idApertura(codice) : null;
   // Scritto mirato: se mancano multiple, completa con aperte (e viceversa) pur di restare sul bersaglio.
   let multiple = await pesca('multipla', f.multiple);
-  let aperte = await pesca('aperta', f.aperte + (bersaglio && modalita === 'scritto' ? f.multiple - multiple.length : 0));
+  let aperte = await pesca('aperta', f.aperte - (apertura ? 1 : 0) + (bersaglio && modalita === 'scritto' ? f.multiple - multiple.length : 0));
+  if (apertura) aperte = [apertura, ...aperte];
   if (bersaglio && modalita === 'scritto' && aperte.length < f.aperte) multiple = await pesca('multipla', f.multiple + f.aperte - aperte.length);
   const scelte = [...multiple.map((id) => ({ id, tipo: 'multipla' as const })), ...aperte.map((id) => ({ id, tipo: 'aperta' as const }))];
   if (!scelte.length) return null;
