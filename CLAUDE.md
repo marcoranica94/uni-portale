@@ -32,7 +32,7 @@ Come si aggiorna: strumento `ArtifactData` sull'URL della board. Collezioni:
 
 Leggi il documento prima di modificarlo e passa sempre `if_version`.
 
-**Definizione di fatto:** funziona dal telefono attraverso Cloudflare Access, è in produzione, i dati sopravvivono a un ricaricamento e la demo dello sprint riesce senza ritocchi.
+**Definizione di fatto:** è in produzione e funziona attraverso Cloudflare Access (il portale si usa da telefono e computer: il dispositivo conta solo dove la funzione lo richiede, come le notifiche su iPhone), i dati sopravvivono a un ricaricamento e la demo dello sprint riesce senza ritocchi.
 
 ## Decisioni prese
 
