@@ -3,7 +3,9 @@
  * Emiciclo della laurea (home): 180 seggi, uno per CFU. Ogni materia è un gruppo con tanti seggi
  * quanti sono i suoi CFU; da sinistra i superati (pieni, nel colore della materia), poi quelli in corso
  * (anello colorato), poi i futuri (anello tenue). La maggioranza da conquistare è l'aula intera: tutti i CFU.
- * Ogni gruppo è un link alla sua materia.
+ * Ogni gruppo è un link alla sua materia. I pallini sono piccoli: ogni seggio ha un'area di tocco
+ * invisibile che copre anche lo spazio intorno, e su touch il primo tocco seleziona la materia
+ * (evidenziata, con nome e "Apri" sotto), il secondo la apre.
  */
 import { postiEmiciclo, votoTesto, type GruppoLaurea } from '../lib/calcoli';
 
@@ -19,6 +21,8 @@ const cy = 160;
 const raggio = 60;
 const passo = 13;
 const r = 5.4;
+/** Area di tocco di ogni seggio: metà della distanza tra le file, così gli spazi tra i pallini rispondono. */
+const tocco = passo * 0.58;
 const posti = postiEmiciclo(totale, { cx, cy, raggio, passo, file: 8 });
 
 // Seggi in fila da sinistra: ogni gruppo prende i suoi CFU; quelli non coperti dal piano restano liberi.
@@ -41,27 +45,65 @@ const alto = Math.max(0, Math.min(...posti.map((p) => p.y)) - r - 6);
     {blocchi.map(({ g, seggi }) => (
       <a href={`/materie/${g.slug}`} class:list={['gruppo', `gruppo--${g.stato}`]} style={`--s: var(--seggio-${g.colore})`} aria-label={descrivi(g)} data-descr={descrivi(g)}>
         <title>{descrivi(g)}</title>
-        {seggi.map((p) => <circle cx={p.x} cy={p.y} r={g.stato === 'superato' ? r : r - 0.9} />)}
+        {seggi.map((p) => <circle class="tocco" cx={p.x} cy={p.y} r={tocco} />)}
+        {seggi.map((p) => <circle class="seggio" cx={p.x} cy={p.y} r={g.stato === 'superato' ? r : r - 0.9} />)}
       </a>
     ))}
     {liberi.map((p) => <circle class="libero" cx={p.x} cy={p.y} r={r - 0.9} />)}
   </svg>
-  <figcaption class="laurea__didascalia" aria-live="polite">Tocca un gruppo di seggi per aprire la materia.</figcaption>
+  <figcaption class="laurea__didascalia">
+    <span aria-live="polite" data-campo="testo">Tocca un gruppo di seggi per vedere la materia.</span>
+    <a data-campo="apri" hidden>Apri</a>
+  </figcaption>
 </figure>
 
 <script>
-  // Didascalia: dice quale materia è sotto il puntatore o il focus.
+  // Didascalia: quale materia è sotto il puntatore, il focus o l'ultimo tocco.
+  // Su touch il primo tocco seleziona il gruppo e il secondo, sullo stesso gruppo, apre la materia.
   document.querySelectorAll<HTMLElement>('.laurea').forEach((aula) => {
-    const didascalia = aula.querySelector<HTMLElement>('.laurea__didascalia')!;
-    const base = didascalia.textContent ?? '';
-    const mostra = (e: Event) => {
-      const g = (e.target as Element).closest<SVGAElement>('.gruppo');
-      didascalia.textContent = g?.dataset.descr ?? base;
+    const testo = aula.querySelector<HTMLElement>('[data-campo="testo"]')!;
+    const apri = aula.querySelector<HTMLAnchorElement>('[data-campo="apri"]')!;
+    const base = testo.textContent ?? '';
+    const touch = matchMedia('(hover: none)').matches;
+    let scelto: SVGAElement | null = null;
+
+    const descrivi = (g: SVGAElement | null) => {
+      const attivo = g ?? scelto;
+      testo.textContent = attivo?.dataset.descr ?? base;
+      apri.hidden = !attivo;
+      if (attivo) apri.href = attivo.getAttribute('href') ?? '#';
     };
-    aula.addEventListener('pointerover', mostra);
-    aula.addEventListener('focusin', mostra);
-    aula.addEventListener('pointerleave', () => (didascalia.textContent = base));
-    aula.addEventListener('focusout', () => (didascalia.textContent = base));
+    const scegli = (g: SVGAElement | null) => {
+      scelto?.classList.remove('gruppo--scelto');
+      scelto = g;
+      scelto?.classList.add('gruppo--scelto');
+      aula.classList.toggle('laurea--scelta', !!scelto);
+      descrivi(null);
+    };
+
+    aula.addEventListener('pointerover', (e) => {
+      if (e.pointerType === 'mouse') descrivi((e.target as Element).closest<SVGAElement>('.gruppo'));
+    });
+    aula.addEventListener('pointerleave', (e) => {
+      if (e.pointerType === 'mouse') descrivi(null);
+    });
+    aula.addEventListener('focusin', (e) => {
+      const g = (e.target as Element).closest<SVGAElement>('.gruppo');
+      if (g) descrivi(g);
+    });
+    aula.addEventListener('focusout', () => descrivi(null));
+    aula.addEventListener('click', (e) => {
+      const g = (e.target as Element).closest<SVGAElement>('.gruppo');
+      if (!g || !touch) return;
+      if (g !== scelto) {
+        e.preventDefault();
+        scegli(g);
+      }
+    });
+    // Tocco fuori dall'aula: deseleziona.
+    document.addEventListener('click', (e) => {
+      if (scelto && !aula.contains(e.target as Node)) scegli(null);
+    });
   });
 </script>
 
@@ -91,37 +133,81 @@ const alto = Math.max(0, Math.min(...posti.map((p) => p.y)) - r - 6);
     outline: none;
     transition: opacity var(--dur) var(--ease);
   }
-  .gruppo--superato circle {
+  /* Area di tocco: invisibile ma cliccabile; i pallini veri non intercettano il puntatore */
+  .tocco {
+    fill: transparent;
+    stroke: none;
+    pointer-events: all;
+  }
+  .seggio,
+  .libero {
+    pointer-events: none;
+  }
+  .gruppo--superato .seggio {
     fill: var(--s);
   }
-  .gruppo--in-corso circle {
+  .gruppo--in-corso .seggio {
     fill: none;
     stroke: var(--s);
     stroke-width: 1.7;
   }
-  .gruppo--da-seguire circle,
+  .gruppo--da-seguire .seggio,
   .libero {
     fill: none;
     stroke: var(--color-aula-tenue);
     stroke-width: 1.2;
     opacity: 0.5;
   }
-  /* Sotto il puntatore o con il focus: il gruppo resta acceso, gli altri si attenuano */
-  .laurea:has(.gruppo:hover, .gruppo:focus-visible) .gruppo:not(:hover, :focus-visible),
-  .laurea:has(.gruppo:hover, .gruppo:focus-visible) .libero {
+  /* Sotto il puntatore, con il focus o scelto col tocco: il gruppo resta acceso, gli altri si attenuano */
+  @media (hover: hover) {
+    .laurea:has(.gruppo:hover) .gruppo:not(:hover),
+    .laurea:has(.gruppo:hover) .libero {
+      opacity: 0.3;
+    }
+    .gruppo--da-seguire:hover .seggio {
+      opacity: 1;
+    }
+  }
+  .laurea:has(.gruppo:focus-visible) .gruppo:not(:focus-visible),
+  .laurea:has(.gruppo:focus-visible) .libero,
+  .laurea--scelta .gruppo:not(.gruppo--scelto),
+  .laurea--scelta .libero {
     opacity: 0.3;
   }
-  .gruppo:focus-visible circle {
+  .gruppo:is(:focus-visible, .gruppo--scelto) .seggio {
     stroke: var(--color-on-aula);
     stroke-width: 1.7;
-  }
-  .gruppo--da-seguire:is(:hover, :focus-visible) circle {
     opacity: 1;
   }
   .laurea__didascalia {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: baseline;
+    gap: var(--space-1) var(--space-3);
     min-height: 1.5em;
     font-size: var(--text-sm);
     color: var(--color-aula-tenue);
     text-align: center;
+  }
+  .laurea__didascalia a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 2rem;
+    padding: 0 var(--space-3);
+    border-radius: var(--radius-pill);
+    background: var(--color-on-aula);
+    color: var(--color-aula);
+    font-weight: var(--weight-semibold);
+    text-decoration: none;
+  }
+  .laurea__didascalia a[hidden] {
+    display: none;
+  }
+  /* Su computer il link non serve: si clicca direttamente sul gruppo */
+  @media (hover: hover) {
+    .laurea__didascalia a {
+      display: none;
+    }
   }
 </style>
