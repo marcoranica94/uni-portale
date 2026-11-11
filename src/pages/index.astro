@@ -5,7 +5,7 @@ import { getMaterie, CFU_TOTALI } from '../lib/percorso';
 import { getVoti, riepilogo, statoMateria, formatoMedia } from '../lib/voti';
 import { statoAgenti, getKit } from '../lib/coda';
 import { contaBanca, giorniDiStudio, padronanzaCompleta, padronanzaTutte, seggiPerMateria, appelliFissati, pianoMateria, giornoRoma, FORMATI, ORALE, CAPITOLO } from '../lib/simulazioni';
-import { prossimoCapitolo, maggioranza, minutiRipasso, gruppiLaurea, type MotivoCapitolo, type StatoPadronanza } from '../lib/calcoli';
+import { prossimoCapitolo, minutiRipasso, gruppiLaurea, type MotivoCapitolo, type StatoPadronanza } from '../lib/calcoli';
 import { riepilogoRipasso } from '../lib/ripasso';
 
 export const prerender = false;
@@ -68,20 +68,14 @@ const rigaCalendario = (() => {
   if (pianoOggi?.tipo === 'prova') return `Da calendario oggi: prova generale su tutto il programma; ${tra}.`;
   return `Oggi è libero da calendario; ${tra}.`;
 })();
-// Aula della laurea: un seggio per CFU, maggioranza a metà più uno dei CFU del corso.
+// Aula della laurea: un seggio per CFU; la maggioranza da conquistare sono tutti i CFU del corso.
 const gruppi = gruppiLaurea(materie, voti);
-const magg = maggioranza(CFU_TOTALI, r.cfu);
+const mancano = Math.max(0, CFU_TOTALI - r.cfu);
 const cfuDi = (stato: (typeof gruppi)[number]['stato']) => gruppi.filter((g) => g.stato === stato).reduce((n, g) => n + g.cfu, 0);
 const cfuInCorso = cfuDi('in-corso');
 const esamiInCorso = gruppi.filter((g) => g.stato === 'in-corso').length;
 const titoloAula =
-  r.cfu === 0
-    ? 'Nessun seggio ancora'
-    : r.cfu >= CFU_TOTALI
-      ? 'Aula piena: sei laureato'
-      : magg.raggiunta
-        ? 'Hai la maggioranza'
-        : `Ti mancano ${magg.mancano} CFU alla maggioranza`;
+  r.cfu === 0 ? 'Nessun seggio ancora' : mancano === 0 ? 'Aula piena: sei laureato' : `Ti mancano ${mancano} CFU alla laurea`;
 
 // Data e settimana del semestre, dalle date ufficiali del piano di studi ("14/09/2026 - 18/12/2026").
 const ora = new Date();
@@ -135,7 +129,7 @@ const altre = inCorso
       <h1 id="aula-titolo" class="aula__titolo">{titoloAula}</h1>
       <EmicicloLaurea gruppi={gruppi} totale={CFU_TOTALI} />
       <div class="aula__esito">
-        <p class="aula__numero"><strong>{r.cfu}</strong> CFU su {magg.soglia} per la maggioranza</p>
+        <p class="aula__numero"><strong>{r.cfu}</strong> CFU su {CFU_TOTALI}</p>
         <p class="aula__nota">
           {esamiInCorso
             ? `In corso ${esamiInCorso === 1 ? 'un esame' : `${esamiInCorso} esami`} da ${cfuInCorso} CFU: superati, ${cfuInCorso === 1 ? 'il seggio si colora' : 'i loro seggi si colorano'}.`

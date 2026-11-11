@@ -2,7 +2,7 @@
 /**
  * Emiciclo della laurea (home): 180 seggi, uno per CFU. Ogni materia è un gruppo con tanti seggi
  * quanti sono i suoi CFU; da sinistra i superati (pieni, nel colore della materia), poi quelli in corso
- * (anello colorato), poi i futuri (anello tenue). La linea al centro è la maggioranza: 91 CFU.
+ * (anello colorato), poi i futuri (anello tenue). La maggioranza da conquistare è l'aula intera: tutti i CFU.
  * Ogni gruppo è un link alla sua materia.
  */
 import { postiEmiciclo, votoTesto, type GruppoLaurea } from '../lib/calcoli';
@@ -45,7 +45,6 @@ const alto = Math.max(0, Math.min(...posti.map((p) => p.y)) - r - 6);
       </a>
     ))}
     {liberi.map((p) => <circle class="libero" cx={p.x} cy={p.y} r={r - 0.9} />)}
-    <line class="maggioranza" x1={cx} y1={cy - raggio + r + 6} x2={cx} y2={alto + 2} />
   </svg>
   <figcaption class="laurea__didascalia" aria-live="polite">Tocca un gruppo di seggi per aprire la materia.</figcaption>
 </figure>
@@ -118,13 +117,6 @@ const alto = Math.max(0, Math.min(...posti.map((p) => p.y)) - r - 6);
   }
   .gruppo--da-seguire:is(:hover, :focus-visible) circle {
     opacity: 1;
-  }
-  .maggioranza {
-    stroke: var(--color-on-aula);
-    stroke-width: 1.5;
-    stroke-dasharray: 3 3;
-    opacity: 0.8;
-    pointer-events: none;
   }
   .laurea__didascalia {
     min-height: 1.5em;
