@@ -1,6 +1,6 @@
 ---
 /**
- * Simulazione orale in corso: una domanda per volta, lettura ad alta voce, registrazione con forma d'onda,
+ * Simulazione orale in corso: una domanda per volta, lettura ad alta voce solo su richiesta, registrazione con forma d'onda,
  * invio al Worker che trascrive (l'audio non viene salvato), coda sul telefono se manca la rete.
  * Dal vivo: dopo ogni risposta il docente (agente locale) può fare una domanda di approfondimento
  * e formula la domanda successiva partendo da ciò che hai detto (quella della banca resta di riserva).
@@ -166,6 +166,7 @@ const dalVivo = !!sim.dal_vivo;
     };
 
     // ---------- Lettura ad alta voce ----------
+    // Solo su richiesta (pulsante Ascolta o tasto R): la voce sintetica non parte mai da sola.
     // Mentre il docente legge, il pulsante mostra l'altoparlante con le onde in movimento.
     const leggi = (testo: string, pulsante?: HTMLElement) => {
       if (!('speechSynthesis' in window)) return;
@@ -194,10 +195,7 @@ const dalVivo = !!sim.dal_vivo;
       if (esito.stato === 'pronto' && esito.domanda) {
         extra.hidden = false;
         soddisfatto.hidden = true;
-        const testo = extra.querySelector('.domanda__extra')!;
-        const nuova = testo.textContent !== esito.domanda;
-        testo.textContent = esito.domanda;
-        if (nuova && Number(s.dataset.ordine) === Number(sezioni[attuale]?.dataset.ordine)) leggi(esito.domanda);
+        extra.querySelector('.domanda__extra')!.textContent = esito.domanda;
       } else if (esito.stato === 'nessuno') {
         extra.hidden = true;
         soddisfatto.hidden = false;
@@ -252,9 +250,7 @@ const dalVivo = !!sim.dal_vivo;
         }
         attendi(false);
         if (esito.stato === 'pronta' && esito.domanda) {
-          const nuova = testo.textContent !== esito.domanda;
           testo.textContent = esito.domanda;
-          if (nuova && Number(s.dataset.ordine) === Number(sezioni[attuale]?.dataset.ordine)) leggi(esito.domanda, b.querySelector<HTMLElement>('.ascolta') ?? undefined);
         } else if (esito.stato !== 'riserva') {
           stato(b, 'Il docente non ha risposto in tempo: questa è una domanda di riserva dalla banca.', 'stato--attesa');
         }
@@ -309,6 +305,8 @@ const dalVivo = !!sim.dal_vivo;
     window.addEventListener('online', svuotaCoda);
 
     // ---------- Registrazione con forma d'onda ----------
+    // Registrazioni in corso: per ciascuna, una funzione che la chiude e risolve quando la risposta è inviata.
+    const attive = new Map<HTMLElement, () => Promise<void>>();
     const tipoAudio = () =>
       ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg;codecs=opus'].find((t) => window.MediaRecorder?.isTypeSupported?.(t)) ?? '';
 
@@ -324,9 +322,14 @@ const dalVivo = !!sim.dal_vivo;
       let registratore: MediaRecorder | null = null;
       let fermaDisegno = () => {};
       let timer = 0;
+      let salvata: (() => void) | null = null;
       const fine = () => {
         if (registratore?.state === 'recording') registratore.stop();
       };
+      const fermaESalva = () => new Promise<void>((ok) => {
+        salvata = ok;
+        fine();
+      });
 
       bottone.addEventListener('click', async () => {
         if (registratore) return fine();
@@ -359,7 +362,13 @@ const dalVivo = !!sim.dal_vivo;
           bottone.classList.remove('rec--attivo');
           etichetta.textContent = 'Rifai la risposta';
           vibra();
-          await invia(ordine, parte, blob);
+          try {
+            await invia(ordine, parte, blob);
+          } finally {
+            attive.delete(b);
+            salvata?.();
+            salvata = null;
+          }
         };
 
         const ctx = new AudioContext();
@@ -407,6 +416,7 @@ const dalVivo = !!sim.dal_vivo;
         }, 250);
 
         rec.start(1000);
+        attive.set(b, fermaESalva);
         bottone.setAttribute('aria-pressed', 'true');
         bottone.classList.add('rec--attivo');
         etichetta.textContent = 'Ho finito';
@@ -437,8 +447,28 @@ const dalVivo = !!sim.dal_vivo;
       if (!fineEsame && dalVivo) seguiProssima(Number(sezioni[attuale].dataset.ordine));
       window.scrollTo({ top: 0 });
     };
-    indietro.addEventListener('click', () => mostra(attuale - 1));
-    avanti.addEventListener('click', () => mostra(attuale + 1));
+    // Cambiando domanda mentre registri, la risposta si chiude e si salva prima di proseguire (non va persa).
+    let salvando = false;
+    const vai = async (i: number) => {
+      if (salvando) return;
+      const daSalvare = Array.from(attive.values());
+      if (daSalvare.length) {
+        salvando = true;
+        const testo = avanti.textContent;
+        avanti.disabled = indietro.disabled = true;
+        avanti.textContent = 'Salvo la risposta…';
+        try {
+          await Promise.all(daSalvare.map((f) => f()));
+        } finally {
+          salvando = false;
+          avanti.disabled = false;
+          avanti.textContent = testo;
+        }
+      }
+      mostra(i);
+    };
+    indietro.addEventListener('click', () => vai(attuale - 1));
+    avanti.addEventListener('click', () => vai(attuale + 1));
     // Tastiera: Spazio registra/ferma, R riascolta, frecce o J/K tra le domande. Spente mentre scrivi in un campo.
     document.addEventListener('keydown', (e) => {
       if (e.metaKey || e.ctrlKey || e.altKey) return;
