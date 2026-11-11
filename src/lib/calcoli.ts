@@ -322,3 +322,41 @@ export function postiEmiciclo(totale: number, opz: { cx: number; cy: number; rag
     .sort((a, b) => b.angolo - a.angolo || a.y - b.y)
     .map((p, ordine) => ({ x: Math.round(p.x * 10) / 10, y: Math.round(p.y * 10) / 10, ordine }));
 }
+
+// ---------- Ripasso degli errori (carte FSRS) ----------
+
+/** Una risposta diventa una carta se è una multipla sbagliata o un'aperta sotto la soglia di "solido". */
+export function daRipassare(punti: number | null, massimo: number): boolean {
+  return punti !== null && massimo > 0 && punti < massimo * SOGLIA_SOLIDO;
+}
+
+/** Carte nuove al giorno: oltre, il ripasso supererebbe i dieci minuti. */
+export const NUOVE_AL_GIORNO = 20;
+/** Secondi stimati per carta, per dire quanto dura il ripasso. */
+export const SECONDI_PER_CARTA = 30;
+
+export const minutiRipasso = (carte: number) => (carte <= 0 ? 0 : Math.max(1, Math.round((carte * SECONDI_PER_CARTA) / 60)));
+
+/** Inizio del giorno dopo a Roma, come istante UTC: le carte in ripasso scadono per giorno, non per ora. */
+export function inizioDomaniRoma(adesso = new Date()): Date {
+  const parti = Object.fromEntries(
+    new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Rome', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23' })
+      .formatToParts(adesso)
+      .map((p) => [p.type, Number(p.value)]),
+  ) as Record<string, number>;
+  const comeUtc = Date.UTC(parti.year, parti.month - 1, parti.day, parti.hour, parti.minute, parti.second);
+  const scarto = comeUtc - Math.floor(adesso.getTime() / 1000) * 1000;
+  return new Date(Date.UTC(parti.year, parti.month - 1, parti.day + 1) - scarto);
+}
+
+/** Intervallo fino al prossimo ripasso, come lo leggi su un pulsante: "1 min", "6 h", "3 g", "2 mesi". */
+export function intervalloBreve(ms: number): string {
+  const minuti = Math.max(1, Math.round(ms / 60_000));
+  if (minuti < 60) return `${minuti} min`;
+  const ore = Math.round(minuti / 60);
+  if (ore < 24) return `${ore} h`;
+  const giorni = Math.round(ore / 24);
+  if (giorni < 31) return `${giorni} g`;
+  const mesi = Math.round(giorni / 30);
+  return mesi < 12 ? `${mesi} ${mesi === 1 ? 'mese' : 'mesi'}` : `${Math.round((giorni / 365) * 10) / 10} anni`.replace('.', ',');
+}

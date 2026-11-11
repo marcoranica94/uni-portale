@@ -1,0 +1,450 @@
+---
+/**
+ * Ripasso degli errori: una carta alla volta. Davanti la domanda sbagliata, dietro la sua correzione;
+ * lo studente dice quanto la sapeva e FSRS decide quando torna. Funziona anche senza JavaScript
+ * (il retro è un <details>); con JavaScript: Spazio gira la carta, 1-4 danno il voto.
+ */
+import Base from '../layouts/Base.astro';
+import { getMaterie } from '../lib/percorso';
+import { prossimaCarta, riepilogoRipasso } from '../lib/ripasso';
+import { anteprima, fase, VOTI } from '../lib/fsrs';
+import { capitoliDi, intervalloBreve, minutiRipasso } from '../lib/calcoli';
+
+export const prerender = false;
+
+const materie = await getMaterie();
+const filtro = materie.find((m) => m.slug === Astro.url.searchParams.get('materia')) ?? null;
+const adesso = new Date();
+const [carta, conti] = await Promise.all([prossimaCarta(filtro?.codice ?? null, adesso), riepilogoRipasso(adesso)]);
+const m = carta ? materie.find((x) => x.codice === carta.codice) : filtro;
+const restano = filtro ? (conti.perMateria.get(filtro.codice!) ?? 0) : conti.oggi;
+const tempi = carta ? await anteprima(carta.fsrs, adesso) : null;
+const statoCarta = carta ? fase(carta.fsrs) : null;
+
+const appunti = m?.appunti ? `/appunti/${m.appunti.slug}` : null;
+const titoloPagina = (file: string) => m?.appunti?.capitoli.find((c) => c.file === file)?.titolo ?? file;
+const lettera = (i: number) => String.fromCharCode(65 + i);
+const tua = carta?.domanda.tipo === 'multipla' && carta.risposta !== null ? Number(carta.risposta) : null;
+const quando = (iso: string) =>
+  new Intl.DateTimeFormat('it-IT', { timeZone: 'Europe/Rome', weekday: 'long', day: 'numeric', month: 'long' }).format(new Date(iso));
+const provenienza =
+  statoCarta === 'nuova' ? "L'hai sbagliata in una simulazione" : statoCarta === 'apprendimento' ? 'Torna perché non era ancora sicura' : 'Torna per non dimenticarla';
+---
+
+<Base title="Ripasso">
+  {carta && tempi ? (
+    <article class="carta" style={`--c: var(--materia-${m?.colore ?? 1})`} aria-labelledby="domanda">
+      <header class="carta__testa">
+        <p class="carta__materia"><span class="punto"></span>{m?.nome ?? carta.codice}</p>
+        <p class="carta__conto num">{restano > 1 ? `Ne restano ${restano}` : "È l'ultima di oggi"}</p>
+      </header>
+
+      <div class="fronte">
+        <p class="fronte__perche">{provenienza}</p>
+        <h1 id="domanda" class="fronte__domanda">{carta.domanda.testo}</h1>
+        {carta.domanda.tipo === 'multipla' ? (
+          <ol class="scelte">
+            {carta.domanda.opzioni.map((o, j) => (
+              <li class:list={['scelta', { 'scelta--giusta': j === carta.domanda.corretta, 'scelta--tua': j === tua && j !== carta.domanda.corretta }]}>
+                <span class="scelta__lettera" aria-hidden="true">{lettera(j)}</span>
+                <span>{o}</span>
+                {j === carta.domanda.corretta && <span class="scelta__nota">giusta</span>}
+                {j === tua && j !== carta.domanda.corretta && <span class="scelta__nota">avevi scelto</span>}
+              </li>
+            ))}
+          </ol>
+        ) : (
+          <p class="fronte__consiglio">Rispondi a mente, come all'esame, poi gira la carta.</p>
+        )}
+      </div>
+
+      <details class="retro" id="retro">
+        <summary class="btn btn--primary btn--largo">Mostra la risposta <span class="tasto" aria-hidden="true">Spazio</span></summary>
+        <div class="retro__corpo">
+          {carta.domanda.tipo === 'multipla' ? (
+            <>
+              {tua === null && <p class="retro__nota">Nella simulazione non avevi risposto.</p>}
+              {carta.domanda.spiegazione && <p class="retro__testo">{carta.domanda.spiegazione}</p>}
+            </>
+          ) : (
+            <>
+              {carta.esito?.mancanti && carta.esito.mancanti.length > 0 && (
+                <div class="voce">
+                  <h2>Ti mancava</h2>
+                  <ul class="lista lista--manca">{carta.esito.mancanti.map((x) => <li>{x}</li>)}</ul>
+                </div>
+              )}
+              {carta.esito?.errori && carta.esito.errori.length > 0 && (
+                <div class="voce">
+                  <h2>Avevi sbagliato</h2>
+                  <ul class="lista lista--errore">{carta.esito.errori.map((x) => <li>{x}</li>)}</ul>
+                </div>
+              )}
+              {carta.domanda.rispostaModello && (
+                <div class="voce">
+                  <h2>Risposta modello</h2>
+                  <p class="retro__testo">{carta.domanda.rispostaModello}</p>
+                </div>
+              )}
+              {carta.risposta && (
+                <details class="tua">
+                  <summary>La tua risposta di allora</summary>
+                  <blockquote>{carta.risposta}</blockquote>
+                </details>
+              )}
+            </>
+          )}
+          {appunti && carta.domanda.file && (
+            <p class="rileggi">
+              Rileggi {capitoliDi(carta.domanda.file).map((f, i) => <>{i > 0 && ' e '}<a href={`${appunti}/${f}`}>{titoloPagina(f)}</a></>)}
+              {carta.domanda.pagine && <span class="muted">, {carta.domanda.pagine}</span>}
+            </p>
+          )}
+        </div>
+      </details>
+
+      <form class="voti" method="post" action="/api/ripasso">
+        <input type="hidden" name="carta" value={carta.id} />
+        <input type="hidden" name="scadenza" value={carta.scadenza} />
+        {filtro && <input type="hidden" name="materia" value={filtro.slug} />}
+        <p class="voti__domanda" id="voti-domanda">Quanto la sapevi?</p>
+        <div class="voti__griglia" role="group" aria-labelledby="voti-domanda">
+          {VOTI.map((v) => (
+            <button type="submit" name="voto" value={v.voto} class:list={['voto', { 'voto--principale': v.voto === 3 }]} data-tasto={String(v.voto)}>
+              <span class="voto__nome">{v.etichetta}</span>
+              <span class="voto__quando">torna tra {intervalloBreve(tempi[v.voto])}</span>
+              <span class="tasto voto__tasto" aria-hidden="true">{v.voto}</span>
+            </button>
+          ))}
+        </div>
+        <button type="submit" name="azione" value="togli" class="togli">Togli dal ripasso</button>
+      </form>
+    </article>
+  ) : (
+    <section class="fine" aria-labelledby="fine-titolo">
+      {conti.totale === 0 ? (
+        <>
+          <h1 id="fine-titolo">Ancora niente da ripassare</h1>
+          <p>Ogni domanda che sbagli in una simulazione diventa una carta: qui la rivedi il giorno giusto, finché non la sai.</p>
+          <a class="btn btn--primary" href="/">Torna a Oggi</a>
+        </>
+      ) : (
+        <>
+          <h1 id="fine-titolo">{filtro ? `Ripasso di ${filtro.breve} finito` : 'Ripasso di oggi finito'}</h1>
+          <p>
+            {conti.piuTardi > 0
+              ? `${conti.piuTardi === 1 ? 'Una carta torna' : `${conti.piuTardi} carte tornano`} più tardi oggi: ripassa quando riapri il portale.`
+              : filtro && conti.oggi > 0
+                ? `Restano ${conti.oggi} carte di altre materie, circa ${minutiRipasso(conti.oggi)} minuti.`
+                : conti.prossima
+                  ? `Le prossime carte tornano ${quando(conti.prossima)}.`
+                  : 'Le carte nuove di oggi sono finite: le altre arrivano domani.'}
+          </p>
+          <div class="fine__azioni">
+            {filtro && conti.oggi > 0 && <a class="btn btn--primary" href="/ripasso">Ripassa le altre</a>}
+            <a class:list={['btn', { 'btn--primary': !(filtro && conti.oggi > 0) }]} href="/">Torna a Oggi</a>
+          </div>
+        </>
+      )}
+    </section>
+  )}
+</Base>
+
+<script>
+  // Spazio gira la carta; 1-4 danno il voto quando la carta è girata (spenti mentre scrivi in un campo).
+  const retro = document.getElementById('retro') as HTMLDetailsElement | null;
+  document.addEventListener('keydown', (e) => {
+    if (!retro || e.metaKey || e.ctrlKey || e.altKey) return;
+    const t = e.target as HTMLElement | null;
+    if (t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))) return;
+    if (e.key === ' ' && !retro.open) {
+      e.preventDefault();
+      retro.open = true;
+      document.querySelector<HTMLElement>('[data-tasto="3"]')?.focus({ preventScroll: true });
+      retro.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    } else if (retro.open && /^[1-4]$/.test(e.key)) {
+      e.preventDefault();
+      document.querySelector<HTMLButtonElement>(`[data-tasto="${e.key}"]`)?.click();
+    }
+  });
+  // Un solo voto per carta: dopo il primo tocco i pulsanti si spengono.
+  document.querySelector<HTMLFormElement>('.voti')?.addEventListener('submit', (e) => {
+    const form = e.currentTarget as HTMLFormElement;
+    queueMicrotask(() => form.querySelectorAll('button').forEach((b) => (b.disabled = true)));
+  });
+</script>
+
+<style>
+  .carta,
+  .fine {
+    width: 100%;
+    max-width: 40rem;
+    margin-inline: auto;
+  }
+  .carta {
+    display: grid;
+    gap: var(--space-5);
+  }
+  .carta__testa {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: var(--space-1) var(--space-4);
+    font-size: var(--text-sm);
+    font-weight: var(--weight-semibold);
+  }
+  .carta__materia {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+  }
+  .carta__conto {
+    color: var(--color-ink-muted);
+  }
+
+  /* Davanti: la domanda sulla carta, con il colore della materia sul bordo sinistro */
+  .fronte {
+    display: grid;
+    gap: var(--space-4);
+    padding: var(--space-5);
+    border-radius: var(--radius-lg);
+    background: var(--color-surface);
+    border: var(--border);
+    border-left: 4px solid var(--c);
+  }
+  .fronte__perche {
+    font-size: var(--text-sm);
+    color: var(--color-ink-muted);
+  }
+  .fronte__domanda {
+    font-size: var(--text-xl);
+    font-weight: var(--weight-semibold);
+    line-height: 1.3;
+    max-width: 60ch;
+  }
+  .fronte__consiglio {
+    font-size: var(--text-sm);
+    color: var(--color-ink-muted);
+  }
+
+  .scelte {
+    display: grid;
+    gap: var(--space-2);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .scelta {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: var(--space-3);
+    align-items: baseline;
+    padding: var(--space-3);
+    border-radius: var(--radius-md);
+    border: var(--border);
+  }
+  .scelta__lettera {
+    font-weight: var(--weight-semibold);
+    color: var(--color-ink-muted);
+  }
+  .scelta__nota {
+    display: none;
+    font-size: var(--text-xs);
+    font-weight: var(--weight-semibold);
+  }
+  /* Girata la carta, la giusta e la tua si marcano con parola e colore */
+  .carta:has(.retro[open]) .scelta--giusta {
+    border-color: var(--color-success);
+    background: var(--color-success-soft);
+  }
+  .carta:has(.retro[open]) .scelta--tua {
+    border-color: var(--color-danger);
+    background: var(--color-danger-soft);
+  }
+  .carta:has(.retro[open]) :is(.scelta--giusta, .scelta--tua) .scelta__nota {
+    display: inline;
+  }
+  .carta:has(.retro[open]) .scelta--giusta .scelta__nota {
+    color: var(--color-success);
+  }
+  .carta:has(.retro[open]) .scelta--tua .scelta__nota {
+    color: var(--color-danger);
+  }
+
+  /* Dietro: la correzione di quella risposta */
+  .retro > summary {
+    list-style: none;
+    width: 100%;
+  }
+  .retro > summary::-webkit-details-marker {
+    display: none;
+  }
+  .retro[open] > summary {
+    display: none;
+  }
+  .retro__corpo {
+    display: grid;
+    gap: var(--space-4);
+    padding-left: var(--space-5);
+    border-left: 2px solid var(--color-rule);
+  }
+  .retro__testo,
+  .retro__nota {
+    max-width: 65ch;
+  }
+  .retro__nota {
+    color: var(--color-ink-muted);
+  }
+  .voce {
+    display: grid;
+    gap: var(--space-1);
+  }
+  .voce h2 {
+    font-size: var(--text-sm);
+    font-weight: var(--weight-semibold);
+    color: var(--color-ink-muted);
+  }
+  .lista {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: grid;
+    gap: var(--space-1);
+  }
+  .lista li {
+    position: relative;
+    padding-left: var(--space-5);
+  }
+  .lista li::before {
+    position: absolute;
+    left: 0;
+    font-weight: var(--weight-semibold);
+  }
+  .lista--manca li::before {
+    content: '○';
+    color: var(--color-warning);
+  }
+  .lista--errore li::before {
+    content: '✕';
+    color: var(--color-danger);
+  }
+  .tua summary {
+    cursor: pointer;
+    font-size: var(--text-sm);
+    font-weight: var(--weight-semibold);
+    color: var(--color-accent);
+  }
+  .tua blockquote {
+    margin: var(--space-2) 0 0;
+    padding-left: var(--space-3);
+    border-left: 2px solid var(--color-rule-strong);
+    color: var(--color-ink-muted);
+    white-space: pre-line;
+  }
+  .rileggi {
+    font-size: var(--text-sm);
+  }
+
+  /* Voti: compaiono solo a carta girata; ogni pulsante dice quando torna la carta */
+  .voti {
+    display: grid;
+    gap: var(--space-3);
+    margin: 0;
+  }
+  .retro:not([open]) ~ .voti {
+    display: none;
+  }
+  .voti__domanda {
+    font-weight: var(--weight-semibold);
+  }
+  .voti__griglia {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-2);
+  }
+  @media (min-width: 640px) {
+    .voti__griglia {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+  }
+  .voto {
+    position: relative;
+    display: grid;
+    gap: 2px;
+    justify-items: start;
+    min-height: 4rem;
+    padding: var(--space-3);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--color-rule-strong);
+    background: var(--color-surface);
+    color: var(--color-ink);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+    transition: background-color var(--dur) var(--ease), border-color var(--dur) var(--ease);
+  }
+  .voto:hover {
+    background: var(--color-surface-muted);
+    border-color: var(--color-ink-muted);
+  }
+  .voto--principale {
+    background: var(--color-primary);
+    border-color: var(--color-primary-edge);
+    color: var(--color-on-primary);
+  }
+  .voto--principale:hover {
+    background: var(--color-primary-hover);
+    border-color: var(--color-primary-edge);
+  }
+  .voto__nome {
+    font-weight: var(--weight-semibold);
+    line-height: 1.2;
+  }
+  .voto__quando {
+    font-size: var(--text-sm);
+    opacity: 0.8;
+    font-variant-numeric: tabular-nums;
+  }
+  .voto__tasto {
+    position: absolute;
+    top: var(--space-2);
+    right: var(--space-2);
+  }
+  .voto:disabled {
+    opacity: 0.5;
+    cursor: wait;
+  }
+  .togli {
+    justify-self: start;
+    padding: var(--space-1) 0;
+    border: 0;
+    background: none;
+    font: inherit;
+    font-size: var(--text-sm);
+    color: var(--color-ink-muted);
+    text-decoration: underline;
+    text-underline-offset: 0.2em;
+    cursor: pointer;
+  }
+
+  .fine {
+    display: grid;
+    gap: var(--space-4);
+    padding-top: var(--space-6);
+  }
+  .fine h1 {
+    font-size: var(--text-2xl);
+    font-weight: var(--weight-bold);
+    line-height: var(--leading-tight);
+  }
+  .fine p {
+    max-width: 52ch;
+    color: var(--color-ink-muted);
+  }
+  .fine__azioni {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+  }
+</style>

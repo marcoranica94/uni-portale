@@ -4,6 +4,7 @@ import type { DomandaCompleta, RichiestaApprofondimento, RichiestaCorrezione, Ri
 import { accoda, getKit, ultimoLavoro } from './coda';
 import { votoDa, padronanzaCapitoli, padronanzaArgomenti, capitoliDi, MAI_PROVATO, type Padronanza, type EsitoRisposta } from './calcoli';
 import { getMaterie } from './percorso';
+import { carteDaSimulazione, eliminaCarteDi, giorniConRipasso } from './ripasso';
 export { domandaValida, votoDa } from './calcoli';
 
 /** Formati della simulazione scritta: numero di domande per tipo e durata. */
@@ -516,6 +517,8 @@ export async function consegna(id: string, valori: Map<number, string>): Promise
     ).bind(stato, adesso(), punti, massimo, stato === 'corretta' ? votoDa(punti, massimo) : null, stato === 'corretta' ? adesso() : null, id),
   );
   await env.DB.batch(aggiornamenti);
+  // Le multiple sono già corrette: i loro errori diventano subito carte da ripassare.
+  await carteDaSimulazione(id);
 
   if (daCorreggere.length) {
     const richiesta: RichiestaCorrezione = { simulazione: id, codice: dati.sim.codice, modalita: dati.sim.modalita, istruzioni: (await getProfilo(dati.sim.codice)).istruzioni, risposte: daCorreggere };
@@ -557,11 +560,14 @@ export async function applicaCorrezione(id: string, c: RisultatoCorrezione) {
     ),
   );
   await env.DB.batch(aggiornamenti);
+  await carteDaSimulazione(id);
 }
 
 export async function eliminaSimulazione(id: string) {
   await env.DB.batch([
-    env.DB.prepare('UPDATE domande SET usata = MAX(usata - 1, 0) WHERE id IN (SELECT domanda FROM risposte WHERE simulazione = ?)').bind(id),env.DB.prepare('DELETE FROM risposte WHERE simulazione = ?').bind(id), env.DB.prepare('DELETE FROM simulazioni WHERE id = ?').bind(id)]);
+    env.DB.prepare('UPDATE domande SET usata = MAX(usata - 1, 0) WHERE id IN (SELECT domanda FROM risposte WHERE simulazione = ?)').bind(id),
+    eliminaCarteDi(id),
+    env.DB.prepare('DELETE FROM risposte WHERE simulazione = ?').bind(id), env.DB.prepare('DELETE FROM simulazioni WHERE id = ?').bind(id)]);
 }
 
 /** Orale: salva la trascrizione e le metriche di una risposta (l'audio non viene mai salvato). */
@@ -646,14 +652,14 @@ export async function salvaApprofondimento(id: string, ordine: number, serve: bo
 export const giornoRoma = (d: Date) => new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Rome' }).format(d);
 
 /**
- * Giorni di studio: un giorno conta se contiene almeno una simulazione.
+ * Giorni di studio: un giorno conta se contiene almeno una simulazione o un ripasso.
  * `diFila` conta i giorni consecutivi fino a oggi (o fino a ieri, se oggi non hai ancora simulato);
  * `settimana` dice per gli ultimi 7 giorni, dal più vecchio a oggi, se hai simulato.
  */
 export async function giorniDiStudio() {
   const da = new Date(Date.now() - 60 * 86_400_000).toISOString();
   const { results } = await env.DB.prepare('SELECT creata FROM simulazioni WHERE creata >= ?').bind(da).all<{ creata: string }>();
-  const giorni = new Set(results.map((r) => giornoRoma(new Date(r.creata))));
+  const giorni = new Set([...results.map((r) => giornoRoma(new Date(r.creata))), ...(await giorniConRipasso(da))]);
   const giorno = (indietro: number) => giornoRoma(new Date(Date.now() - indietro * 86_400_000));
   const inizio = giorni.has(giorno(0)) ? 0 : 1;
   let diFila = 0;
