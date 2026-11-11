@@ -5,10 +5,11 @@ import TipoEsame from '../../components/TipoEsame.astro';
 import { getMaterie } from '../../lib/percorso';
 import { getVoti, statoMateria, votoTesto } from '../../lib/voti';
 import { getKit, ultimoLavoro, statoAgenti } from '../../lib/coda';
-import { contaBanca, storico, FORMATI, ORALE, CAPITOLO, getProfilo, padronanzaCompleta } from '../../lib/simulazioni';
+import { contaBanca, storico, FORMATI, ORALE, CAPITOLO, getProfilo, padronanzaCompleta, pianoMateria, giornoRoma } from '../../lib/simulazioni';
 import { prossimoCapitolo, maggioranza, type StatoPadronanza, type MotivoCapitolo } from '../../lib/calcoli';
 import Emiciclo from '../../components/Emiciclo.astro';
 import StatoCapitolo from '../../components/StatoCapitolo.astro';
+import Calendario from '../../components/Calendario.astro';
 
 export const prerender = false;
 
@@ -43,6 +44,11 @@ const ESITI: Record<string, string> = {
   'senza-domande': 'La banca di domande è vuota: preparala prima.',
   'simulazione-eliminata': 'Simulazione eliminata dallo storico.',
 };
+const ESITI_APPELLO: Record<string, string> = {
+  'appello-salvato': 'Calendario aggiornato.',
+  'appello-tolto': 'Data tolta: il calendario non c\'è più.',
+  'appello-senza-data': 'Scrivi la data dell\'appello per fare il calendario.',
+};
 // Aula della materia: un seggio per argomento del kit; i capitoli sono i gruppi.
 const allenabile = !!(m.codice && kit && (scritto || oraleEsame));
 const aula = allenabile ? await padronanzaCompleta(m.codice!, oraleEsame ? 'orale' : 'scritto') : null;
@@ -69,6 +75,9 @@ const gruppi = (m.appunti?.capitoli ?? []).map((c) => ({
   argomenti: argomenti.filter((a) => a.capitoli.includes(c.file)),
   padronanza: aula?.capitoli.get(c.file) ?? null,
 }));
+// Calendario fino all'appello: piano a ritroso sui capitoli con argomenti del kit.
+const piano = m.codice && profilo && kit ? await pianoMateria(m, profilo, aula?.capitoli) : null;
+const oggi = giornoRoma(new Date());
 const titoloAula = !haProvato ? "L'aula è ancora vuota" : magg.raggiunta ? 'Hai la maggioranza' : 'Non hai ancora la maggioranza';
 
 const esitoCodice = Astro.url.searchParams.get('esito') ?? '';
@@ -134,6 +143,18 @@ const esito =
             </form>
           )}
         </section>
+      )}
+
+      {m.codice && profilo && kit && m.appunti && (
+        <Calendario
+          codice={m.codice}
+          capitoli={m.appunti.capitoli}
+          dataAppello={profilo.dataAppello}
+          giorniStudio={profilo.giorniStudio}
+          piano={piano}
+          oggi={oggi}
+          esito={ESITI_APPELLO[Astro.url.searchParams.get('esito') ?? '']}
+        />
       )}
 
       <section class="stack gruppi-sez" aria-labelledby="appunti">

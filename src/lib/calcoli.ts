@@ -360,3 +360,95 @@ export function intervalloBreve(ms: number): string {
   const mesi = Math.round(giorni / 30);
   return mesi < 12 ? `${mesi} ${mesi === 1 ? 'mese' : 'mesi'}` : `${Math.round((giorni / 365) * 10) / 10} anni`.replace('.', ',');
 }
+
+// ---------- Piano a ritroso dalla data dell'appello ----------
+
+/** Giorno della settimana di una data AAAA-MM-GG: 1 = lunedì … 7 = domenica. */
+export function giornoSettimana(data: string): number {
+  const [a, m, g] = data.split('-').map(Number);
+  return new Date(Date.UTC(a, m - 1, g)).getUTCDay() || 7;
+}
+
+/** Data AAAA-MM-GG spostata di `n` giorni di calendario. */
+export function piuGiorni(data: string, n: number): string {
+  const [a, m, g] = data.split('-').map(Number);
+  return new Date(Date.UTC(a, m - 1, g + n)).toISOString().slice(0, 10);
+}
+
+/** "1,3,6" -> [1, 3, 6], solo valori validi, ordinati e senza doppioni. */
+export function leggiGiorniStudio(testo: string): number[] {
+  return [...new Set(testo.split(',').map((x) => Number(x.trim())).filter((n) => Number.isInteger(n) && n >= 1 && n <= 7))].sort((a, b) => a - b);
+}
+
+export interface CapitoloDaPianificare {
+  file: string;
+  /** Peso del capitolo: quanti argomenti del kit contiene. */
+  peso: number;
+  solido: boolean;
+}
+
+export type TipoGiorno = 'studio' | 'prova' | 'libero' | 'appello';
+
+export interface GiornoPiano {
+  data: string;
+  tipo: TipoGiorno;
+  /** Capitoli da studiare quel giorno (file degli appunti), nell'ordine degli appunti. */
+  capitoli: string[];
+}
+
+export interface Piano {
+  stato: 'ok' | 'stretto' | 'passato' | 'senza-giorni';
+  giorni: GiornoPiano[];
+  /** Giorni di studio da oggi al giorno prima dell'appello, prove generali comprese. */
+  giorniStudio: number;
+  prove: number;
+  rimasti: string[];
+  solidi: string[];
+  /** Giorni di calendario da oggi all'appello. */
+  mancano: number;
+}
+
+/** Sopra un capitolo e mezzo per giorno di studio il piano è stretto. */
+export const CARICO_MASSIMO = 1.5;
+
+/**
+ * Piano a ritroso: dalla data dell'appello indietro fino a oggi, sui soli giorni di studio.
+ * Gli ultimi giorni di studio sono prove generali (simulazioni complete, nessun capitolo nuovo):
+ * uno se i giorni sono da 3 a 6, poi circa il 15%, al massimo tre. I capitoli non ancora solidi,
+ * nell'ordine degli appunti, si spartiscono gli altri giorni in proporzione al loro peso:
+ * un capitolo grande occupa più giorni, due piccoli possono stare nello stesso giorno.
+ */
+export function pianoARitroso(oggi: string, appello: string, giorniStudio: number[], capitoli: CapitoloDaPianificare[]): Piano {
+  const rimasti = capitoli.filter((c) => !c.solido);
+  const solidi = capitoli.filter((c) => c.solido).map((c) => c.file);
+  const base = { rimasti: rimasti.map((c) => c.file), solidi };
+  if (appello < oggi) return { ...base, stato: 'passato', giorni: [], giorniStudio: 0, prove: 0, mancano: 0 };
+  const calendario: string[] = [];
+  for (let d = oggi; d < appello; d = piuGiorni(d, 1)) calendario.push(d);
+  const mancano = calendario.length;
+  const studio = calendario.filter((d) => giorniStudio.includes(giornoSettimana(d)));
+  const D = studio.length;
+  const prove = D >= 7 ? Math.min(3, Math.max(1, Math.round(D * 0.15))) : D >= 3 ? 1 : 0;
+  const N = rimasti.length ? D - prove : 0;
+  const assegnati = new Map<string, string[]>();
+  if (N > 0) {
+    const pesi = rimasti.map((c) => Math.max(1, c.peso));
+    const W = pesi.reduce((a, b) => a + b, 0);
+    let cumulato = 0;
+    rimasti.forEach((c, i) => {
+      const primo = Math.min(N - 1, Math.floor((cumulato / W) * N));
+      cumulato += pesi[i];
+      const ultimo = Math.max(primo, Math.min(N - 1, Math.ceil((cumulato / W) * N) - 1));
+      for (let k = primo; k <= ultimo; k++) assegnati.set(studio[k], [...(assegnati.get(studio[k]) ?? []), c.file]);
+    });
+  }
+  const giorniProva = new Set(rimasti.length ? studio.slice(D - prove) : studio);
+  const giorni: GiornoPiano[] = calendario.map((d) => ({
+    data: d,
+    tipo: assegnati.has(d) ? 'studio' : giorniProva.has(d) ? 'prova' : 'libero',
+    capitoli: assegnati.get(d) ?? [],
+  }));
+  giorni.push({ data: appello, tipo: 'appello', capitoli: [] });
+  const stato = D === 0 ? 'senza-giorni' : N > 0 && rimasti.length / N > CARICO_MASSIMO ? 'stretto' : 'ok';
+  return { ...base, stato, giorni, giorniStudio: D, prove: rimasti.length ? prove : D, mancano };
+}

@@ -1,0 +1,431 @@
+---
+/**
+ * Calendario dei lavori fino all'appello (piano a ritroso, t035).
+ * Griglia settimanale da lunedì a domenica: ogni giorno di studio porta il numero del capitolo,
+ * gli ultimi sono prove generali, l'appello chiude il calendario. Sotto, i capitoli con le loro date.
+ * Forme e parole oltre al colore: numero = capitolo, "prova" = prova generale, puntino = giorno libero.
+ */
+import type { Piano, GiornoPiano } from '../lib/calcoli';
+import { giornoSettimana, piuGiorni } from '../lib/calcoli';
+
+interface Props {
+  codice: string;
+  capitoli: { file: string; titolo: string }[];
+  dataAppello: string | null;
+  giorniStudio: number[];
+  piano: Piano | null;
+  oggi: string;
+  esito?: string;
+}
+
+const { codice, capitoli, dataAppello, giorniStudio, piano, oggi, esito } = Astro.props;
+
+const GIORNI = [
+  { n: 1, breve: 'L', nome: 'lunedì' },
+  { n: 2, breve: 'M', nome: 'martedì' },
+  { n: 3, breve: 'M', nome: 'mercoledì' },
+  { n: 4, breve: 'G', nome: 'giovedì' },
+  { n: 5, breve: 'V', nome: 'venerdì' },
+  { n: 6, breve: 'S', nome: 'sabato' },
+  { n: 7, breve: 'D', nome: 'domenica' },
+];
+const MESI = ['gen', 'feb', 'mar', 'apr', 'mag', 'giu', 'lug', 'ago', 'set', 'ott', 'nov', 'dic'];
+const giornoMese = (d: string) => Number(d.slice(8, 10));
+const mese = (d: string) => MESI[Number(d.slice(5, 7)) - 1];
+const breve = (d: string) => `${giornoMese(d)} ${mese(d)}`;
+const lunga = (d: string) =>
+  new Intl.DateTimeFormat('it-IT', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' }).format(new Date(`${d}T12:00:00Z`));
+
+// Numero del capitolo dal nome del file ("09-parlamento.html" -> 9), altrimenti la posizione negli appunti.
+const numero = (file: string) => {
+  const m = file.match(/^(\d+)/);
+  return m ? String(Number(m[1])) : String(capitoli.findIndex((c) => c.file === file) + 1);
+};
+const titolo = (file: string) => capitoli.find((c) => c.file === file)?.titolo ?? file;
+
+// Griglia: settimane intere, dal lunedì della settimana di oggi alla domenica di quella dell'appello.
+const perData = new Map((piano?.giorni ?? []).map((g) => [g.data, g]));
+const settimane: { data: string; giorno?: GiornoPiano }[][] = [];
+if (piano && piano.giorni.length) {
+  let d = piuGiorni(oggi, 1 - giornoSettimana(oggi));
+  const fine = piano.giorni.at(-1)!.data;
+  while (d <= fine || giornoSettimana(d) !== 1) {
+    if (giornoSettimana(d) === 1) settimane.push([]);
+    settimane.at(-1)!.push({ data: d, giorno: perData.get(d) });
+    d = piuGiorni(d, 1);
+  }
+}
+
+// Capitoli con il loro intervallo di date, nell'ordine del calendario.
+const intervalli = new Map<string, { da: string; a: string; giorni: number }>();
+for (const g of piano?.giorni ?? [])
+  for (const f of g.capitoli) {
+    const x = intervalli.get(f);
+    intervalli.set(f, x ? { ...x, a: g.data, giorni: x.giorni + 1 } : { da: g.data, a: g.data, giorni: 1 });
+  }
+const prove = (piano?.giorni ?? []).filter((g) => g.tipo === 'prova');
+const daA = (da: string, a: string) =>
+  da === a ? breve(da) : mese(da) === mese(a) ? `${giornoMese(da)}–${giornoMese(a)} ${mese(a)}` : `${breve(da)} – ${breve(a)}`;
+const oggiStudio = piano?.giorni.find((g) => g.data === oggi);
+
+const perSettimana = piano && piano.giorniStudio > 0 ? (piano.rimasti.length / piano.giorniStudio) * giorniStudio.length : 0;
+const virgola = (n: number) => n.toLocaleString('it-IT', { maximumFractionDigits: 1 });
+---
+
+<section class="calendario" id="calendario" aria-labelledby="calendario-titolo">
+  <h2 id="calendario-titolo">Calendario fino all'appello</h2>
+  {esito && <p class="calendario__esito" role="status">{esito}</p>}
+
+  {piano && dataAppello ? (
+    <>
+      <p class="calendario__sintesi">
+        {piano.stato === 'passato' ? (
+          <>La data dell'appello ({lunga(dataAppello)}) è passata: aggiornala qui sotto.</>
+        ) : (
+          <>
+            Appello <strong>{lunga(dataAppello)}</strong>, {piano.mancano === 0 ? 'oggi' : piano.mancano === 1 ? 'domani' : `tra ${piano.mancano} giorni`}.{' '}
+            {piano.rimasti.length === 0
+              ? `Tutti i capitoli sono solidi: i ${piano.giorniStudio} giorni di studio sono prove generali.`
+              : `${piano.rimasti.length} ${piano.rimasti.length === 1 ? 'capitolo da portare' : 'capitoli da portare'} a solido in ${piano.giorniStudio - piano.prove} giorni di studio, circa ${virgola(perSettimana)} a settimana${piano.prove ? `; ${piano.prove === 1 ? "l'ultimo giorno è una prova generale" : `gli ultimi ${piano.prove} sono prove generali`}` : ''}.`}
+          </>
+        )}
+      </p>
+      {piano.stato === 'stretto' && (
+        <p class="calendario__avviso"><strong>Calendario stretto:</strong> più di un capitolo e mezzo per giorno di studio. Aggiungi giorni o rivedi la data.</p>
+      )}
+      {piano.stato === 'senza-giorni' && (
+        <p class="calendario__avviso"><strong>Nessun giorno di studio</strong> prima dell'appello: segna almeno un giorno della settimana.</p>
+      )}
+
+      {settimane.length > 0 && (
+        <div class="griglia" role="table" aria-label={`Calendario fino all'appello del ${lunga(dataAppello)}`}>
+          <div class="griglia__testa" role="row">
+            {GIORNI.map((g) => <span role="columnheader" aria-label={g.nome}>{g.breve}</span>)}
+          </div>
+          {settimane.map((sett) => (
+            <div class="griglia__settimana" role="row">
+              {sett.map(({ data, giorno }) => {
+                const etichetta = data === sett[0].data || giornoMese(data) === 1 ? breve(data) : String(giornoMese(data));
+                const descr = !giorno
+                  ? 'passato'
+                  : giorno.tipo === 'studio'
+                    ? giorno.capitoli.map((f) => `capitolo ${numero(f)}, ${titolo(f)}`).join('; ')
+                    : giorno.tipo === 'prova'
+                      ? 'prova generale'
+                      : giorno.tipo === 'appello'
+                        ? 'appello'
+                        : 'giorno libero';
+                return (
+                  <span
+                    role="cell"
+                    class:list={['giorno', giorno ? `giorno--${giorno.tipo}` : 'giorno--fuori', { 'giorno--oggi': data === oggi }]}
+                    aria-label={`${lunga(data)}${data === oggi ? ', oggi' : ''}: ${descr}`}
+                  >
+                    <span class="giorno__data" aria-hidden="true">{etichetta}</span>
+                    <span class="giorno__cosa" aria-hidden="true">
+                      {giorno?.tipo === 'studio' && giorno.capitoli.map((f) => numero(f)).join(' ')}
+                      {giorno?.tipo === 'prova' && 'prova'}
+                      {giorno?.tipo === 'appello' && 'esame'}
+                    </span>
+                  </span>
+                );
+              })}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {(intervalli.size > 0 || prove.length > 0) && (
+        <ol class="tappe">
+          {[...intervalli].map(([f, x]) => (
+            <li class:list={{ 'tappa--oggi': oggiStudio?.capitoli.includes(f) }}>
+              <span class="tappe__quando num">{daA(x.da, x.a)}</span>
+              <span class="tappe__cosa"><span class="tappe__n num">{numero(f)}</span> {titolo(f)}{oggiStudio?.capitoli.includes(f) && <em> · oggi</em>}</span>
+            </li>
+          ))}
+          {prove.length > 0 && (
+            <li>
+              <span class="tappe__quando num">{daA(prove[0].data, prove.at(-1)!.data)}</span>
+              <span class="tappe__cosa">Prove generali: simulazioni complete su tutto il programma</span>
+            </li>
+          )}
+        </ol>
+      )}
+      {piano.solidi.length > 0 && piano.rimasti.length > 0 && (
+        <p class="calendario__nota">
+          {piano.solidi.length === 1 ? 'Un capitolo è già solido' : `${piano.solidi.length} capitoli sono già solidi`} e non occupa giorni: lo riprendi nelle prove generali e nel ripasso.
+          Il calendario si ricalcola ogni giorno da quello che sai davvero.
+        </p>
+      )}
+    </>
+  ) : (
+    <p class="calendario__sintesi">
+      Scrivi la data dell'appello e i giorni in cui studi: i capitoli ancora da portare a solido si distribuiscono a ritroso fino all'esame, con le prove generali negli ultimi giorni.
+    </p>
+  )}
+
+  <details class="impostazioni" open={!dataAppello}>
+    <summary>{dataAppello ? 'Cambia data o giorni di studio' : 'Fissa la data'}</summary>
+    <form method="post" action="/api/appello" class="impostazioni__form">
+      <input type="hidden" name="codice" value={codice} />
+      <label class="campo">
+        <span>Data dell'appello</span>
+        <input type="date" name="data_appello" value={dataAppello ?? ''} min={oggi} required />
+      </label>
+      <fieldset class="giorni">
+        <legend>Giorni in cui studi</legend>
+        <div class="giorni__scelte">
+          {GIORNI.map((g) => (
+            <label class="giorni__scelta">
+              <input type="checkbox" name="giorni" value={g.n} checked={giorniStudio.includes(g.n)} />
+              <span aria-hidden="true">{g.breve}</span>
+              <span class="visually-hidden">{g.nome}</span>
+            </label>
+          ))}
+        </div>
+      </fieldset>
+      <div class="impostazioni__azioni">
+        <button class="btn" type="submit">Salva</button>
+        {dataAppello && (
+          <button class="link" type="submit" name="azione" value="togli" formnovalidate>Togli la data</button>
+        )}
+      </div>
+    </form>
+  </details>
+</section>
+
+<style>
+  .calendario {
+    display: grid;
+    gap: var(--space-4);
+  }
+  .calendario h2 {
+    font-size: var(--text-xl);
+    font-weight: var(--weight-semibold);
+  }
+  .calendario__sintesi {
+    max-width: 62ch;
+    color: var(--color-ink-muted);
+  }
+  .calendario__sintesi strong {
+    color: var(--color-ink);
+  }
+  .calendario__esito {
+    font-size: var(--text-sm);
+    color: var(--color-success);
+    font-weight: var(--weight-semibold);
+  }
+  .calendario__avviso {
+    padding: var(--space-3) var(--space-4);
+    border-radius: var(--radius-md);
+    background: var(--color-warning-soft);
+    color: var(--color-ink);
+    font-size: var(--text-sm);
+  }
+  .calendario__avviso strong {
+    color: var(--color-warning);
+  }
+
+  /* Griglia settimanale: sette colonne uguali, una riga per settimana */
+  .griglia {
+    display: grid;
+    gap: 4px;
+  }
+  .griglia__testa,
+  .griglia__settimana {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 4px;
+  }
+  .griglia__testa span {
+    font-size: var(--text-xs);
+    font-weight: var(--weight-semibold);
+    color: var(--color-ink-muted);
+    text-align: center;
+  }
+  .giorno {
+    position: relative;
+    display: grid;
+    align-content: space-between;
+    min-height: 3rem;
+    padding: 4px 6px;
+    border-radius: var(--radius-sm);
+    font-variant-numeric: tabular-nums;
+  }
+  .giorno__data {
+    font-size: 0.6875rem;
+    color: var(--color-ink-muted);
+    white-space: nowrap;
+  }
+  .giorno__cosa {
+    font-size: var(--text-sm);
+    font-weight: var(--weight-semibold);
+    line-height: 1.1;
+    overflow-wrap: anywhere;
+  }
+  .giorno--fuori {
+    opacity: 0.35;
+  }
+  .giorno--libero {
+    background: transparent;
+  }
+  .giorno--libero::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    bottom: 10px;
+    width: 4px;
+    height: 4px;
+    margin-left: -2px;
+    border-radius: 50%;
+    background: var(--color-rule-strong);
+  }
+  .giorno--studio {
+    background: var(--color-surface);
+    border: 1px solid var(--color-rule-strong);
+  }
+  .giorno--prova {
+    background: var(--color-accent-soft);
+    border: 1px dashed var(--color-accent);
+  }
+  .giorno--prova .giorno__cosa {
+    font-size: var(--text-xs);
+    color: var(--color-accent);
+  }
+  .giorno--appello {
+    background: var(--color-aula);
+    color: var(--color-on-aula);
+  }
+  .giorno--appello .giorno__data {
+    color: var(--color-aula-tenue);
+  }
+  .giorno--appello .giorno__cosa {
+    font-size: var(--text-xs);
+  }
+  .giorno--oggi {
+    outline: 2px solid var(--color-ink);
+    outline-offset: 1px;
+  }
+
+  /* Tappe: i capitoli con le loro date, come un ordine dei lavori */
+  .tappe {
+    display: grid;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    border-block: var(--border);
+  }
+  .tappe li {
+    display: grid;
+    grid-template-columns: 7.5rem minmax(0, 1fr);
+    gap: var(--space-3);
+    padding: var(--space-2) 0;
+    font-size: var(--text-sm);
+  }
+  .tappe li + li {
+    border-top: var(--border);
+  }
+  .tappe__quando {
+    color: var(--color-ink-muted);
+  }
+  .tappe__n {
+    display: inline-block;
+    min-width: 1.6em;
+    font-weight: var(--weight-bold);
+  }
+  .tappa--oggi {
+    font-weight: var(--weight-semibold);
+  }
+  .tappa--oggi em {
+    font-style: normal;
+    color: var(--color-accent);
+  }
+  .calendario__nota {
+    font-size: var(--text-sm);
+    color: var(--color-ink-muted);
+    max-width: 62ch;
+  }
+
+  .impostazioni summary {
+    cursor: pointer;
+    font-weight: var(--weight-semibold);
+    color: var(--color-accent);
+  }
+  .impostazioni__form {
+    display: grid;
+    gap: var(--space-3);
+    margin-top: var(--space-3);
+    max-width: 26rem;
+  }
+  .campo {
+    display: grid;
+    gap: var(--space-1);
+    font-size: var(--text-sm);
+    font-weight: var(--weight-semibold);
+  }
+  .campo input {
+    min-height: var(--tap-min);
+    padding: 0 var(--space-3);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--color-rule-strong);
+    background: var(--color-surface);
+    color: var(--color-ink);
+    font: inherit;
+  }
+  .giorni {
+    margin: 0;
+    padding: 0;
+    border: 0;
+  }
+  .giorni legend {
+    margin-bottom: var(--space-1);
+    font-size: var(--text-sm);
+    font-weight: var(--weight-semibold);
+  }
+  .giorni__scelte {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 4px;
+  }
+  .giorni__scelta {
+    position: relative;
+    display: grid;
+    place-items: center;
+    min-height: var(--tap-min);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--color-rule-strong);
+    font-weight: var(--weight-semibold);
+    cursor: pointer;
+  }
+  .giorni__scelta input {
+    position: absolute;
+    opacity: 0;
+    inset: 0;
+    margin: 0;
+    cursor: pointer;
+  }
+  .giorni__scelta:has(input:checked) {
+    background: var(--color-primary);
+    border-color: var(--color-primary-edge);
+    color: var(--color-on-primary);
+  }
+  .giorni__scelta:has(input:focus-visible) {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+  }
+  .impostazioni__azioni {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+  }
+  .link {
+    padding: 0;
+    border: 0;
+    background: none;
+    font: inherit;
+    font-size: var(--text-sm);
+    color: var(--color-ink-muted);
+    text-decoration: underline;
+    cursor: pointer;
+  }
+</style>

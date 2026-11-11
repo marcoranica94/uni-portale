@@ -4,7 +4,7 @@ import Emiciclo from '../components/Emiciclo.astro';
 import { getMaterie, CFU_TOTALI } from '../lib/percorso';
 import { getVoti, riepilogo, statoMateria, formatoMedia } from '../lib/voti';
 import { statoAgenti, getKit } from '../lib/coda';
-import { contaBanca, giorniDiStudio, padronanzaCompleta, padronanzaTutte, seggiPerMateria, FORMATI, ORALE, CAPITOLO } from '../lib/simulazioni';
+import { contaBanca, giorniDiStudio, padronanzaCompleta, padronanzaTutte, seggiPerMateria, appelliFissati, pianoMateria, giornoRoma, FORMATI, ORALE, CAPITOLO } from '../lib/simulazioni';
 import { prossimoCapitolo, maggioranza, minutiRipasso, type MotivoCapitolo, type StatoPadronanza } from '../lib/calcoli';
 import { riepilogoRipasso } from '../lib/ripasso';
 
@@ -14,11 +14,18 @@ const materie = await getMaterie();
 const voti = await getVoti();
 const r = riepilogo(materie, voti);
 const inCorso = materie.filter((m) => statoMateria(m, voti) === 'in-corso');
-const [agente, studio, padronanze, seggi, ripasso] = await Promise.all([statoAgenti(), giorniDiStudio(), padronanzaTutte(), seggiPerMateria(), riepilogoRipasso()]);
+const [agente, studio, padronanze, seggi, ripasso, appelli] = await Promise.all([statoAgenti(), giorniDiStudio(), padronanzaTutte(), seggiPerMateria(), riepilogoRipasso(), appelliFissati()]);
 
-// Materia della seduta: la prima in corso con il kit d'esame pronto, altrimenti la prima con appunti.
+// Materia della seduta: quella con il kit pronto e l'appello più vicino; senza appelli fissati
+// la prima in corso con il kit, altrimenti la prima con appunti.
+const oggi = giornoRoma(new Date());
 const conKit = await Promise.all(inCorso.map(async (m) => ({ m, kit: m.codice ? await getKit(m.codice) : null })));
-const adesso = conKit.find((x) => x.kit) ?? conKit.find((x) => x.m.appunti) ?? null;
+const appelloDi = (m: (typeof inCorso)[number]) => {
+  const d = m.codice ? appelli.get(m.codice)?.dataAppello : null;
+  return d && d >= oggi ? d : null;
+};
+const vicina = conKit.filter((x) => x.kit && appelloDi(x.m)).sort((a, b) => appelloDi(a.m)!.localeCompare(appelloDi(b.m)!))[0];
+const adesso = vicina ?? conKit.find((x) => x.kit) ?? conKit.find((x) => x.m.appunti) ?? null;
 const primoCapitolo = adesso?.m.appunti?.capitoli.find((c) => !/indice|mappa/i.test(c.titolo)) ?? adesso?.m.appunti?.capitoli[0];
 const banca = adesso?.m.codice ? await contaBanca(adesso.m.codice) : null;
 const orale = adesso?.m.esame.tipo === 'Orale';
@@ -34,7 +41,15 @@ const haProvato = argomenti.some((a) => a.risposte > 0);
 
 // Ordine del giorno: l'argomento da allenare (pronto, cioè con domande in banca); alla prima seduta, l'esame intero.
 const minimo = orale ? CAPITOLO.minimoOrale : CAPITOLO.minimo;
-const scelta = simulabile && haProvato ? prossimoCapitolo(argomenti.map((a) => ({ ...a, file: a.id, pronto: a.domande >= minimo && !a.inPreparazione }))) : null;
+// Calendario fino all'appello della materia della seduta: che cosa tocca oggi.
+const profiloAppello = adesso?.m.codice ? appelli.get(adesso.m.codice) : undefined;
+const piano = adesso && profiloAppello && aula ? await pianoMateria(adesso.m, profiloAppello, aula.capitoli) : null;
+const pianoOggi = piano?.giorni.find((g) => g.data === oggi);
+// Se il calendario indica capitoli per oggi, l'argomento da allenare si cerca prima lì dentro.
+const candidati = argomenti.map((a) => ({ ...a, file: a.id, pronto: a.domande >= minimo && !a.inPreparazione }));
+const delGiorno = candidati.filter((a) => a.capitoli.some((c) => pianoOggi?.capitoli.includes(c)));
+const sceltaGiorno = prossimoCapitolo(delGiorno);
+const scelta = simulabile && haProvato ? (sceltaGiorno && sceltaGiorno.motivo !== 'da-rinfrescare' ? sceltaGiorno : prossimoCapitolo(candidati)) : null;
 const mirata = scelta && scelta.motivo !== 'da-rinfrescare' ? scelta : null;
 const capitoloDi = (file: string | undefined) => adesso?.m.appunti?.capitoli.find((c) => c.file === file);
 const capitoloMirato = mirata ? capitoloDi(mirata.capitolo.capitoli[0]) : undefined;
@@ -48,6 +63,14 @@ const MOTIVI: Record<MotivoCapitolo, (q: string) => string> = {
 const minuti = mirata ? (orale ? 15 : CAPITOLO.scritto.minuti) : orale ? ORALE.minuti : FORMATI.breve.minuti;
 const appuntiMossa = adesso?.m.appunti ? `/appunti/${adesso.m.appunti.slug}/${capitoloMirato?.file ?? primoCapitolo?.file ?? ''}` : null;
 
+const rigaCalendario = (() => {
+  if (!piano || piano.stato === 'passato' || !adesso) return null;
+  const tra = piano.mancano === 0 ? "l'appello è oggi" : piano.mancano === 1 ? "l'appello è domani" : `appello tra ${piano.mancano} giorni`;
+  const titoli = (pianoOggi?.capitoli ?? []).map((f) => adesso.m.appunti?.capitoli.find((c) => c.file === f)?.titolo ?? f);
+  if (titoli.length) return `Da calendario oggi: ${titoli.join(' e ')}; ${tra}.`;
+  if (pianoOggi?.tipo === 'prova') return `Da calendario oggi: prova generale su tutto il programma; ${tra}.`;
+  return `Oggi è libero da calendario; ${tra}.`;
+})();
 const titoloAula = !aula
   ? null
   : !haProvato
@@ -145,6 +168,7 @@ const altre = inCorso
                 ? `Il kit d'esame è pronto: prepara le domande dalla scheda della materia, intanto ripassa dagli appunti.`
                 : "Riparti dagli appunti: dal kit d'esame nasceranno le simulazioni."}
         </p>
+        {rigaCalendario && <p class="ordine__calendario"><a href={`/materie/${adesso.m.slug}#calendario`}>{rigaCalendario}</a></p>}
         <div class="ordine__azioni">
           {simulabile ? (
             <form method="post" action="/api/simulazioni">
@@ -408,6 +432,14 @@ const altre = inCorso
   .ordine__testo {
     color: var(--color-ink-muted);
     max-width: 52ch;
+  }
+  .ordine__calendario {
+    font-size: var(--text-sm);
+    font-weight: var(--weight-semibold);
+  }
+  .ordine__calendario a {
+    color: var(--color-accent);
+    text-underline-offset: 0.2em;
   }
   .ordine__azioni {
     display: flex;

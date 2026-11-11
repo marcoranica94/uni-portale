@@ -49,3 +49,48 @@ test('FSRS: carta nuova, errore, poi "la sapevo" fino al ripasso in giorni', asy
   const facile = await valuta(stato.fsrs, 4, ora);
   assert.ok(Date.parse(facile.scadenza) > ora.getTime() + 86_400_000);
 });
+
+import { pianoARitroso, giornoSettimana, piuGiorni, leggiGiorniStudio } from '../src/lib/calcoli.ts';
+
+test('date: giorno della settimana, somma di giorni, giorni di studio', () => {
+  assert.equal(giornoSettimana('2026-11-11'), 3); // mercoledì
+  assert.equal(giornoSettimana('2026-11-15'), 7); // domenica
+  assert.equal(piuGiorni('2026-12-30', 3), '2027-01-02');
+  assert.deepEqual(leggiGiorniStudio('6, 1,9,1,x'), [1, 6]);
+});
+
+test('pianoARitroso: capitoli in ordine sui giorni di studio, prove generali in fondo', () => {
+  const caps = [
+    { file: 'a', peso: 2, solido: false },
+    { file: 'b', peso: 2, solido: true },
+    { file: 'c', peso: 4, solido: false },
+    { file: 'd', peso: 2, solido: false },
+  ];
+  // Da mercoledì 11/11 a lunedì 30/11, studio lun-mer-sab.
+  const p = pianoARitroso('2026-11-11', '2026-11-30', [1, 3, 6], caps);
+  assert.equal(p.stato, 'ok');
+  assert.equal(p.mancano, 19);
+  assert.equal(p.giorni.at(-1)!.tipo, 'appello');
+  const studio = p.giorni.filter((g) => g.tipo === 'studio' || g.tipo === 'prova');
+  assert.equal(studio.length, p.giorniStudio);
+  assert.ok(p.giorni.every((g) => g.tipo === 'appello' || g.tipo === 'libero' || [1, 3, 6].includes(giornoSettimana(g.data))));
+  assert.deepEqual(p.solidi, ['b']);
+  // Ogni capitolo rimasto compare, in ordine, e mai nelle prove generali.
+  const sequenza = p.giorni.flatMap((g) => g.capitoli).filter((c, i, arr) => arr[i - 1] !== c);
+  assert.deepEqual(sequenza, ['a', 'c', 'd']);
+  assert.ok(p.prove >= 1);
+  assert.ok(p.giorni.filter((g) => g.tipo === 'prova').every((g) => g.capitoli.length === 0));
+  // Il capitolo più pesante occupa almeno tanti giorni quanto gli altri.
+  const giorniDi = (f: string) => p.giorni.filter((g) => g.capitoli.includes(f)).length;
+  assert.ok(giorniDi('c') >= giorniDi('a'));
+});
+
+test('pianoARitroso: stretto, passato, senza giorni, tutto solido', () => {
+  const tanti = Array.from({ length: 10 }, (_, i) => ({ file: `c${i}`, peso: 1, solido: false }));
+  assert.equal(pianoARitroso('2026-11-11', '2026-11-16', [1, 2, 3, 4, 5, 6, 7], tanti).stato, 'stretto');
+  assert.equal(pianoARitroso('2026-11-11', '2026-11-01', [1], tanti).stato, 'passato');
+  assert.equal(pianoARitroso('2026-11-11', '2026-11-14', [7], tanti).stato, 'senza-giorni');
+  const fatti = pianoARitroso('2026-11-11', '2026-11-20', [1, 2, 3, 4, 5], [{ file: 'x', peso: 3, solido: true }]);
+  assert.equal(fatti.rimasti.length, 0);
+  assert.ok(fatti.giorni.filter((g) => g.tipo === 'prova').length === fatti.giorniStudio);
+});

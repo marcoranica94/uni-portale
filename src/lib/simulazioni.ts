@@ -2,7 +2,7 @@ import { env } from 'cloudflare:workers';
 import type { D1PreparedStatement } from '@cloudflare/workers-types';
 import type { DomandaCompleta, RichiestaApprofondimento, RichiestaCorrezione, RichiestaDomande, RisultatoCorrezione } from '../shared/schemi';
 import { accoda, getKit, ultimoLavoro } from './coda';
-import { votoDa, padronanzaCapitoli, padronanzaArgomenti, capitoliDi, MAI_PROVATO, type Padronanza, type EsitoRisposta } from './calcoli';
+import { votoDa, padronanzaCapitoli, padronanzaArgomenti, capitoliDi, leggiGiorniStudio, pianoARitroso, MAI_PROVATO, type Padronanza, type EsitoRisposta } from './calcoli';
 import { getMaterie } from './percorso';
 import { carteDaSimulazione, eliminaCarteDi, giorniConRipasso } from './ripasso';
 export { domandaValida, votoDa } from './calcoli';
@@ -30,17 +30,54 @@ export interface Profilo {
   domandeOrale: number;
   multipleScritto: number;
   aperteScritto: number;
+  /** Data dell'appello scelta dallo studente (AAAA-MM-GG), base del piano a ritroso. */
+  dataAppello: string | null;
+  /** Giorni della settimana in cui studia: 1 = lunedì … 7 = domenica. */
+  giorniStudio: number[];
 }
-const PROFILO_BASE: Profilo = { istruzioni: '', domandeOrale: 3, multipleScritto: 10, aperteScritto: 3 };
+const TUTTI_I_GIORNI = [1, 2, 3, 4, 5, 6, 7];
+const PROFILO_BASE: Profilo = { istruzioni: '', domandeOrale: 3, multipleScritto: 10, aperteScritto: 3, dataAppello: null, giorniStudio: TUTTI_I_GIORNI };
+
+interface RigaProfilo {
+  codice: string;
+  istruzioni: string;
+  domande_orale: number;
+  multiple_scritto: number;
+  aperte_scritto: number;
+  data_appello: string | null;
+  giorni_studio: string;
+}
+const daRigaProfilo = (r: RigaProfilo): Profilo => ({
+  istruzioni: r.istruzioni,
+  domandeOrale: r.domande_orale,
+  multipleScritto: r.multiple_scritto,
+  aperteScritto: r.aperte_scritto,
+  dataAppello: r.data_appello,
+  giorniStudio: leggiGiorniStudio(r.giorni_studio),
+});
 
 export async function getProfilo(codice: string): Promise<Profilo> {
-  const r = await env.DB.prepare('SELECT istruzioni, domande_orale, multiple_scritto, aperte_scritto FROM profili_esame WHERE codice = ?')
-    .bind(codice)
-    .first<{ istruzioni: string; domande_orale: number; multiple_scritto: number; aperte_scritto: number }>();
-  return r ? { istruzioni: r.istruzioni, domandeOrale: r.domande_orale, multipleScritto: r.multiple_scritto, aperteScritto: r.aperte_scritto } : PROFILO_BASE;
+  const r = await env.DB.prepare('SELECT * FROM profili_esame WHERE codice = ?').bind(codice).first<RigaProfilo>();
+  return r ? daRigaProfilo(r) : PROFILO_BASE;
 }
 
-export async function salvaProfilo(codice: string, p: Profilo) {
+/** Appelli fissati: insegnamento -> profilo, solo per chi ha una data. */
+export async function appelliFissati(): Promise<Map<string, Profilo>> {
+  const { results } = await env.DB.prepare('SELECT * FROM profili_esame WHERE data_appello IS NOT NULL').all<RigaProfilo>();
+  return new Map(results.map((r) => [r.codice, daRigaProfilo(r)]));
+}
+
+/** Salva solo data dell'appello e giorni di studio, senza toccare le istruzioni d'esame. */
+export async function salvaAppello(codice: string, dataAppello: string | null, giorni: number[]) {
+  await env.DB.prepare(
+    `INSERT INTO profili_esame (codice, data_appello, giorni_studio, aggiornato) VALUES (?, ?, ?, ?)
+     ON CONFLICT(codice) DO UPDATE SET data_appello = excluded.data_appello, giorni_studio = excluded.giorni_studio, aggiornato = excluded.aggiornato`,
+  )
+    .bind(codice, dataAppello, (giorni.length ? giorni : TUTTI_I_GIORNI).join(','), adesso())
+    .run();
+}
+
+export async function salvaProfilo(codice: string, p: Omit<Profilo, 'dataAppello' | 'giorniStudio'>) {
   await env.DB.prepare(
     `INSERT INTO profili_esame (codice, istruzioni, domande_orale, multiple_scritto, aperte_scritto, aggiornato) VALUES (?, ?, ?, ?, ?, ?)
      ON CONFLICT(codice) DO UPDATE SET istruzioni = excluded.istruzioni, domande_orale = excluded.domande_orale,
@@ -676,4 +713,28 @@ export async function ultimiEsiti() {
        FROM simulazioni s WHERE stato = 'corretta' GROUP BY codice`,
   ).all<{ codice: string; n: number; voto: number | null }>();
   return new Map(results.map((r) => [r.codice, { n: r.n, voto: r.voto }]));
+}
+
+// ---------- Piano a ritroso (calendario fino all'appello) ----------
+
+/**
+ * Piano a ritroso di una materia, dalla padronanza reale di oggi: i capitoli con argomenti del kit,
+ * nell'ordine degli appunti, pesati per numero di argomenti; "solido" se lo è il capitolo.
+ * null se manca la data dell'appello o la materia non ha appunti.
+ */
+export async function pianoMateria(
+  materia: { codice: string | null; appunti?: { capitoli: { file: string }[] } | null },
+  profilo: Profilo,
+  capitoliPadronanza?: Map<string, CapitoloPadronanza>,
+) {
+  if (!materia.codice || !profilo.dataAppello || !materia.appunti) return null;
+  const [perCapitolo, padronanza] = await Promise.all([
+    nucleiPerCapitolo(materia.codice),
+    capitoliPadronanza ? Promise.resolve(capitoliPadronanza) : padronanzaMateria(materia.codice, 'scritto'),
+  ]);
+  const capitoli = materia.appunti.capitoli
+    .filter((c) => (perCapitolo.get(c.file)?.length ?? 0) > 0)
+    .map((c) => ({ file: c.file, peso: perCapitolo.get(c.file)!.length, solido: padronanza.get(c.file)?.stato === 'solido' }));
+  if (!capitoli.length) return null;
+  return pianoARitroso(giornoRoma(new Date()), profilo.dataAppello, profilo.giorniStudio, capitoli);
 }
