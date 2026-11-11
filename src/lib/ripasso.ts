@@ -29,9 +29,12 @@ export async function carteDaSimulazione(id: string) {
   );
 }
 
-/** Quando si elimina una simulazione, spariscono le carte nate solo da lei. */
+/** Quando si elimina una simulazione, spariscono le carte nate da lei e i loro ripassi. */
 export function eliminaCarteDi(id: string) {
-  return env.DB.prepare('DELETE FROM carte WHERE simulazione = ?').bind(id);
+  return [
+    env.DB.prepare('DELETE FROM ripassi WHERE carta IN (SELECT id FROM carte WHERE simulazione = ?)').bind(id),
+    env.DB.prepare('DELETE FROM carte WHERE simulazione = ?').bind(id),
+  ];
 }
 
 /** Nuove già introdotte oggi (ora di Roma). */

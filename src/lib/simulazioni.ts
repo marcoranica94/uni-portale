@@ -566,7 +566,7 @@ export async function applicaCorrezione(id: string, c: RisultatoCorrezione) {
 export async function eliminaSimulazione(id: string) {
   await env.DB.batch([
     env.DB.prepare('UPDATE domande SET usata = MAX(usata - 1, 0) WHERE id IN (SELECT domanda FROM risposte WHERE simulazione = ?)').bind(id),
-    eliminaCarteDi(id),
+    ...eliminaCarteDi(id),
     env.DB.prepare('DELETE FROM risposte WHERE simulazione = ?').bind(id), env.DB.prepare('DELETE FROM simulazioni WHERE id = ?').bind(id)]);
 }
 
