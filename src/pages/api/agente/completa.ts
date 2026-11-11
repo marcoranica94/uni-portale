@@ -3,6 +3,8 @@ import { RichiestaCompleta, RisultatoKit, RisultatoDomande, RisultatoCorrezione,
 import { completa, getLavoro, registraBattito, salvaKit, salvaNuclei } from '../../../lib/coda';
 import { applicaCorrezione, domandaValida, salvaApprofondimento, salvaBanca } from '../../../lib/simulazioni';
 import { env } from 'cloudflare:workers';
+import { avvisaCorrezione } from '../../../lib/notifiche';
+import { getMaterie } from '../../../lib/percorso';
 import { soloAgente, leggi, json } from './_comune';
 
 export const prerender = false;
@@ -47,6 +49,10 @@ export const POST: APIRoute = async (ctx) => {
     const richiesta = RichiestaCorrezione.parse(JSON.parse(riga?.richiesta ?? '{}'));
     await applicaCorrezione(richiesta.simulazione, r.data);
     await completa(lavoro.id, { agente: r.data.agente, valutazioni: r.data.valutazioni.length });
+    // Avviso sul telefono: la correzione è pronta (un errore di invio non tocca la consegna).
+    const sim = await env.DB.prepare('SELECT voto FROM simulazioni WHERE id = ?').bind(richiesta.simulazione).first<{ voto: number | null }>();
+    const materia = (await getMaterie()).find((m) => m.codice === lavoro.codice);
+    await avvisaCorrezione(richiesta.simulazione, materia?.breve ?? lavoro.codice, sim?.voto ?? null, richiesta.modalita === 'orale').catch((e) => console.error(e));
     return json({ ok: true });
   }
 

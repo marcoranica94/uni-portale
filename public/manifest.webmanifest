@@ -1,0 +1,16 @@
+{
+  "name": "Uni · Scienze politiche",
+  "short_name": "Uni",
+  "description": "Portale di studio personale: simulazioni d'esame, ripasso e appunti.",
+  "lang": "it",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#0f3d2e",
+  "theme_color": "#0f3d2e",
+  "icons": [
+    { "src": "/icone/icona-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icone/icona-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icone/icona-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

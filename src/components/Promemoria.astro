@@ -1,0 +1,202 @@
+---
+/**
+ * Promemoria su questo dispositivo (t037): attiva le notifiche, sceglie l'ora del promemoria serale,
+ * manda una prova, disattiva. Su iPhone le notifiche esistono solo nell'app aggiunta alla schermata Home.
+ * Lo stato dipende dal dispositivo, quindi lo decide lo script: l'HTML contiene tutti i casi, nascosti.
+ */
+const ore = Array.from({ length: 33 }, (_, i) => {
+  const minuti = 7 * 60 + i * 30;
+  return `${String(Math.floor(minuti / 60)).padStart(2, '0')}:${String(minuti % 60).padStart(2, '0')}`;
+});
+---
+
+<section class="promemoria" aria-labelledby="promemoria-titolo">
+  <h2 id="promemoria-titolo" class="promemoria__titolo">Promemoria</h2>
+
+  <p class="promemoria__testo" data-caso="caricamento">Controllo le notifiche di questo dispositivo…</p>
+  <p class="promemoria__testo" data-caso="iphone" hidden>
+    Su iPhone le notifiche arrivano solo dall'app: tocca Condividi, poi «Aggiungi alla schermata Home», e apri il portale da lì.
+  </p>
+  <p class="promemoria__testo" data-caso="nonsupportato" hidden>Questo browser non riceve notifiche.</p>
+  <p class="promemoria__testo" data-caso="bloccate" hidden>Le notifiche del portale sono bloccate: riattivale nelle impostazioni del browser o del telefono.</p>
+
+  <div data-caso="spente" hidden>
+    <p class="promemoria__testo">Una notifica la sera se hai carte da ripassare o un capitolo del calendario, e una quando una correzione è pronta.</p>
+    <button type="button" class="btn" data-azione="attiva">Attiva i promemoria</button>
+  </div>
+
+  <div class="promemoria__attive" data-caso="attive" hidden>
+    <label class="promemoria__ora">
+      <span>Promemoria alle</span>
+      <select data-campo="ora">
+        {ore.map((o) => <option value={o} selected={o === '19:00'}>{o}</option>)}
+      </select>
+    </label>
+    <button type="button" class="link" data-azione="prova">Manda una prova</button>
+    <button type="button" class="link" data-azione="disattiva">Disattiva</button>
+  </div>
+
+  <p class="promemoria__esito" data-campo="esito" role="status" aria-live="polite"></p>
+</section>
+
+<script>
+  const radice = document.querySelector<HTMLElement>('.promemoria');
+  if (radice) {
+    const casi = radice.querySelectorAll<HTMLElement>('[data-caso]');
+    const esito = radice.querySelector<HTMLElement>('[data-campo="esito"]')!;
+    const sceltaOra = radice.querySelector<HTMLSelectElement>('[data-campo="ora"]')!;
+    const mostra = (caso: string) => casi.forEach((c) => (c.hidden = c.dataset.caso !== caso));
+    const di = (testo: string) => (esito.textContent = testo);
+
+    const ios = /iPhone|iPad|iPod/.test(navigator.userAgent);
+    const standalone = matchMedia('(display-mode: standalone)').matches || (navigator as unknown as { standalone?: boolean }).standalone === true;
+    const supportato = 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+
+    const api = async (corpo: Record<string, unknown>) => {
+      const r = await fetch('/api/notifiche', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(corpo), credentials: 'same-origin' });
+      return r.json().catch(() => ({}));
+    };
+    const dispositivo = () => (ios ? 'iPhone' : /Android/.test(navigator.userAgent) ? 'Android' : /Mac/.test(navigator.userAgent) ? 'Mac' : 'Computer');
+    const chiaveBinaria = (b64: string) => Uint8Array.from(atob(b64.replace(/-/g, '+').replace(/_/g, '/')), (c) => c.charCodeAt(0));
+
+    async function stato() {
+      if (!supportato) return mostra(ios && !standalone ? 'iphone' : 'nonsupportato');
+      if (Notification.permission === 'denied') return mostra('bloccate');
+      const reg = await navigator.serviceWorker.ready;
+      const iscr = await reg.pushManager.getSubscription();
+      if (!iscr) return mostra('spente');
+      mostra('attive');
+      try {
+        const r = await fetch(`/api/notifiche?endpoint=${encodeURIComponent(iscr.endpoint)}`, { credentials: 'same-origin' });
+        const d = (await r.json()) as { ora: string | null };
+        if (d.ora) sceltaOra.value = d.ora;
+        else await iscrivi(iscr); // iscrizione persa sul server: la ripristina
+      } catch {}
+    }
+
+    async function iscrivi(esistente?: PushSubscription) {
+      const reg = await navigator.serviceWorker.ready;
+      let iscr = esistente ?? null;
+      if (!iscr) {
+        const { chiave } = (await (await fetch('/api/notifiche', { credentials: 'same-origin' })).json()) as { chiave: string };
+        iscr = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: chiaveBinaria(chiave) });
+      }
+      await api({ azione: 'iscrivi', iscrizione: iscr.toJSON(), ora: sceltaOra.value, dispositivo: dispositivo() });
+      return iscr;
+    }
+
+    radice.addEventListener('click', async (e) => {
+      const b = (e.target as HTMLElement).closest<HTMLButtonElement>('[data-azione]');
+      if (!b) return;
+      b.disabled = true;
+      di('');
+      try {
+        const reg = await navigator.serviceWorker.ready;
+        if (b.dataset.azione === 'attiva') {
+          const permesso = await Notification.requestPermission();
+          if (permesso !== 'granted') {
+            await stato();
+            di(permesso === 'denied' ? '' : 'Notifiche non attivate.');
+          } else {
+            await iscrivi();
+            mostra('attive');
+            di(`Fatto: il promemoria arriva alle ${sceltaOra.value}, solo se c'è qualcosa da fare.`);
+          }
+        } else if (b.dataset.azione === 'prova') {
+          const iscr = await reg.pushManager.getSubscription();
+          const r = iscr ? await api({ azione: 'prova', endpoint: iscr.endpoint }) : { ok: false };
+          di(r.ok ? 'Prova inviata: arriva tra pochi secondi.' : 'La prova non è partita: disattiva e riattiva i promemoria.');
+        } else if (b.dataset.azione === 'disattiva') {
+          const iscr = await reg.pushManager.getSubscription();
+          if (iscr) {
+            await api({ azione: 'togli', endpoint: iscr.endpoint });
+            await iscr.unsubscribe();
+          }
+          mostra('spente');
+          di('Promemoria disattivati su questo dispositivo.');
+        }
+      } catch {
+        di('Operazione non riuscita: riprova tra poco.');
+      } finally {
+        b.disabled = false;
+      }
+    });
+
+    sceltaOra.addEventListener('change', async () => {
+      const iscr = await (await navigator.serviceWorker.ready).pushManager.getSubscription();
+      if (!iscr) return;
+      await iscrivi(iscr);
+      di(`Promemoria spostato alle ${sceltaOra.value}.`);
+    });
+
+    stato().catch(() => mostra('nonsupportato'));
+  }
+</script>
+
+<style>
+  .promemoria {
+    display: grid;
+    gap: var(--space-2);
+    max-width: 40rem;
+  }
+  .promemoria__titolo {
+    font-size: var(--text-sm);
+    font-weight: var(--weight-semibold);
+    color: var(--color-ink-muted);
+  }
+  .promemoria__testo {
+    font-size: var(--text-sm);
+    color: var(--color-ink-muted);
+    max-width: 56ch;
+  }
+  [data-caso='spente'] {
+    display: grid;
+    gap: var(--space-2);
+    justify-items: start;
+  }
+  [data-caso][hidden] {
+    display: none;
+  }
+  .promemoria__attive {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2) var(--space-4);
+  }
+  .promemoria__ora {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-size: var(--text-sm);
+    font-weight: var(--weight-semibold);
+  }
+  .promemoria__ora select {
+    min-height: 36px;
+    padding: 0 var(--space-2);
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--color-rule-strong);
+    background: var(--color-surface);
+    color: var(--color-ink);
+    font: inherit;
+    font-variant-numeric: tabular-nums;
+  }
+  .link {
+    padding: 0;
+    border: 0;
+    background: none;
+    font: inherit;
+    font-size: var(--text-sm);
+    color: var(--color-accent);
+    text-decoration: underline;
+    text-underline-offset: 0.2em;
+    cursor: pointer;
+  }
+  .promemoria__esito {
+    font-size: var(--text-sm);
+    font-weight: var(--weight-semibold);
+    color: var(--color-success);
+  }
+  .promemoria__esito:empty {
+    display: none;
+  }
+</style>

@@ -6,6 +6,7 @@ import '@fontsource/titillium-web/latin-900.css';
 import '../styles/global.css';
 import Nav from '../components/Nav.astro';
 import SceltaTema from '../components/SceltaTema.astro';
+import Promemoria from '../components/Promemoria.astro';
 
 interface Props {
   title: string;
@@ -25,6 +26,13 @@ const { title, description = 'Portale di studio personale - Scienze politiche e 
     <meta name="theme-color" content="#f3f5f2" media="(prefers-color-scheme: light)" />
     <meta name="theme-color" content="#0e1a15" media="(prefers-color-scheme: dark)" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <!-- App sulla schermata Home (serve anche alle notifiche su iPhone). Il manifest passa da Cloudflare Access: va chiesto con i cookie. -->
+    <link rel="manifest" href="/manifest.webmanifest" crossorigin="use-credentials" />
+    <link rel="apple-touch-icon" href="/icone/apple-touch-icon.png" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="Uni" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <title>{title === 'Uni' ? 'Uni' : `${title} · Uni`}</title>
     <script is:inline>
       // Applica il tema scelto prima del primo disegno, per evitare lampi.
@@ -39,9 +47,14 @@ const { title, description = 'Portale di studio personale - Scienze politiche e 
     <main class="page">
       <slot />
       <footer class="piede">
+        <Promemoria />
         <SceltaTema />
       </footer>
     </main>
+    <script>
+      // Service worker: solo per le notifiche (nessuna cache delle pagine).
+      if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {});
+    </script>
     <script>
       // Scorciatoia globale: "/" apre la ricerca negli appunti (spenta mentre scrivi in un campo).
       document.addEventListener('keydown', (e) => {
@@ -70,6 +83,8 @@ const { title, description = 'Portale di studio personale - Scienze politiche e 
     align-content: start;
   }
   .piede {
+    display: grid;
+    gap: var(--space-5);
     padding-top: var(--space-5);
     border-top: var(--border);
   }
