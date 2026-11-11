@@ -94,3 +94,20 @@ test('pianoARitroso: stretto, passato, senza giorni, tutto solido', () => {
   assert.equal(fatti.rimasti.length, 0);
   assert.ok(fatti.giorni.filter((g) => g.tipo === 'prova').length === fatti.giorniStudio);
 });
+
+import { gruppiLaurea } from '../src/lib/calcoli.ts';
+
+test('gruppiLaurea: superati per data, poi in corso, poi futuri; una sola scelta vincolata', () => {
+  const m = (codice: string, cfu: number, date: string | null, vincolata = false) =>
+    ({ codice, slug: codice, nome: codice, breve: codice, cfu, colore: 1, date, sceltaVincolata: vincolata }) as never;
+  const materie = [m('A', 9, '14/09/2026 - 18/12/2026'), m('B', 6, null), m('C', 12, '14/09/2026 - 18/12/2026'), m('V1', 6, null, true), m('V2', 6, null, true), m('D', 9, null)];
+  const voti = new Map([
+    ['C', { codice: 'C', voto: 28, lode: false, data: '2027-01-10', note: null }],
+    ['D', { codice: 'D', voto: 25, lode: false, data: '2026-12-20', note: null }],
+    ['V2', { codice: 'V2', voto: 30, lode: true, data: '2027-02-01', note: null }],
+  ]);
+  const g = gruppiLaurea(materie, voti, new Date('2026-11-11T10:00:00Z'));
+  assert.deepEqual(g.map((x) => `${x.slug}:${x.stato}`), ['D:superato', 'C:superato', 'V2:superato', 'A:in-corso', 'B:da-seguire']);
+  const senzaVoti = gruppiLaurea(materie, new Map(), new Date('2026-11-11T10:00:00Z'));
+  assert.ok(senzaVoti.some((x) => x.slug === 'V1') && !senzaVoti.some((x) => x.slug === 'V2'));
+});

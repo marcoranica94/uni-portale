@@ -452,3 +452,37 @@ export function pianoARitroso(oggi: string, appello: string, giorniStudio: numbe
   const stato = D === 0 ? 'senza-giorni' : N > 0 && rimasti.length / N > CARICO_MASSIMO ? 'stretto' : 'ok';
   return { ...base, stato, giorni, giorniStudio: D, prove: rimasti.length ? prove : D, mancano };
 }
+
+// ---------- Emiciclo della laurea (home): un seggio per CFU ----------
+
+export interface GruppoLaurea {
+  slug: string;
+  nome: string;
+  breve: string;
+  cfu: number;
+  colore: number;
+  stato: 'superato' | 'in-corso' | 'da-seguire';
+  voto: Voto | null;
+}
+
+/**
+ * Gruppi dell'aula della laurea, da sinistra a destra come i gruppi in Parlamento:
+ * prima gli esami superati (in ordine di data), poi quelli in corso, poi i futuri nell'ordine del piano.
+ * Dei due esami "a scelta vincolata" ne entra uno solo: quello superato, altrimenti il primo.
+ */
+export function gruppiLaurea(materie: Materia[], voti: Map<string, Voto>, oggi = new Date()): GruppoLaurea[] {
+  const vincolate = materie.filter((m) => m.sceltaVincolata);
+  const scelta = vincolate.find((m) => m.codice && voti.has(m.codice)) ?? vincolate[0];
+  const gruppi = materie
+    .filter((m) => !m.sceltaVincolata || m === scelta)
+    .map((m) => {
+      const voto = m.codice ? (voti.get(m.codice) ?? null) : null;
+      const stato: GruppoLaurea['stato'] = voto ? 'superato' : statoDidattico(m, oggi) === 'in-corso' ? 'in-corso' : 'da-seguire';
+      return { slug: m.slug, nome: m.nome, breve: m.breve, cfu: m.cfu, colore: m.colore, stato, voto };
+    });
+  const peso = { superato: 0, 'in-corso': 1, 'da-seguire': 2 } as const;
+  return gruppi
+    .map((g, i) => ({ g, i }))
+    .sort((a, b) => peso[a.g.stato] - peso[b.g.stato] || (a.g.voto && b.g.voto ? a.g.voto.data.localeCompare(b.g.voto.data) : 0) || a.i - b.i)
+    .map((x) => x.g);
+}

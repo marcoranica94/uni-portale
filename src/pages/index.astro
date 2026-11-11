@@ -1,11 +1,11 @@
 ---
 import Base from '../layouts/Base.astro';
-import Emiciclo from '../components/Emiciclo.astro';
+import EmicicloLaurea from '../components/EmicicloLaurea.astro';
 import { getMaterie, CFU_TOTALI } from '../lib/percorso';
 import { getVoti, riepilogo, statoMateria, formatoMedia } from '../lib/voti';
 import { statoAgenti, getKit } from '../lib/coda';
 import { contaBanca, giorniDiStudio, padronanzaCompleta, padronanzaTutte, seggiPerMateria, appelliFissati, pianoMateria, giornoRoma, FORMATI, ORALE, CAPITOLO } from '../lib/simulazioni';
-import { prossimoCapitolo, maggioranza, minutiRipasso, type MotivoCapitolo, type StatoPadronanza } from '../lib/calcoli';
+import { prossimoCapitolo, maggioranza, minutiRipasso, gruppiLaurea, type MotivoCapitolo, type StatoPadronanza } from '../lib/calcoli';
 import { riepilogoRipasso } from '../lib/ripasso';
 
 export const prerender = false;
@@ -31,12 +31,9 @@ const banca = adesso?.m.codice ? await contaBanca(adesso.m.codice) : null;
 const orale = adesso?.m.esame.tipo === 'Orale';
 const simulabile = !!(adesso && banca && banca.totale > 0 && (orale || adesso.m.esame.tipo === 'Scritto'));
 
-// Aula della materia: un seggio per argomento del kit.
+// Padronanza della materia della seduta (argomenti del kit): serve all'ordine del giorno.
 const aula = adesso?.m.codice && adesso.kit ? await padronanzaCompleta(adesso.m.codice, orale ? 'orale' : 'scritto') : null;
 const argomenti = aula?.argomenti ?? [];
-const conteggio = (stato: StatoPadronanza) => argomenti.filter((a) => a.stato === stato).length;
-const solidi = conteggio('solido');
-const magg = maggioranza(argomenti.length, solidi);
 const haProvato = argomenti.some((a) => a.risposte > 0);
 
 // Ordine del giorno: l'argomento da allenare (pronto, cioè con domande in banca); alla prima seduta, l'esame intero.
@@ -71,13 +68,20 @@ const rigaCalendario = (() => {
   if (pianoOggi?.tipo === 'prova') return `Da calendario oggi: prova generale su tutto il programma; ${tra}.`;
   return `Oggi è libero da calendario; ${tra}.`;
 })();
-const titoloAula = !aula
-  ? null
-  : !haProvato
-    ? "L'aula è ancora vuota"
-    : magg.raggiunta
-      ? 'Hai la maggioranza'
-      : 'Non hai ancora la maggioranza';
+// Aula della laurea: un seggio per CFU, maggioranza a metà più uno dei CFU del corso.
+const gruppi = gruppiLaurea(materie, voti);
+const magg = maggioranza(CFU_TOTALI, r.cfu);
+const cfuDi = (stato: (typeof gruppi)[number]['stato']) => gruppi.filter((g) => g.stato === stato).reduce((n, g) => n + g.cfu, 0);
+const cfuInCorso = cfuDi('in-corso');
+const esamiInCorso = gruppi.filter((g) => g.stato === 'in-corso').length;
+const titoloAula =
+  r.cfu === 0
+    ? 'Nessun seggio ancora'
+    : r.cfu >= CFU_TOTALI
+      ? 'Aula piena: sei laureato'
+      : magg.raggiunta
+        ? 'Hai la maggioranza'
+        : `Ti mancano ${magg.mancano} CFU alla maggioranza`;
 
 // Data e settimana del semestre, dalle date ufficiali del piano di studi ("14/09/2026 - 18/12/2026").
 const ora = new Date();
@@ -106,9 +110,8 @@ const quandoProssima = ripasso.prossima
   ? new Intl.DateTimeFormat('it-IT', { timeZone: 'Europe/Rome', weekday: 'long', day: 'numeric', month: 'long' }).format(new Date(ripasso.prossima))
   : null;
 
-// Altre materie in corso: barretta dei seggi (solidi, in crescita, deboli) su tutti gli argomenti del kit.
+// Materie in corso: barretta degli argomenti del kit (solidi, in crescita, deboli).
 const altre = inCorso
-  .filter((m) => m !== adesso?.m)
   .map((m) => {
     const tot = m.codice ? (seggi.get(m.codice) ?? 0) : 0;
     const p = m.codice ? [...(padronanze.get(m.codice)?.values() ?? [])] : [];
@@ -127,27 +130,24 @@ const altre = inCorso
   </header>
 
   <div class="tavolo">
-    {aula && adesso && (
-      <section class="aula" aria-labelledby="aula-titolo">
-        <p class="aula__materia">{adesso.m.nome}, esame {adesso.m.esame.tipo.toLowerCase()}</p>
-        <h1 id="aula-titolo" class="aula__titolo">{titoloAula}</h1>
-        <Emiciclo seggi={argomenti.map((a) => ({ stato: a.stato, titolo: a.titolo }))} />
-        <div class="aula__esito">
-          <p class="aula__numero"><strong>{solidi}</strong> su {magg.soglia} per la maggioranza</p>
-          <p class="aula__nota">
-            {magg.raggiunta
-              ? `${solidi} argomenti solidi su ${argomenti.length}: sei pronto, tieni i seggi allenandoli.`
-              : `Ogni seggio è un argomento del kit d'esame (${argomenti.length}). Te ne mancano ${magg.mancano} solidi.`}
-          </p>
-        </div>
-        <ul class="aula__legenda">
-          <li><svg viewBox="0 0 12 12" aria-hidden="true"><circle cx="6" cy="6" r="5" class="l-si" /></svg>{solidi} solidi</li>
-          <li><svg viewBox="0 0 12 12" aria-hidden="true"><circle cx="6" cy="6" r="4.3" class="l-forse-c" /><path d="M6 1.7a4.3 4.3 0 0 1 0 8.6z" class="l-forse" /></svg>{conteggio('in-crescita')} in crescita</li>
-          <li><svg viewBox="0 0 12 12" aria-hidden="true"><rect x="1.5" y="1.5" width="9" height="9" rx="1.2" class="l-no" /></svg>{conteggio('debole')} deboli</li>
-          <li><svg viewBox="0 0 12 12" aria-hidden="true"><circle cx="6" cy="6" r="4.3" class="l-vuoto" /></svg>{conteggio('mai-provato')} mai provati</li>
-        </ul>
-      </section>
-    )}
+    <section class="aula" aria-labelledby="aula-titolo">
+      <p class="aula__materia">Scienze politiche e strategie globali, {CFU_TOTALI} CFU</p>
+      <h1 id="aula-titolo" class="aula__titolo">{titoloAula}</h1>
+      <EmicicloLaurea gruppi={gruppi} totale={CFU_TOTALI} />
+      <div class="aula__esito">
+        <p class="aula__numero"><strong>{r.cfu}</strong> CFU su {magg.soglia} per la maggioranza</p>
+        <p class="aula__nota">
+          {esamiInCorso
+            ? `In corso ${esamiInCorso === 1 ? 'un esame' : `${esamiInCorso} esami`} da ${cfuInCorso} CFU: superati, ${cfuInCorso === 1 ? 'il seggio si colora' : 'i loro seggi si colorano'}.`
+            : 'Ogni seggio è un CFU: si colora quando superi l\'esame.'}
+        </p>
+      </div>
+      <ul class="aula__legenda">
+        <li><svg viewBox="0 0 12 12" aria-hidden="true"><circle cx="6" cy="6" r="5" class="l-pieno" /></svg>{r.cfu} superati</li>
+        <li><svg viewBox="0 0 12 12" aria-hidden="true"><circle cx="6" cy="6" r="4.3" class="l-anello" /></svg>{cfuInCorso} in corso</li>
+        <li><svg viewBox="0 0 12 12" aria-hidden="true"><circle cx="6" cy="6" r="4.3" class="l-vuoto" /></svg>{CFU_TOTALI - r.cfu - cfuInCorso} da seguire</li>
+      </ul>
+    </section>
 
     <div class="lato">
     {adesso && (
@@ -224,7 +224,7 @@ const altre = inCorso
     </section>
 
     <section class="altre" aria-labelledby="altre-titolo">
-      <h2 id="altre-titolo" class="visually-hidden">Altre materie in corso</h2>
+      <h2 id="altre-titolo" class="visually-hidden">Materie in corso</h2>
       <ul class="altre__lista">
         {altre.map((x) => (
           <li>
@@ -247,8 +247,8 @@ const altre = inCorso
         ))}
       </ul>
       <dl class="numeri">
-        <div><dt>CFU</dt><dd><a href="/libretto"><strong>{r.cfu}</strong> su {CFU_TOTALI}</a></dd></div>
         <div><dt>Media</dt><dd><a href="/libretto"><strong>{formatoMedia(r.media)}</strong></a></dd></div>
+        <div><dt>Base di laurea</dt><dd><a href="/libretto"><strong>{r.baseLaurea ?? '–'}</strong>{r.baseLaurea !== null && ' su 110'}</a></dd></div>
         <div><dt>Giorni di studio di fila</dt><dd><strong>{studio.diFila}</strong></dd></div>
       </dl>
     </section>
@@ -353,7 +353,7 @@ const altre = inCorso
     line-height: 1;
     letter-spacing: -0.015em;
   }
-  .aula :global(.emiciclo) {
+  .aula :global(.laurea) {
     margin-top: var(--space-2);
   }
   .aula__esito {
@@ -405,7 +405,9 @@ const altre = inCorso
   .l-forse { fill: var(--voto-forse); }
   .l-forse-c { fill: none; stroke: var(--voto-forse); stroke-width: 1.6; }
   .l-no { fill: var(--voto-no); }
-  .l-vuoto { fill: none; stroke: var(--color-aula-tenue); stroke-width: 1.4; }
+  .l-vuoto { fill: none; stroke: var(--color-aula-tenue); stroke-width: 1.4; opacity: 0.6; }
+  .l-pieno { fill: var(--color-on-aula); }
+  .l-anello { fill: none; stroke: var(--color-on-aula); stroke-width: 1.6; }
 
   .ordine {
     display: grid;

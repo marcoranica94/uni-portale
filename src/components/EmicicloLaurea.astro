@@ -1,0 +1,135 @@
+---
+/**
+ * Emiciclo della laurea (home): 180 seggi, uno per CFU. Ogni materia è un gruppo con tanti seggi
+ * quanti sono i suoi CFU; da sinistra i superati (pieni, nel colore della materia), poi quelli in corso
+ * (anello colorato), poi i futuri (anello tenue). La linea al centro è la maggioranza: 91 CFU.
+ * Ogni gruppo è un link alla sua materia.
+ */
+import { postiEmiciclo, votoTesto, type GruppoLaurea } from '../lib/calcoli';
+
+interface Props {
+  gruppi: GruppoLaurea[];
+  totale: number;
+}
+
+const { gruppi, totale } = Astro.props;
+const L = 340;
+const cx = L / 2;
+const cy = 160;
+const raggio = 60;
+const passo = 13;
+const r = 5.4;
+const posti = postiEmiciclo(totale, { cx, cy, raggio, passo, file: 8 });
+
+// Seggi in fila da sinistra: ogni gruppo prende i suoi CFU; quelli non coperti dal piano restano liberi.
+let i = 0;
+const blocchi = gruppi.map((g) => {
+  const seggi = posti.slice(i, i + g.cfu);
+  i += g.cfu;
+  return { g, seggi };
+});
+const liberi = posti.slice(i);
+const STATI = { superato: 'superato', 'in-corso': 'in corso', 'da-seguire': 'da seguire' } as const;
+const descrivi = (g: GruppoLaurea) =>
+  `${g.nome}, ${g.cfu} CFU: ${g.stato === 'superato' && g.voto ? `superato con ${votoTesto(g.voto)}` : STATI[g.stato]}`;
+const cfuDi = (s: GruppoLaurea['stato']) => gruppi.filter((g) => g.stato === s).reduce((n, g) => n + g.cfu, 0);
+const alto = Math.max(0, Math.min(...posti.map((p) => p.y)) - r - 6);
+---
+
+<figure class="laurea">
+  <svg viewBox={`0 ${alto} ${L} ${cy + r + 4 - alto}`} role="group" aria-label={`Aula della laurea: ${cfuDi('superato')} CFU superati su ${totale}`}>
+    {blocchi.map(({ g, seggi }) => (
+      <a href={`/materie/${g.slug}`} class:list={['gruppo', `gruppo--${g.stato}`]} style={`--s: var(--seggio-${g.colore})`} aria-label={descrivi(g)} data-descr={descrivi(g)}>
+        <title>{descrivi(g)}</title>
+        {seggi.map((p) => <circle cx={p.x} cy={p.y} r={g.stato === 'superato' ? r : r - 0.9} />)}
+      </a>
+    ))}
+    {liberi.map((p) => <circle class="libero" cx={p.x} cy={p.y} r={r - 0.9} />)}
+    <line class="maggioranza" x1={cx} y1={cy - raggio + r + 6} x2={cx} y2={alto + 2} />
+  </svg>
+  <figcaption class="laurea__didascalia" aria-live="polite">Tocca un gruppo di seggi per aprire la materia.</figcaption>
+</figure>
+
+<script>
+  // Didascalia: dice quale materia è sotto il puntatore o il focus.
+  document.querySelectorAll<HTMLElement>('.laurea').forEach((aula) => {
+    const didascalia = aula.querySelector<HTMLElement>('.laurea__didascalia')!;
+    const base = didascalia.textContent ?? '';
+    const mostra = (e: Event) => {
+      const g = (e.target as Element).closest<SVGAElement>('.gruppo');
+      didascalia.textContent = g?.dataset.descr ?? base;
+    };
+    aula.addEventListener('pointerover', mostra);
+    aula.addEventListener('focusin', mostra);
+    aula.addEventListener('pointerleave', () => (didascalia.textContent = base));
+    aula.addEventListener('focusout', () => (didascalia.textContent = base));
+  });
+</script>
+
+<style>
+  .laurea {
+    /* Colori delle materie nella versione chiara: leggibili sul verde d'aula in entrambi i temi */
+    --seggio-1: #e8866c;
+    --seggio-2: #5fc0b2;
+    --seggio-3: #d9b064;
+    --seggio-4: #ad97e0;
+    --seggio-5: #9ccc6b;
+    --seggio-6: #86a9dc;
+    --seggio-7: #df89a7;
+    --seggio-8: #73bad6;
+    margin: 0;
+    display: grid;
+    gap: var(--space-2);
+  }
+  svg {
+    display: block;
+    width: 100%;
+    height: auto;
+    overflow: visible;
+  }
+  .gruppo {
+    cursor: pointer;
+    outline: none;
+    transition: opacity var(--dur) var(--ease);
+  }
+  .gruppo--superato circle {
+    fill: var(--s);
+  }
+  .gruppo--in-corso circle {
+    fill: none;
+    stroke: var(--s);
+    stroke-width: 1.7;
+  }
+  .gruppo--da-seguire circle,
+  .libero {
+    fill: none;
+    stroke: var(--color-aula-tenue);
+    stroke-width: 1.2;
+    opacity: 0.5;
+  }
+  /* Sotto il puntatore o con il focus: il gruppo resta acceso, gli altri si attenuano */
+  .laurea:has(.gruppo:hover, .gruppo:focus-visible) .gruppo:not(:hover, :focus-visible),
+  .laurea:has(.gruppo:hover, .gruppo:focus-visible) .libero {
+    opacity: 0.3;
+  }
+  .gruppo:focus-visible circle {
+    stroke: var(--color-on-aula);
+    stroke-width: 1.7;
+  }
+  .gruppo--da-seguire:is(:hover, :focus-visible) circle {
+    opacity: 1;
+  }
+  .maggioranza {
+    stroke: var(--color-on-aula);
+    stroke-width: 1.5;
+    stroke-dasharray: 3 3;
+    opacity: 0.8;
+    pointer-events: none;
+  }
+  .laurea__didascalia {
+    min-height: 1.5em;
+    font-size: var(--text-sm);
+    color: var(--color-aula-tenue);
+    text-align: center;
+  }
+</style>
