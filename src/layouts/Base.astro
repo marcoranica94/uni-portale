@@ -2,11 +2,11 @@
 import '@fontsource/titillium-web/latin-400.css';
 import '@fontsource/titillium-web/latin-600.css';
 import '@fontsource/titillium-web/latin-700.css';
-import '@fontsource/titillium-web/latin-900.css';
 import '../styles/global.css';
 import Nav from '../components/Nav.astro';
 import SceltaTema from '../components/SceltaTema.astro';
 import Promemoria from '../components/Promemoria.astro';
+import Ricerca from '../components/Ricerca.astro';
 
 interface Props {
   title: string;
@@ -23,7 +23,8 @@ const { title, description = 'Portale di studio personale - Scienze politiche e 
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="description" content={description} />
     <meta name="robots" content="noindex, nofollow" />
-    <meta name="theme-color" content="#f3f5f2" media="(prefers-color-scheme: light)" />
+    <meta name="uni-ui" content="2026-11-11" />
+    <meta name="theme-color" content="#f8faf8" media="(prefers-color-scheme: light)" />
     <meta name="theme-color" content="#0e1a15" media="(prefers-color-scheme: dark)" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <!-- App sulla schermata Home (serve anche alle notifiche su iPhone). Il manifest passa da Cloudflare Access: va chiesto con i cookie. -->
@@ -43,59 +44,91 @@ const { title, description = 'Portale di studio personale - Scienze politiche e 
     </script>
   </head>
   <body>
+    <a class="salta" href="#contenuto">Vai al contenuto</a>
     <Nav />
-    <main class="page">
+    <main class="page" id="contenuto" tabindex="-1">
       <slot />
       <footer class="piede">
-        <Promemoria />
-        <SceltaTema />
+        <a href="/agente">Agente locale</a>
+        <a href="/materie#crediti">Crediti immagini</a>
+        <details class="preferenze" id="preferenze">
+          <summary>Preferenze</summary>
+          <div class="preferenze__corpo"><SceltaTema /><Promemoria /></div>
+        </details>
       </footer>
     </main>
+    {Astro.url.pathname.replace(/\/$/, '') !== '/cerca' && (
+      <dialog class="ricerca-dialogo" id="ricerca-dialogo" aria-labelledby="cerca-titolo">
+        <button class="ricerca-chiudi" type="button" aria-label="Chiudi ricerca" data-chiudi-ricerca>Chiudi <span aria-hidden="true">×</span></button>
+        <Ricerca modale />
+      </dialog>
+    )}
     <script>
       // Service worker: solo per le notifiche (nessuna cache delle pagine).
       if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {});
     </script>
     <script>
-      // Scorciatoia globale: "/" apre la ricerca negli appunti (spenta mentre scrivi in un campo).
+      const dialogo = document.querySelector<HTMLDialogElement>('#ricerca-dialogo');
+      const apriRicerca = () => {
+        if (!dialogo || !matchMedia('(min-width: 800px)').matches) { location.href = '/cerca'; return; }
+        if (!dialogo.open) dialogo.showModal();
+        dialogo.querySelector<HTMLInputElement>('#q')?.focus();
+        document.dispatchEvent(new Event('uni:search'));
+      };
+      document.querySelectorAll<HTMLAnchorElement>('a[data-search]').forEach((link) => link.addEventListener('click', (e) => {
+        if (!dialogo || !matchMedia('(min-width: 800px)').matches || e.metaKey || e.ctrlKey || e.altKey || e.shiftKey || e.button !== 0) return;
+        e.preventDefault(); apriRicerca();
+      }));
+      dialogo?.querySelector('[data-chiudi-ricerca]')?.addEventListener('click', () => dialogo.close());
+      dialogo?.addEventListener('keydown', (e) => { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); dialogo.close(); } });
       document.addEventListener('keydown', (e) => {
-        if (e.key !== '/' || e.metaKey || e.ctrlKey || e.altKey) return;
+        if (e.key !== '/' || e.metaKey || e.ctrlKey || e.altKey || e.repeat) return;
         const t = e.target as HTMLElement | null;
         if (t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))) return;
-        const campo = document.getElementById('q');
         e.preventDefault();
-        if (campo) campo.focus();
-        else location.href = '/cerca';
+        if (!dialogo) document.querySelector<HTMLInputElement>('#q')?.focus();
+        else apriRicerca();
+      });
+
+      // Un link a calendario, kit o istruzioni apre anche gli eventuali dettagli che lo contengono.
+      const rivela = (hash: string) => {
+        if (!hash) return;
+        let id: string;
+        try { id = decodeURIComponent(hash.slice(1)); } catch { return; }
+        const target = document.getElementById(id);
+        let nodo: HTMLElement | null = target;
+        let aperto = false;
+        while (nodo) { if (nodo instanceof HTMLDetailsElement && !nodo.open) { nodo.open = true; aperto = true; } nodo = nodo.parentElement; }
+        if (aperto) requestAnimationFrame(() => target?.scrollIntoView({ block: 'start' }));
+      };
+      rivela(location.hash);
+      addEventListener('hashchange', () => rivela(location.hash));
+      document.addEventListener('click', (e) => {
+        const link = (e.target as Element).closest<HTMLAnchorElement>('a[href*="#"]');
+        if (link && link.origin === location.origin && link.pathname === location.pathname && link.search === location.search) rivela(link.hash);
       });
     </script>
   </body>
 </html>
 
 <style>
-  .page {
-    width: 100%;
-    max-width: var(--content-max);
-    margin: 0 auto;
-    padding-block: var(--space-5) calc(var(--nav-bottom-height) + var(--space-6) + env(safe-area-inset-bottom, 0px));
-    padding-left: max(var(--space-4), env(safe-area-inset-left, 0px));
-    padding-right: max(var(--space-4), env(safe-area-inset-right, 0px));
-    display: grid;
-    gap: var(--space-6);
-    align-content: start;
-  }
-  .piede {
-    display: grid;
-    gap: var(--space-5);
-    padding-top: var(--space-5);
-    border-top: var(--border);
-  }
-  /* Da 1024 px: barra laterale fissa, contenuto centrato nello spazio a destra */
-  @media (min-width: 1024px) {
-    body {
-      padding-left: var(--nav-width);
-    }
-    .page {
-      padding: var(--space-6) var(--space-6) var(--space-7);
-      gap: var(--space-7);
-    }
-  }
+  .page { width: 100%; max-width: var(--content-max); margin: 0 auto; padding: 28px max(22px, env(safe-area-inset-right, 0px)) calc(var(--nav-bottom-height) + 28px + env(safe-area-inset-bottom, 0px)) max(22px, env(safe-area-inset-left, 0px)); display: grid; gap: 32px; align-content: start; }
+  .page:focus { outline: none; }
+  .salta { position: absolute; top: 0; left: 16px; transform: translateY(-150%); z-index: 40; background: var(--color-surface); color: var(--color-ink); padding: 14px; }
+  .salta:focus { transform: translateY(0); }
+  .piede { display: flex; flex-wrap: wrap; align-items: baseline; gap: 12px 24px; padding-top: 20px; margin-top: 4px; border-top: var(--border); color: var(--color-ink-muted); font-size: var(--text-sm); }
+  .piede > a { color: var(--color-ink-muted); min-height: var(--tap-min); display: inline-flex; align-items: center; }
+  .preferenze { flex: 1 1 100%; }
+  .preferenze summary { min-height: var(--tap-min); display: flex; align-items: center; gap: 8px; cursor: pointer; list-style: none; }
+  .preferenze summary::before { content: '+'; font-size: 18px; }
+  .preferenze[open] summary::before { content: '−'; }
+  .preferenze summary::-webkit-details-marker { display: none; }
+  .preferenze__corpo { display: grid; gap: 24px; padding: 16px 0 8px; }
+  @media (min-width: 800px) { .page { padding: 40px 40px 32px; gap: 36px; } .preferenze { flex: initial; margin-left: auto; } .preferenze[open] { flex-basis: 100%; margin-left: 0; } }
+  @media (max-width: 370px) { .page { padding-inline: 16px; } }
+
+  .ricerca-dialogo { width: min(780px, calc(100% - 40px)); max-height: min(82dvh, 850px); padding: 24px 32px 32px; margin: 8vh auto auto; border: var(--border); border-radius: 18px; background: var(--color-surface); color: var(--color-ink); box-shadow: var(--shadow-raised); overscroll-behavior: contain; }
+  .ricerca-dialogo::backdrop { background: rgb(7 26 18 / .4); backdrop-filter: blur(4px); }
+  .ricerca-chiudi { display: flex; align-items: center; gap: 12px; min-height: var(--tap-min); margin: 0 0 12px auto; padding: 0 8px; background: none; border: 0; color: var(--color-ink-muted); font: inherit; font-size: var(--text-sm); cursor: pointer; }
+  .ricerca-chiudi span { font-size: 24px; }
 </style>

@@ -1,0 +1,411 @@
+[
+  {
+    "path": "/",
+    "width": 1440,
+    "status": 200,
+    "title": "Uni",
+    "overflow": 0,
+    "nav": {
+      "x": 0,
+      "y": 0,
+      "width": 224,
+      "height": 960,
+      "top": 0,
+      "right": 224,
+      "bottom": 960,
+      "left": 0
+    },
+    "main": {
+      "x": 256,
+      "y": 0,
+      "width": 1152,
+      "height": 1157.53125,
+      "top": 0,
+      "right": 1408,
+      "bottom": 1157.53125,
+      "left": 256
+    },
+    "images": 0,
+    "svg": 9,
+    "h1": "Nessun seggio ancora",
+    "aboveFold": [
+      "Gli organi dell'Unione europea",
+      "Ripasso di oggi",
+      "Materie in corso"
+    ]
+  },
+  {
+    "path": "/materie",
+    "width": 1440,
+    "status": 200,
+    "title": "Materie · Uni",
+    "overflow": 0,
+    "nav": {
+      "x": 0,
+      "y": 0,
+      "width": 224,
+      "height": 960,
+      "top": 0,
+      "right": 224,
+      "bottom": 960,
+      "left": 0
+    },
+    "main": {
+      "x": 256,
+      "y": 0,
+      "width": 1152,
+      "height": 2000.171875,
+      "top": 0,
+      "right": 1408,
+      "bottom": 2000.171875,
+      "left": 256
+    },
+    "images": 0,
+    "svg": 7,
+    "h1": "Materie",
+    "aboveFold": [
+      "Con appunti pronti",
+      "1º anno",
+      "2º anno"
+    ]
+  },
+  {
+    "path": "/materie/sociologia",
+    "width": 1440,
+    "status": 200,
+    "title": "Sociologia · Uni",
+    "overflow": 0,
+    "nav": {
+      "x": 0,
+      "y": 0,
+      "width": 224,
+      "height": 960,
+      "top": 0,
+      "right": 224,
+      "bottom": 960,
+      "left": 0
+    },
+    "main": {
+      "x": 256,
+      "y": 0,
+      "width": 1152,
+      "height": 3063.203125,
+      "top": 0,
+      "right": 1408,
+      "bottom": 3063.203125,
+      "left": 256
+    },
+    "images": 0,
+    "svg": 56,
+    "h1": "Fondamenti di sociologia generale",
+    "aboveFold": [
+      "L'aula è ancora vuota",
+      "Calendario fino all'appello",
+      "Kit d'esame",
+      "Simulazione d'esame"
+    ]
+  },
+  {
+    "path": "/percorso",
+    "width": 1440,
+    "status": 200,
+    "title": "Percorso · Uni",
+    "overflow": 0,
+    "nav": {
+      "x": 0,
+      "y": 0,
+      "width": 224,
+      "height": 960,
+      "top": 0,
+      "right": 224,
+      "bottom": 960,
+      "left": 0
+    },
+    "main": {
+      "x": 256,
+      "y": 0,
+      "width": 1152,
+      "height": 1314.15625,
+      "top": 0,
+      "right": 1408,
+      "bottom": 1314.15625,
+      "left": 256
+    },
+    "images": 0,
+    "svg": 37,
+    "h1": "Percorso",
+    "aboveFold": [
+      "I semestre",
+      "II semestre",
+      "Annuale"
+    ]
+  },
+  {
+    "path": "/libretto",
+    "width": 1440,
+    "status": 200,
+    "title": "Libretto · Uni",
+    "overflow": 0,
+    "nav": {
+      "x": 0,
+      "y": 0,
+      "width": 224,
+      "height": 960,
+      "top": 0,
+      "right": 224,
+      "bottom": 960,
+      "left": 0
+    },
+    "main": {
+      "x": 256,
+      "y": 0,
+      "width": 1152,
+      "height": 2571.125,
+      "top": 0,
+      "right": 1408,
+      "bottom": 2571.125,
+      "left": 256
+    },
+    "images": 0,
+    "svg": 29,
+    "h1": "Libretto",
+    "aboveFold": [
+      "1º anno"
+    ]
+  },
+  {
+    "path": "/cerca",
+    "width": 1440,
+    "status": 200,
+    "title": "Cerca · Uni",
+    "overflow": 0,
+    "nav": {
+      "x": 0,
+      "y": 0,
+      "width": 224,
+      "height": 960,
+      "top": 0,
+      "right": 224,
+      "bottom": 960,
+      "left": 0
+    },
+    "main": {
+      "x": 256,
+      "y": 0,
+      "width": 1152,
+      "height": 474.578125,
+      "top": 0,
+      "right": 1408,
+      "bottom": 474.578125,
+      "left": 256
+    },
+    "images": 0,
+    "svg": 6,
+    "h1": "Cerca negli appunti",
+    "aboveFold": [
+      "Promemoria"
+    ]
+  },
+  {
+    "path": "/",
+    "width": 390,
+    "status": 200,
+    "title": "Uni",
+    "overflow": 0,
+    "nav": {
+      "x": 0,
+      "y": 895,
+      "width": 390,
+      "height": 65,
+      "top": 895,
+      "right": 390,
+      "bottom": 960,
+      "left": 0
+    },
+    "main": {
+      "x": 0,
+      "y": 0,
+      "width": 390,
+      "height": 1785.828125,
+      "top": 0,
+      "right": 390,
+      "bottom": 1785.828125,
+      "left": 0
+    },
+    "images": 0,
+    "svg": 9,
+    "h1": "Nessun seggio ancora",
+    "aboveFold": [
+      "Gli organi dell'Unione europea"
+    ]
+  },
+  {
+    "path": "/materie",
+    "width": 390,
+    "status": 200,
+    "title": "Materie · Uni",
+    "overflow": 0,
+    "nav": {
+      "x": 0,
+      "y": 895,
+      "width": 390,
+      "height": 65,
+      "top": 895,
+      "right": 390,
+      "bottom": 960,
+      "left": 0
+    },
+    "main": {
+      "x": 0,
+      "y": 0,
+      "width": 390,
+      "height": 2040.171875,
+      "top": 0,
+      "right": 390,
+      "bottom": 2040.171875,
+      "left": 0
+    },
+    "images": 0,
+    "svg": 7,
+    "h1": "Materie",
+    "aboveFold": [
+      "Con appunti pronti",
+      "1º anno",
+      "2º anno"
+    ]
+  },
+  {
+    "path": "/materie/sociologia",
+    "width": 390,
+    "status": 200,
+    "title": "Sociologia · Uni",
+    "overflow": 0,
+    "nav": {
+      "x": 0,
+      "y": 895,
+      "width": 390,
+      "height": 65,
+      "top": 895,
+      "right": 390,
+      "bottom": 960,
+      "left": 0
+    },
+    "main": {
+      "x": 0,
+      "y": 0,
+      "width": 390,
+      "height": 4469.859375,
+      "top": 0,
+      "right": 390,
+      "bottom": 4469.859375,
+      "left": 0
+    },
+    "images": 0,
+    "svg": 56,
+    "h1": "Fondamenti di sociologia generale",
+    "aboveFold": [
+      "L'aula è ancora vuota"
+    ]
+  },
+  {
+    "path": "/percorso",
+    "width": 390,
+    "status": 200,
+    "title": "Percorso · Uni",
+    "overflow": 0,
+    "nav": {
+      "x": 0,
+      "y": 895,
+      "width": 390,
+      "height": 65,
+      "top": 895,
+      "right": 390,
+      "bottom": 960,
+      "left": 0
+    },
+    "main": {
+      "x": 0,
+      "y": 0,
+      "width": 390,
+      "height": 1586.15625,
+      "top": 0,
+      "right": 390,
+      "bottom": 1586.15625,
+      "left": 0
+    },
+    "images": 0,
+    "svg": 37,
+    "h1": "Percorso",
+    "aboveFold": [
+      "I semestre",
+      "II semestre",
+      "Annuale"
+    ]
+  },
+  {
+    "path": "/libretto",
+    "width": 390,
+    "status": 200,
+    "title": "Libretto · Uni",
+    "overflow": 0,
+    "nav": {
+      "x": 0,
+      "y": 895,
+      "width": 390,
+      "height": 65,
+      "top": 895,
+      "right": 390,
+      "bottom": 960,
+      "left": 0
+    },
+    "main": {
+      "x": 0,
+      "y": 0,
+      "width": 390,
+      "height": 2721,
+      "top": 0,
+      "right": 390,
+      "bottom": 2721,
+      "left": 0
+    },
+    "images": 0,
+    "svg": 29,
+    "h1": "Libretto",
+    "aboveFold": [
+      "1º anno"
+    ]
+  },
+  {
+    "path": "/cerca",
+    "width": 390,
+    "status": 200,
+    "title": "Cerca · Uni",
+    "overflow": 0,
+    "nav": {
+      "x": 0,
+      "y": 895,
+      "width": 390,
+      "height": 65,
+      "top": 895,
+      "right": 390,
+      "bottom": 960,
+      "left": 0
+    },
+    "main": {
+      "x": 0,
+      "y": 0,
+      "width": 390,
+      "height": 519.578125,
+      "top": 0,
+      "right": 390,
+      "bottom": 519.578125,
+      "left": 0
+    },
+    "images": 0,
+    "svg": 6,
+    "h1": "Cerca negli appunti",
+    "aboveFold": [
+      "Promemoria"
+    ]
+  }
+]

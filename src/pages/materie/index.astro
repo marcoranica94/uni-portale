@@ -1,7 +1,8 @@
 ---
 import Base from '../../layouts/Base.astro';
-import TipoEsame from '../../components/TipoEsame.astro';
+import CartaMateria from '../../components/CartaMateria.astro';
 import { getMaterie } from '../../lib/percorso';
+import { creditiImmagini } from '../../lib/immagini';
 
 const materie = await getMaterie();
 const conAppunti = materie.filter((m) => m.appunti);
@@ -9,104 +10,49 @@ const anni = [1, 2, 3].map((anno) => ({ anno, voci: materie.filter((m) => m.anno
 ---
 
 <Base title="Materie">
-  <header class="intro">
-    <p class="eyebrow">Studio</p>
-    <h1>Materie</h1>
-  </header>
-
-  <section class="stack" aria-labelledby="con-appunti">
-    <h2 id="con-appunti">Con appunti pronti</h2>
-    <ul class="righe pannello">
-      {conAppunti.map((m) => (
-        <li>
-          <a class="riga riga--grande" href={`/materie/${m.slug}`} style={`--c: var(--materia-${m.colore})`}>
-            <span class="punto"></span>
-            <span class="riga__testo">
-              <span class="riga__nome">{m.nome}</span>
-              <span class="riga__meta">
-                <TipoEsame tipo={m.esame.tipo} />
-                <span class="num">{m.cfu}&nbsp;CFU</span>
-                <span class="num">{m.appunti!.capitoli.length} pagine di appunti</span>
-              </span>
-            </span>
-          </a>
-        </li>
-      ))}
-    </ul>
+  <header class="intro"><h1>Materie</h1><p>Appunti e allenamento, nello stesso posto.</p></header>
+  <section class="biblioteca" aria-labelledby="con-appunti">
+    <div class="titolo-sezione"><h2 id="con-appunti">Con appunti pronti</h2><span>{conAppunti.length} materie</span></div>
+    <div class="corsi">{conAppunti.map((m) => <CartaMateria materia={m} />)}</div>
+    {!conAppunti.length && <p class="muted">I materiali compariranno qui quando saranno pronti.</p>}
   </section>
-
-  {anni.map((a) => (
-    <section class="stack" aria-labelledby={`altre-${a.anno}`}>
-      <h2 id={`altre-${a.anno}`}>{a.anno}º anno</h2>
-      <ul class="righe pannello">
-        {a.voci.map((m) => (
-          <li>
-            <a class="riga" href={`/materie/${m.slug}`} style={`--c: var(--materia-${m.colore})`}>
-              <span class="punto"></span>
-              <span class="riga__testo">
-                <span class="riga__nome">{m.nome}</span>
-              </span>
-              <span class="muted num">{m.cfu}&nbsp;CFU</span>
-            </a>
-          </li>
-        ))}
-      </ul>
-    </section>
-  ))}
+  <section class="piano" aria-labelledby="piano-titolo">
+    <div class="titolo-sezione"><h2 id="piano-titolo">Nel piano di studi</h2><a href="/percorso">Apri il percorso</a></div>
+    {anni.map((a) => (
+      <details class="anno" open={a.anno === 1}>
+        <summary>{a.anno}º anno <span>{a.voci.length} materie</span></summary>
+        <ul>{a.voci.map((m) => <li><a href={`/materie/${m.slug}`}><span>{m.nome}</span><span class="num">{m.cfu}&nbsp;CFU</span></a></li>)}</ul>
+      </details>
+    ))}
+  </section>
+  <details class="crediti" id="crediti">
+    <summary>Fotografie e crediti</summary>
+    <ul>{creditiImmagini.map((f) => <li><a href={f.fonte}>{f.autore}</a>. {f.urlLicenza ? <a href={f.urlLicenza}>{f.licenza}</a> : f.licenza}. Immagine ridimensionata e ritagliata nella presentazione.</li>)}</ul>
+    <p>Le fotografie identificano le materie e non illustrano le tesi degli appunti. I ritagli dell’immagine di Montecitorio mantengono la licenza CC BY-SA 3.0.</p>
+  </details>
 </Base>
 
 <style>
-  .intro {
-    display: grid;
-    gap: var(--space-1);
-  }
-  .stack {
-    gap: var(--space-2);
-  }
-  .riga {
-    display: flex;
-    align-items: center;
-    gap: var(--space-3);
-    min-height: 52px;
-    padding: var(--space-3) var(--space-4);
-    color: var(--color-ink);
-    text-decoration: none;
-  }
-  .riga--grande {
-    min-height: 72px;
-  }
-  .riga:hover {
-    background: var(--color-surface-muted);
-  }
-  .righe > li:first-child .riga {
-    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
-  }
-  .righe > li:last-child .riga {
-    border-radius: 0 0 var(--radius-lg) var(--radius-lg);
-  }
-  .righe > li:only-child .riga {
-    border-radius: var(--radius-lg);
-  }
-  .riga__testo {
-    flex: 1;
-    display: grid;
-    gap: 2px;
-    min-width: 0;
-  }
-  .riga__nome {
-    font-weight: var(--weight-semibold);
-    overflow-wrap: anywhere;
-  }
-  .riga--grande .riga__nome {
-    font-family: var(--font-serif);
-    font-size: var(--text-lg);
-  }
-  .riga__meta {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0 var(--space-3);
-    align-items: center;
-    font-size: var(--text-sm);
-    color: var(--color-ink-muted);
-  }
+  .intro { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 12px 24px; }
+  .intro p { font-size: var(--text-sm); color: var(--color-ink-muted); }
+  .biblioteca, .piano { display: grid; gap: 22px; }
+  .titolo-sezione { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+  .titolo-sezione h2 { font-size: var(--text-xl); font-weight: var(--weight-medium); }
+  .titolo-sezione > span, .titolo-sezione > a { font-size: var(--text-sm); color: var(--color-ink-muted); }
+  .corsi { display: grid; gap: 30px; }
+  .anno { border-top: var(--border); }
+  .anno summary { display: flex; align-items: center; gap: 12px; min-height: 60px; cursor: pointer; font-size: var(--text-lg); font-weight: var(--weight-medium); list-style: none; }
+  .anno summary::-webkit-details-marker { display: none; }
+  .anno summary::after { content: '+'; font-size: 22px; font-weight: 400; }
+  .anno[open] summary::after { content: '−'; }
+  .anno summary span { margin-left: auto; font-size: var(--text-sm); font-weight: 400; color: var(--color-ink-muted); }
+  .anno ul { list-style: none; margin: 0; padding: 0; }
+  .anno li + li { border-top: var(--border); }
+  .anno li a { display: flex; justify-content: space-between; align-items: center; gap: 24px; min-height: 60px; padding: 12px 0; color: var(--color-ink); text-decoration: none; }
+  .anno li a > span:last-child { flex: none; color: var(--color-ink-muted); font-size: var(--text-sm); }
+  .anno li a:hover { color: var(--color-accent); }
+  .crediti { max-width: 75ch; color: var(--color-ink-muted); font-size: var(--text-sm); }
+  .crediti summary { min-height: var(--tap-min); cursor: pointer; }
+  .crediti ul { padding-left: 20px; display: grid; gap: 12px; }
+  @media (min-width: 800px) { .corsi { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 28px; } }
 </style>

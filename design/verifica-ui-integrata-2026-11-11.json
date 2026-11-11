@@ -1,0 +1,835 @@
+{
+  "pages": [
+    {
+      "path": "/",
+      "width": 390,
+      "theme": "light",
+      "status": 200,
+      "overflow": 0,
+      "h1": 1,
+      "broken": [],
+      "cta": {
+        "x": 22,
+        "y": 355,
+        "width": 232.21875,
+        "height": 44,
+        "top": 355,
+        "right": 254.21875,
+        "bottom": 399,
+        "left": 22
+      },
+      "nav": {
+        "x": 0,
+        "y": 779,
+        "width": 390,
+        "height": 65,
+        "top": 779,
+        "right": 390,
+        "bottom": 844,
+        "left": 0
+      },
+      "axe": []
+    },
+    {
+      "path": "/materie/",
+      "width": 390,
+      "theme": "light",
+      "status": 200,
+      "overflow": 0,
+      "h1": 1,
+      "broken": [],
+      "nav": {
+        "x": 0,
+        "y": 779,
+        "width": 390,
+        "height": 65,
+        "top": 779,
+        "right": 390,
+        "bottom": 844,
+        "left": 0
+      },
+      "axe": []
+    },
+    {
+      "path": "/materie/sociologia/",
+      "width": 390,
+      "theme": "light",
+      "status": 200,
+      "overflow": 0,
+      "h1": 1,
+      "broken": [],
+      "nav": {
+        "x": 0,
+        "y": 779,
+        "width": 390,
+        "height": 65,
+        "top": 779,
+        "right": 390,
+        "bottom": 844,
+        "left": 0
+      },
+      "chapters": 548.28125,
+      "axe": []
+    },
+    {
+      "path": "/materie/diritto-pubblico/",
+      "width": 390,
+      "theme": "light",
+      "status": 200,
+      "overflow": 0,
+      "h1": 1,
+      "broken": [],
+      "nav": {
+        "x": 0,
+        "y": 779,
+        "width": 390,
+        "height": 65,
+        "top": 779,
+        "right": 390,
+        "bottom": 844,
+        "left": 0
+      },
+      "chapters": 485.6875,
+      "axe": []
+    },
+    {
+      "path": "/libretto/",
+      "width": 390,
+      "theme": "light",
+      "status": 200,
+      "overflow": 0,
+      "h1": 1,
+      "broken": [],
+      "nav": {
+        "x": 0,
+        "y": 779,
+        "width": 390,
+        "height": 65,
+        "top": 779,
+        "right": 390,
+        "bottom": 844,
+        "left": 0
+      },
+      "axe": []
+    },
+    {
+      "path": "/percorso/",
+      "width": 390,
+      "theme": "light",
+      "status": 200,
+      "overflow": 0,
+      "h1": 1,
+      "broken": [],
+      "nav": {
+        "x": 0,
+        "y": 779,
+        "width": 390,
+        "height": 65,
+        "top": 779,
+        "right": 390,
+        "bottom": 844,
+        "left": 0
+      },
+      "axe": []
+    },
+    {
+      "path": "/cerca/",
+      "width": 390,
+      "theme": "light",
+      "status": 200,
+      "overflow": 0,
+      "h1": 1,
+      "broken": [],
+      "nav": {
+        "x": 0,
+        "y": 779,
+        "width": 390,
+        "height": 65,
+        "top": 779,
+        "right": 390,
+        "bottom": 844,
+        "left": 0
+      },
+      "axe": []
+    },
+    {
+      "path": "/ripasso/",
+      "width": 390,
+      "theme": "light",
+      "status": 200,
+      "overflow": 0,
+      "h1": 1,
+      "broken": [],
+      "nav": {
+        "x": 0,
+        "y": 779,
+        "width": 390,
+        "height": 65,
+        "top": 779,
+        "right": 390,
+        "bottom": 844,
+        "left": 0
+      },
+      "axe": []
+    },
+    {
+      "path": "/",
+      "width": 390,
+      "theme": "dark",
+      "status": 200,
+      "overflow": 0,
+      "h1": 1,
+      "broken": [],
+      "cta": {
+        "x": 22,
+        "y": 355,
+        "width": 232.21875,
+        "height": 44,
+        "top": 355,
+        "right": 254.21875,
+        "bottom": 399,
+        "left": 22
+      },
+      "nav": {
+        "x": 0,
+        "y": 779,
+        "width": 390,
+        "height": 65,
+        "top": 779,
+        "right": 390,
+        "bottom": 844,
+        "left": 0
+      }
+    },
+    {
+      "path": "/materie/",
+      "width": 390,
+      "theme": "dark",
+      "status": 200,
+      "overflow": 0,
+      "h1": 1,
+      "broken": [],
+      "nav": {
+        "x": 0,
+        "y": 779,
+        "width": 390,
+        "height": 65,
+        "top": 779,
+        "right": 390,
+        "bottom": 844,
+        "left": 0
+      }
+    },
+    {
+      "path": "/materie/sociologia/",
+      "width": 390,
+      "theme": "dark",
+      "status": 200,
+      "overflow": 0,
+      "h1": 1,
+      "broken": [],
+      "nav": {
+        "x": 0,
+        "y": 779,
+        "width": 390,
+        "height": 65,
+        "top": 779,
+        "right": 390,
+        "bottom": 844,
+        "left": 0
+      },
+      "chapters": 548.28125
+    },
+    {
+      "path": "/materie/diritto-pubblico/",
+      "width": 390,
+      "theme": "dark",
+      "status": 200,
+      "overflow": 0,
+      "h1": 1,
+      "broken": [],
+      "nav": {
+        "x": 0,
+        "y": 779,
+        "width": 390,
+        "height": 65,
+        "top": 779,
+        "right": 390,
+        "bottom": 844,
+        "left": 0
+      },
+      "chapters": 485.6875
+    },
+    {
+      "path": "/libretto/",
+      "width": 390,
+      "theme": "dark",
+      "status": 200,
+      "overflow": 0,
+      "h1": 1,
+      "broken": [],
+      "nav": {
+        "x": 0,
+        "y": 779,
+        "width": 390,
+        "height": 65,
+        "top": 779,
+        "right": 390,
+        "bottom": 844,
+        "left": 0
+      }
+    },
+    {
+      "path": "/percorso/",
+      "width": 390,
+      "theme": "dark",
+      "status": 200,
+      "overflow": 0,
+      "h1": 1,
+      "broken": [],
+      "nav": {
+        "x": 0,
+        "y": 779,
+        "width": 390,
+        "height": 65,
+        "top": 779,
+        "right": 390,
+        "bottom": 844,
+        "left": 0
+      }
+    },
+    {
+      "path": "/cerca/",
+      "width": 390,
+      "theme": "dark",
+      "status": 200,
+      "overflow": 0,
+      "h1": 1,
+      "broken": [],
+      "nav": {
+        "x": 0,
+        "y": 779,
+        "width": 390,
+        "height": 65,
+        "top": 779,
+        "right": 390,
+        "bottom": 844,
+        "left": 0
+      }
+    },
+    {
+      "path": "/ripasso/",
+      "width": 390,
+      "theme": "dark",
+      "status": 200,
+      "overflow": 0,
+      "h1": 1,
+      "broken": [],
+      "nav": {
+        "x": 0,
+        "y": 779,
+        "width": 390,
+        "height": 65,
+        "top": 779,
+        "right": 390,
+        "bottom": 844,
+        "left": 0
+      }
+    },
+    {
+      "path": "/",
+      "width": 1440,
+      "theme": "light",
+      "status": 200,
+      "overflow": 0,
+      "h1": 1,
+      "broken": [],
+      "cta": {
+        "x": 780.828125,
+        "y": 488.890625,
+        "width": 417.375,
+        "height": 44,
+        "top": 488.890625,
+        "right": 1198.203125,
+        "bottom": 532.890625,
+        "left": 780.828125
+      },
+      "nav": {
+        "x": 0,
+        "y": 0,
+        "width": 1440,
+        "height": 69,
+        "top": 0,
+        "right": 1440,
+        "bottom": 69,
+        "left": 0
+      }
+    },
+    {
+      "path": "/materie/",
+      "width": 1440,
+      "theme": "light",
+      "status": 200,
+      "overflow": 0,
+      "h1": 1,
+      "broken": [],
+      "nav": {
+        "x": 0,
+        "y": 0,
+        "width": 1440,
+        "height": 69,
+        "top": 0,
+        "right": 1440,
+        "bottom": 69,
+        "left": 0
+      }
+    },
+    {
+      "path": "/materie/sociologia/",
+      "width": 1440,
+      "theme": "light",
+      "status": 200,
+      "overflow": 0,
+      "h1": 1,
+      "broken": [],
+      "nav": {
+        "x": 0,
+        "y": 0,
+        "width": 1440,
+        "height": 69,
+        "top": 0,
+        "right": 1440,
+        "bottom": 69,
+        "left": 0
+      },
+      "chapters": 410.359375
+    },
+    {
+      "path": "/materie/diritto-pubblico/",
+      "width": 1440,
+      "theme": "light",
+      "status": 200,
+      "overflow": 0,
+      "h1": 1,
+      "broken": [],
+      "nav": {
+        "x": 0,
+        "y": 0,
+        "width": 1440,
+        "height": 69,
+        "top": 0,
+        "right": 1440,
+        "bottom": 69,
+        "left": 0
+      },
+      "chapters": 410.359375
+    },
+    {
+      "path": "/libretto/",
+      "width": 1440,
+      "theme": "light",
+      "status": 200,
+      "overflow": 0,
+      "h1": 1,
+      "broken": [],
+      "nav": {
+        "x": 0,
+        "y": 0,
+        "width": 1440,
+        "height": 69,
+        "top": 0,
+        "right": 1440,
+        "bottom": 69,
+        "left": 0
+      }
+    },
+    {
+      "path": "/percorso/",
+      "width": 1440,
+      "theme": "light",
+      "status": 200,
+      "overflow": 0,
+      "h1": 1,
+      "broken": [],
+      "nav": {
+        "x": 0,
+        "y": 0,
+        "width": 1440,
+        "height": 69,
+        "top": 0,
+        "right": 1440,
+        "bottom": 69,
+        "left": 0
+      }
+    },
+    {
+      "path": "/cerca/",
+      "width": 1440,
+      "theme": "light",
+      "status": 200,
+      "overflow": 0,
+      "h1": 1,
+      "broken": [],
+      "nav": {
+        "x": 0,
+        "y": 0,
+        "width": 1440,
+        "height": 69,
+        "top": 0,
+        "right": 1440,
+        "bottom": 69,
+        "left": 0
+      }
+    },
+    {
+      "path": "/ripasso/",
+      "width": 1440,
+      "theme": "light",
+      "status": 200,
+      "overflow": 0,
+      "h1": 1,
+      "broken": [],
+      "nav": {
+        "x": 0,
+        "y": 0,
+        "width": 1440,
+        "height": 69,
+        "top": 0,
+        "right": 1440,
+        "bottom": 69,
+        "left": 0
+      }
+    },
+    {
+      "path": "/",
+      "width": 1440,
+      "theme": "dark",
+      "status": 200,
+      "overflow": 0,
+      "h1": 1,
+      "broken": [],
+      "cta": {
+        "x": 780.828125,
+        "y": 488.890625,
+        "width": 417.375,
+        "height": 44,
+        "top": 488.890625,
+        "right": 1198.203125,
+        "bottom": 532.890625,
+        "left": 780.828125
+      },
+      "nav": {
+        "x": 0,
+        "y": 0,
+        "width": 1440,
+        "height": 69,
+        "top": 0,
+        "right": 1440,
+        "bottom": 69,
+        "left": 0
+      },
+      "axe": []
+    },
+    {
+      "path": "/materie/",
+      "width": 1440,
+      "theme": "dark",
+      "status": 200,
+      "overflow": 0,
+      "h1": 1,
+      "broken": [],
+      "nav": {
+        "x": 0,
+        "y": 0,
+        "width": 1440,
+        "height": 69,
+        "top": 0,
+        "right": 1440,
+        "bottom": 69,
+        "left": 0
+      },
+      "axe": []
+    },
+    {
+      "path": "/materie/sociologia/",
+      "width": 1440,
+      "theme": "dark",
+      "status": 200,
+      "overflow": 0,
+      "h1": 1,
+      "broken": [],
+      "nav": {
+        "x": 0,
+        "y": 0,
+        "width": 1440,
+        "height": 69,
+        "top": 0,
+        "right": 1440,
+        "bottom": 69,
+        "left": 0
+      },
+      "chapters": 410.359375,
+      "axe": []
+    },
+    {
+      "path": "/materie/diritto-pubblico/",
+      "width": 1440,
+      "theme": "dark",
+      "status": 200,
+      "overflow": 0,
+      "h1": 1,
+      "broken": [],
+      "nav": {
+        "x": 0,
+        "y": 0,
+        "width": 1440,
+        "height": 69,
+        "top": 0,
+        "right": 1440,
+        "bottom": 69,
+        "left": 0
+      },
+      "chapters": 410.359375,
+      "axe": []
+    },
+    {
+      "path": "/libretto/",
+      "width": 1440,
+      "theme": "dark",
+      "status": 200,
+      "overflow": 0,
+      "h1": 1,
+      "broken": [],
+      "nav": {
+        "x": 0,
+        "y": 0,
+        "width": 1440,
+        "height": 69,
+        "top": 0,
+        "right": 1440,
+        "bottom": 69,
+        "left": 0
+      },
+      "axe": []
+    },
+    {
+      "path": "/percorso/",
+      "width": 1440,
+      "theme": "dark",
+      "status": 200,
+      "overflow": 0,
+      "h1": 1,
+      "broken": [],
+      "nav": {
+        "x": 0,
+        "y": 0,
+        "width": 1440,
+        "height": 69,
+        "top": 0,
+        "right": 1440,
+        "bottom": 69,
+        "left": 0
+      },
+      "axe": []
+    },
+    {
+      "path": "/cerca/",
+      "width": 1440,
+      "theme": "dark",
+      "status": 200,
+      "overflow": 0,
+      "h1": 1,
+      "broken": [],
+      "nav": {
+        "x": 0,
+        "y": 0,
+        "width": 1440,
+        "height": 69,
+        "top": 0,
+        "right": 1440,
+        "bottom": 69,
+        "left": 0
+      },
+      "axe": []
+    },
+    {
+      "path": "/ripasso/",
+      "width": 1440,
+      "theme": "dark",
+      "status": 200,
+      "overflow": 0,
+      "h1": 1,
+      "broken": [],
+      "nav": {
+        "x": 0,
+        "y": 0,
+        "width": 1440,
+        "height": 69,
+        "top": 0,
+        "right": 1440,
+        "bottom": 69,
+        "left": 0
+      },
+      "axe": []
+    },
+    {
+      "path": "/",
+      "width": 320,
+      "overflow": 0
+    },
+    {
+      "path": "/materie/sociologia/",
+      "width": 320,
+      "overflow": 0
+    },
+    {
+      "path": "/",
+      "width": 768,
+      "overflow": 0
+    },
+    {
+      "path": "/materie/sociologia/",
+      "width": 768,
+      "overflow": 0
+    },
+    {
+      "path": "/",
+      "width": 1024,
+      "overflow": 0
+    },
+    {
+      "path": "/materie/sociologia/",
+      "width": 1024,
+      "overflow": 0
+    }
+  ],
+  "interactions": [
+    {
+      "name": "Ancora calendario apre il contenitore",
+      "width": 390,
+      "theme": "light",
+      "ok": true
+    },
+    {
+      "name": "Capitolo accessibile direttamente",
+      "width": 390,
+      "theme": "light",
+      "ok": true
+    },
+    {
+      "name": "Allenamento del capitolo disponibile",
+      "width": 390,
+      "theme": "light",
+      "ok": true
+    },
+    {
+      "name": "Modulo voto: idoneità disabilita voto e lode",
+      "width": 390,
+      "theme": "light",
+      "ok": true
+    },
+    {
+      "name": "Ancora calendario apre il contenitore",
+      "width": 390,
+      "theme": "dark",
+      "ok": true
+    },
+    {
+      "name": "Capitolo accessibile direttamente",
+      "width": 390,
+      "theme": "dark",
+      "ok": true
+    },
+    {
+      "name": "Allenamento del capitolo disponibile",
+      "width": 390,
+      "theme": "dark",
+      "ok": true
+    },
+    {
+      "name": "Modulo voto: idoneità disabilita voto e lode",
+      "width": 390,
+      "theme": "dark",
+      "ok": true
+    },
+    {
+      "name": "Ricerca reale in dialogo, Escape e URL conservato",
+      "width": 1440,
+      "theme": "light",
+      "ok": true
+    },
+    {
+      "name": "Tema rapido persistente e sincronizzato",
+      "width": 1440,
+      "theme": "light",
+      "ok": true
+    },
+    {
+      "name": "Ancora calendario apre il contenitore",
+      "width": 1440,
+      "theme": "light",
+      "ok": true
+    },
+    {
+      "name": "Capitolo accessibile direttamente",
+      "width": 1440,
+      "theme": "light",
+      "ok": true
+    },
+    {
+      "name": "Allenamento del capitolo disponibile",
+      "width": 1440,
+      "theme": "light",
+      "ok": true
+    },
+    {
+      "name": "Modulo voto: idoneità disabilita voto e lode",
+      "width": 1440,
+      "theme": "light",
+      "ok": true
+    },
+    {
+      "name": "Ricerca reale in dialogo, Escape e URL conservato",
+      "width": 1440,
+      "theme": "dark",
+      "ok": true
+    },
+    {
+      "name": "Tema rapido persistente e sincronizzato",
+      "width": 1440,
+      "theme": "dark",
+      "ok": true
+    },
+    {
+      "name": "Ancora calendario apre il contenitore",
+      "width": 1440,
+      "theme": "dark",
+      "ok": true
+    },
+    {
+      "name": "Capitolo accessibile direttamente",
+      "width": 1440,
+      "theme": "dark",
+      "ok": true
+    },
+    {
+      "name": "Allenamento del capitolo disponibile",
+      "width": 1440,
+      "theme": "dark",
+      "ok": true
+    },
+    {
+      "name": "Modulo voto: idoneità disabilita voto e lode",
+      "width": 1440,
+      "theme": "dark",
+      "ok": true
+    },
+    {
+      "name": "Testo al 200% a 320 px",
+      "ok": true,
+      "overflow": 0
+    }
+  ],
+  "failures": [],
+  "errors": []
+}

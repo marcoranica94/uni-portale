@@ -29,8 +29,8 @@ const anni = [1, 2, 3].map((anno) => {
 
 <Base title="Percorso">
   <header class="intro">
-    <p class="eyebrow">Curriculum Economico-giuridico · coorte 2026/27</p>
     <h1>Percorso</h1>
+    <p class="eyebrow">Curriculum Economico-giuridico, coorte 2026/27</p>
     <p class="muted">Tre anni, {CFU_TOTALI} CFU. L'asterisco indica un tipo d'esame preso dal catalogo: il programma non è ancora pubblicato.</p>
   </header>
 
@@ -220,4 +220,18 @@ const anni = [1, 2, 3].map((anno) => {
     min-width: 3.5rem;
     text-align: right;
   }
+
+  .intro h1 { font-weight: var(--weight-medium); }
+  .intro > .muted { max-width: 68ch; font-size: var(--text-sm); }
+  .anno__testa { background: transparent; border-radius: 0; border-top: var(--border); padding: 20px 0; }
+  .anno__testa:hover { background: transparent; color: var(--color-accent); }
+  .anno__nome { font-size: 1.75rem; font-weight: var(--weight-medium); }
+  .anno__barra { height: 3px; }
+  .anno__corpo { padding-top: 8px; }
+  .periodo { border-left: 2px solid var(--color-rule); padding-left: 20px; }
+  .periodo__titolo { font-size: var(--text-base); color: var(--color-ink); margin-bottom: 4px; }
+  .voce { padding-inline: 0; }
+  .voce__nome { flex-basis: 16rem; }
+  .righe.pannello { border-top: 0; }
+  @media (max-width: 600px) { .voce__nome { flex-basis: calc(100% - 30px); } .voce__meta { padding-left: 21px; } .periodo { padding-left: 14px; } }
 </style>

@@ -1,6 +1,6 @@
 /*
-  Token del portale Uni — direzione "Emiciclo" (10/11/2026).
-  L'aula parlamentare: il verde d'aula è la superficie che si ricorda (emiciclo, barra laterale),
+  Token del portale Uni — direzione Emiciclo, composizione approvata l'11/11/2026.
+  L'aula parlamentare: il verde d'aula è la superficie che si ricorda nell'emiciclo;
   i colori del tabellone di voto dicono la padronanza (favorevole = solido, astenuto = in crescita,
   contrario = debole, assente = mai provato) e non si usano per altro. Carattere unico: Titillium Web,
   quello dei siti della Pubblica amministrazione italiana. Chiaro e scuro progettati insieme.
@@ -8,7 +8,7 @@
 */
 :root {
   /* Superfici: fondo verde-grigio freddo, carta bianca, incassata, in rilievo, navigazione */
-  --color-paper: #f3f5f2;
+  --color-paper: #f8faf8;
   --color-surface: #ffffff;
   --color-surface-muted: #e9eeea;
   --color-raised: #dfe6e1;
@@ -22,12 +22,12 @@
   --color-aula-filo: rgb(255 255 255 / 0.14);
 
   /* Testo: inchiostro verde scuro */
-  --color-ink: #10261c;
-  --color-ink-muted: #4c5d54;
+  --color-ink: #182c24;
+  --color-ink-muted: #58665f;
   --color-ink-faint: #5b6c63;
 
   /* Filetti: decorativo, controlli (>= 3:1) */
-  --color-rule: #d6ddd8;
+  --color-rule: #dbe3dd;
   --color-rule-strong: #7a8a80;
 
   /* Accento di testo (link, voce attiva, focus) */
@@ -70,7 +70,7 @@
   /* Elevazione: solo per elementi sopraelevati (barra in basso, menu) */
   --shadow-raised: 0 1px 0 rgb(16 38 28 / 0.06), 0 8px 24px rgb(16 38 28 / 0.1);
 
-  /* Tipografia: un solo carattere, Titillium Web; il peso fa la gerarchia (900 per le frasi d'aula) */
+  /* Tipografia: un solo carattere, Titillium Web; pesi 400, 600 e 700 per una gerarchia meno massiccia */
   --font-serif: 'Titillium Web', 'Segoe UI', Arial, sans-serif;
   --font-sans: 'Titillium Web', 'Segoe UI', Arial, sans-serif;
   --font-mono: 'Titillium Web', 'Segoe UI', Arial, sans-serif;
@@ -80,14 +80,14 @@
   --text-base: 1rem;      /* 16: corpo */
   --text-lg: 1.125rem;    /* 18 */
   --text-xl: 1.375rem;    /* 22 */
-  --text-2xl: 2rem;       /* 32: titoli di pagina */
+  --text-2xl: 2.5rem;     /* 40: titoli di pagina */
   --text-3xl: 2.75rem;    /* 44: frasi d'aula, cifre */
   --leading-tight: 1.1;
   --leading-normal: 1.5;
   --weight-regular: 400;
   --weight-medium: 600;
-  --weight-semibold: 700;
-  --weight-bold: 900;
+  --weight-semibold: 600;
+  --weight-bold: 700;
 
   /* Spazi: base 4 */
   --space-1: 0.25rem;
@@ -112,8 +112,8 @@
   --dur: 140ms;
 
   /* Layout */
-  --content-max: 72rem;
-  --nav-width: 14rem;
+  --content-max: 79rem;
+  --nav-top-height: 4.25rem;
   --nav-bottom-height: 4rem;
 
   color-scheme: light;

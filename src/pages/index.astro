@@ -1,6 +1,7 @@
 ---
 import Base from '../layouts/Base.astro';
 import EmicicloLaurea from '../components/EmicicloLaurea.astro';
+import CartaMateria from '../components/CartaMateria.astro';
 import { getMaterie, CFU_TOTALI } from '../lib/percorso';
 import { getVoti, riepilogo, statoMateria, formatoMedia } from '../lib/voti';
 import { statoAgenti, getKit } from '../lib/coda';
@@ -74,8 +75,7 @@ const mancano = Math.max(0, CFU_TOTALI - r.cfu);
 const cfuDi = (stato: (typeof gruppi)[number]['stato']) => gruppi.filter((g) => g.stato === stato).reduce((n, g) => n + g.cfu, 0);
 const cfuInCorso = cfuDi('in-corso');
 const esamiInCorso = gruppi.filter((g) => g.stato === 'in-corso').length;
-const titoloAula =
-  r.cfu === 0 ? 'Nessun seggio ancora' : mancano === 0 ? 'Aula piena: sei laureato' : `Ti mancano ${mancano} CFU alla laurea`;
+const titoloAula = mancano === 0 ? 'Laurea completata' : 'La tua laurea';
 
 // Data e settimana del semestre, dalle date ufficiali del piano di studi ("14/09/2026 - 18/12/2026").
 const ora = new Date();
@@ -116,23 +116,19 @@ const altre = inCorso
 
 <Base title="Uni">
   <header class="seduta">
-    <p class="seduta__data">Seduta di {dataEstesa}</p>
-    <a class:list={['agente', { 'agente--acceso': agente.online }]} href="/agente">
-      <span class="agente__luce" aria-hidden="true"></span>{agente.online ? 'Agente acceso' : 'Agente spento'}
-    </a>
-    {semestre && <p class="seduta__settimana">Settimana {semestre.corrente} di {semestre.settimane} del {semestre.nome}, lezioni fino al {semestre.fineLezioni}</p>}
+    <div><p class="seduta__corso">Scienze politiche e strategie globali</p><h1 class="seduta__data">{dataEstesa}</h1></div>
+    {semestre && <p class="seduta__settimana">Settimana {semestre.corrente} di {semestre.settimane}<br />{semestre.nome}</p>}
   </header>
 
   <div class="tavolo">
     <section class="aula" aria-labelledby="aula-titolo">
-      <p class="aula__materia">Scienze politiche e strategie globali, {CFU_TOTALI} CFU</p>
-      <h1 id="aula-titolo" class="aula__titolo">{titoloAula}</h1>
+      <div class="aula__testa"><h2 id="aula-titolo" class="aula__titolo">{titoloAula}</h2><span>{CFU_TOTALI} CFU</span></div>
       <EmicicloLaurea gruppi={gruppi} totale={CFU_TOTALI} />
       <div class="aula__esito">
         <p class="aula__numero"><strong>{r.cfu}</strong> CFU su {CFU_TOTALI}</p>
         <p class="aula__nota">
           {esamiInCorso
-            ? `In corso ${esamiInCorso === 1 ? 'un esame' : `${esamiInCorso} esami`} da ${cfuInCorso} CFU: superati, ${cfuInCorso === 1 ? 'il seggio si colora' : 'i loro seggi si colorano'}.`
+            ? `${esamiInCorso === 1 ? 'Un esame in corso' : `${esamiInCorso} esami in corso`}, ${cfuInCorso} CFU da conquistare.`
             : 'Ogni seggio è un CFU: si colora quando superi l\'esame.'}
         </p>
       </div>
@@ -146,7 +142,7 @@ const altre = inCorso
     <div class="lato">
     {adesso && (
       <section class="ordine" aria-labelledby="ordine-titolo">
-        <p class="ordine__etichetta">Ordine del giorno</p>
+        <p class="ordine__etichetta">{mirata ? `Da allenare in ${adesso.m.breve}` : `Oggi, ${adesso.m.breve}`}</p>
         <h2 id="ordine-titolo" class="ordine__titolo">
           {mirata ? mirata.capitolo.titolo : simulabile ? (orale ? `Interrogazione di ${adesso.m.breve}` : `Prova scritta di ${adesso.m.breve}`) : `Ripasso di ${adesso.m.breve}`}
         </h2>
@@ -157,7 +153,7 @@ const altre = inCorso
             : simulabile
               ? haProvato
                 ? `${orale ? 'Tre domande a voce' : 'Sei domande'} su tutto il programma, circa ${minuti} minuti.`
-                : `Prima seduta: ${orale ? 'tre domande a voce' : 'sei domande'} su tutto il programma, circa ${minuti} minuti, per vedere da dove partire.${orale && agente.online ? ' Il docente rilancia dove resti scoperto.' : ''}`
+                : `Prima prova: ${orale ? 'tre domande a voce' : 'sei domande'} su tutto il programma, circa ${minuti} minuti, per vedere da dove partire.${orale && agente.online ? ' Il docente rilancia dove resti scoperto.' : ''}`
               : adesso.kit
                 ? `Il kit d'esame è pronto: prepara le domande dalla scheda della materia, intanto ripassa dagli appunti.`
                 : "Riparti dagli appunti: dal kit d'esame nasceranno le simulazioni."}
@@ -171,7 +167,7 @@ const altre = inCorso
               {orale && <input type="hidden" name="modalita" value="orale" />}
               {orale && agente.online && <input type="hidden" name="dal_vivo" value="1" />}
               {mirata && <input type="hidden" name="argomento" value={mirata.capitolo.id} />}
-              <button class="btn btn--primary btn--largo" type="submit" data-tasto="s">Inizia <span class="tasto" aria-hidden="true">S</span></button>
+              <button class="btn btn--primary btn--largo" type="submit" data-tasto="s">{mirata ? 'Allena questo argomento' : orale ? "Inizia l’orale" : 'Inizia la prova'} <span class="tasto" aria-hidden="true">S</span></button>
             </form>
           ) : (
             appuntiMossa && <a class="btn btn--primary btn--largo" href={appuntiMossa} data-tasto="s">Apri gli appunti <span class="tasto" aria-hidden="true">S</span></a>
@@ -217,36 +213,23 @@ const altre = inCorso
       )}
     </section>
 
-    <section class="altre" aria-labelledby="altre-titolo">
-      <h2 id="altre-titolo" class="visually-hidden">Materie in corso</h2>
-      <ul class="altre__lista">
-        {altre.map((x) => (
-          <li>
-            <a class="altra" href={`/materie/${x.m.slug}`} style={`--c: var(--materia-${x.m.colore})`}>
-              <span class="altra__nome">
-                <b>{x.m.nome}</b>
-                <small>{x.m.esame.tipo === 'Da definire' ? 'esame da definire' : `esame ${x.m.esame.tipo.toLowerCase()}`}, {x.tot ? `${x.tot} argomenti` : "kit d'esame da preparare"}</small>
-              </span>
-              <span class="barretta" role="img" aria-label={x.tot ? `${x.si} solidi, ${x.forse} in crescita, ${x.no} deboli su ${x.tot}` : 'Nessun argomento'}>
-                {x.tot > 0 && (
-                  <>
-                    <i class="b-si" style={`width: ${(x.si / x.tot) * 100}%`}></i>
-                    <i class="b-forse" style={`width: ${(x.forse / x.tot) * 100}%`}></i>
-                    <i class="b-no" style={`width: ${(x.no / x.tot) * 100}%`}></i>
-                  </>
-                )}
-              </span>
-            </a>
-          </li>
-        ))}
-      </ul>
-      <dl class="numeri">
-        <div><dt>Media</dt><dd><a href="/libretto"><strong>{formatoMedia(r.media)}</strong></a></dd></div>
-        <div><dt>Base di laurea</dt><dd><a href="/libretto"><strong>{r.baseLaurea ?? '–'}</strong>{r.baseLaurea !== null && ' su 110'}</a></dd></div>
-        <div><dt>Giorni di studio di fila</dt><dd><strong>{studio.diFila}</strong></dd></div>
-      </dl>
-    </section>
+    <a class:list={['agente', { 'agente--acceso': agente.online }]} href="/agente"><span class="agente__luce" aria-hidden="true"></span>{agente.online ? 'Agente locale acceso' : 'Agente locale spento'}<span class="agente__gestisci">Gestisci</span></a>
     </div>
+  </div>
+
+  <section class="biblioteca" aria-labelledby="appunti-titolo">
+    <div class="titolo-sezione"><h2 id="appunti-titolo">I tuoi appunti</h2><a href="/materie">Tutte le materie</a></div>
+    <div class="biblioteca__corsi">
+      {materie.filter((m) => m.appunti).map((m) => <CartaMateria materia={m} compatta padronanza={altre.find((x) => x.m.slug === m.slug)} />)}
+    </div>
+    {altre.some((x) => !x.m.appunti) && (
+      <div class="altre"><h3>Altre materie in corso</h3><ul>{altre.filter((x) => !x.m.appunti).map(({ m }) => <li><a href={`/materie/${m.slug}`}>{m.breve}<span>{m.cfu} CFU</span></a></li>)}</ul></div>
+    )}
+  </section>
+
+  <div class="numeri" aria-label="Riepilogo dello studio">
+    {r.media !== null ? <p>Media <a href="/libretto"><strong>{formatoMedia(r.media)}</strong></a>{r.baseLaurea !== null && <> — base di laurea <strong>{r.baseLaurea}/110</strong></>}</p> : <a href="/libretto">Registra il primo voto nel libretto</a>}
+    {studio.diFila > 0 && <p><strong>{studio.diFila}</strong> {studio.diFila === 1 ? 'giorno di studio' : 'giorni di studio di fila'}</p>}
   </div>
 </Base>
 
@@ -265,342 +248,61 @@ const altre = inCorso
 </script>
 
 <style>
-  .seduta {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: space-between;
-    align-items: baseline;
-    gap: var(--space-1) var(--space-4);
-  }
-  .seduta__data {
-    font-size: var(--text-lg);
-    font-weight: var(--weight-semibold);
-  }
-  .seduta__settimana {
-    flex-basis: 100%;
-    font-size: var(--text-sm);
-    color: var(--color-ink-muted);
-  }
-  .agente {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--space-2);
-    font-size: var(--text-sm);
-    font-weight: var(--weight-semibold);
-    color: var(--color-ink-muted);
-    text-decoration: none;
-  }
-  .agente__luce {
-    position: relative;
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    border: 1.5px solid var(--color-ink-faint);
-  }
-  .agente--acceso .agente__luce {
-    border: 0;
-    background: var(--voto-si);
-  }
-  .agente--acceso .agente__luce::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    border-radius: 50%;
-    background: var(--voto-si);
-    animation: impulso 2.4s var(--ease) infinite;
-  }
-  @keyframes impulso {
-    0% { transform: scale(1); opacity: 0.6; }
-    70%, 100% { transform: scale(3); opacity: 0; }
-  }
-
-  /* Tavolo: l'aula domina; su computer ordine del giorno, ripasso e altre materie stanno nella colonna a destra */
-  .tavolo,
-  .lato {
-    display: grid;
-    gap: var(--space-4);
-    align-content: start;
-  }
-  @media (min-width: 900px) {
-    .tavolo {
-      grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
-      align-items: start;
-    }
-  }
-
-  .aula {
-    display: grid;
-    gap: var(--space-3);
-    padding: var(--space-5) var(--space-4) var(--space-4);
-    border-radius: var(--radius-aula);
-    background: var(--color-aula);
-    color: var(--color-on-aula);
-  }
-  .aula__materia {
-    font-size: var(--text-sm);
-    font-weight: var(--weight-semibold);
-    color: var(--color-aula-tenue);
-  }
-  .aula__titolo {
-    font-size: clamp(1.75rem, 5vw, var(--text-3xl));
-    font-weight: var(--weight-bold);
-    line-height: 1;
-    letter-spacing: -0.015em;
-  }
-  .aula :global(.laurea) {
-    margin-top: var(--space-2);
-  }
-  .aula__esito {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: space-between;
-    align-items: baseline;
-    gap: var(--space-2) var(--space-4);
-  }
-  .aula__numero {
-    font-size: var(--text-lg);
-    font-weight: var(--weight-semibold);
-    color: var(--color-aula-tenue);
-    font-variant-numeric: tabular-nums;
-  }
-  .aula__numero strong {
-    font-size: var(--text-3xl);
-    font-weight: var(--weight-bold);
-    line-height: 1;
-    color: var(--color-on-aula);
-  }
-  .aula__nota {
-    max-width: 30ch;
-    font-size: var(--text-sm);
-    color: var(--color-aula-tenue);
-  }
-  .aula__legenda {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-1) var(--space-4);
-    margin: 0;
-    padding: var(--space-3) 0 0;
-    border-top: 1px solid var(--color-aula-filo);
-    list-style: none;
-    font-size: var(--text-sm);
-    font-weight: var(--weight-semibold);
-    font-variant-numeric: tabular-nums;
-  }
-  .aula__legenda li {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-  }
-  .aula__legenda svg {
-    width: 12px;
-    height: 12px;
-  }
-  .l-si { fill: var(--voto-si); }
-  .l-forse { fill: var(--voto-forse); }
-  .l-forse-c { fill: none; stroke: var(--voto-forse); stroke-width: 1.6; }
-  .l-no { fill: var(--voto-no); }
-  .l-vuoto { fill: none; stroke: var(--color-aula-tenue); stroke-width: 1.4; opacity: 0.6; }
-  .l-pieno { fill: var(--color-on-aula); }
-  .l-anello { fill: none; stroke: var(--color-on-aula); stroke-width: 1.6; }
-
-  .ordine {
-    display: grid;
-    gap: var(--space-2);
-    padding: var(--space-5);
-    border-radius: var(--radius-lg);
-    background: var(--color-surface);
-    border: var(--border);
-  }
-  .ordine__etichetta {
-    font-size: var(--text-sm);
-    font-weight: var(--weight-semibold);
-    color: var(--color-danger);
-  }
-  .ordine__titolo {
-    font-size: var(--text-xl);
-    font-weight: var(--weight-semibold);
-    line-height: 1.15;
-  }
-  .ordine__capitolo {
-    font-size: var(--text-sm);
-    color: var(--color-ink-muted);
-  }
-  .ordine__testo {
-    color: var(--color-ink-muted);
-    max-width: 52ch;
-  }
-  .ordine__calendario {
-    font-size: var(--text-sm);
-    font-weight: var(--weight-semibold);
-  }
-  .ordine__calendario a {
-    color: var(--color-accent);
-    text-underline-offset: 0.2em;
-  }
-  .ordine__azioni {
-    display: flex;
-    gap: var(--space-2);
-    padding-top: var(--space-2);
-  }
-  .ordine__azioni form,
-  .ordine__azioni > .btn--primary {
-    flex: 1;
-    display: grid;
-    margin: 0;
-  }
-  .ordine__altro {
-    margin: 0;
-  }
-  .ordine__altro button {
-    padding: var(--space-1) 0;
-    border: 0;
-    background: none;
-    font: inherit;
-    font-size: var(--text-sm);
-    font-weight: var(--weight-semibold);
-    color: var(--color-accent);
-    text-decoration: underline;
-    text-underline-offset: 0.2em;
-    cursor: pointer;
-  }
-
-  /* Ripasso di oggi: riga quieta sotto l'ordine del giorno, il pulsante solo se c'è da fare */
-  .ripasso {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--space-3) var(--space-4);
-    padding: var(--space-4) var(--space-5);
-    border-radius: var(--radius-lg);
-    border: var(--border);
-    background: var(--color-surface);
-  }
-  .ripasso__testo {
-    display: grid;
-    gap: var(--space-1);
-    flex: 1 1 16rem;
-  }
-  .ripasso__titolo {
-    font-size: var(--text-lg);
-    font-weight: var(--weight-semibold);
-    line-height: 1.2;
-  }
-  .ripasso__testo p {
-    font-size: var(--text-sm);
-    color: var(--color-ink-muted);
-    max-width: 46ch;
-  }
-  .ripasso__materie {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-1) var(--space-4);
-    margin: 0;
-    padding: 0;
-    list-style: none;
-    font-size: var(--text-sm);
-    font-weight: var(--weight-semibold);
-  }
-  .ripasso__materie a {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    color: inherit;
-    text-decoration: none;
-  }
-  .ripasso__materie a:hover {
-    text-decoration: underline;
-  }
-  .ripasso__vai {
-    flex: 0 0 auto;
-    min-width: 9rem;
-  }
-
-  .altre {
-    display: grid;
-    gap: var(--space-3);
-  }
-  .altre__lista {
-    margin: 0;
-    padding: 0;
-    list-style: none;
-    display: grid;
-    gap: 1px;
-    border-radius: var(--radius-lg);
-    overflow: hidden;
-    border: var(--border);
-    background: var(--color-rule);
-  }
-  .altra {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    gap: var(--space-3);
-    align-items: center;
-    padding: var(--space-3) var(--space-4);
-    background: var(--color-surface);
-    color: inherit;
-    text-decoration: none;
-  }
-  .altra:hover {
-    background: var(--color-surface-muted);
-  }
-  .altra__nome {
-    display: grid;
-    min-width: 0;
-  }
-  .altra__nome b {
-    font-weight: var(--weight-semibold);
-    line-height: 1.2;
-  }
-  .altra__nome small {
-    font-size: var(--text-xs);
-    color: var(--color-ink-muted);
-  }
-  .barretta {
-    display: flex;
-    width: 76px;
-    height: 8px;
-    border-radius: 4px;
-    overflow: hidden;
-    background: var(--color-raised);
-  }
-  .b-si { background: var(--voto-si); }
-  .b-forse { background: var(--voto-forse); }
-  .b-no { background: var(--voto-no); }
-  .numeri {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 1px;
-    margin: 0;
-    border-radius: var(--radius-lg);
-    overflow: hidden;
-    border: var(--border);
-    background: var(--color-rule);
-  }
-  .numeri > div {
-    display: grid;
-    gap: 2px;
-    align-content: start;
-    padding: var(--space-3) var(--space-4);
-    background: var(--color-surface);
-  }
-  .numeri dt {
-    font-size: var(--text-xs);
-    color: var(--color-ink-muted);
-  }
-  .numeri dd {
-    margin: 0;
-    font-size: var(--text-sm);
-    color: var(--color-ink-muted);
-    font-variant-numeric: tabular-nums;
-  }
-  .numeri dd a {
-    color: inherit;
-    text-decoration: none;
-  }
-  .numeri strong {
-    font-size: var(--text-xl);
-    font-weight: var(--weight-bold);
-    color: var(--color-ink);
-  }
+  .seduta { display: flex; align-items: end; justify-content: space-between; gap: 16px; }
+  .seduta__corso { font-size: var(--text-sm); color: var(--color-ink-muted); margin-bottom: 8px; }
+  .seduta__data { font-weight: var(--weight-medium); }
+  .seduta__data::first-letter { text-transform: uppercase; }
+  .seduta__settimana { font-size: var(--text-sm); color: var(--color-ink-muted); text-align: right; flex: none; }
+  .tavolo { display: grid; gap: 28px; align-items: stretch; }
+  .lato { display: grid; grid-template-columns: minmax(0, 1fr); align-content: center; gap: 20px; grid-row: 1; min-width: 0; }
+  .aula { display: flex; flex-direction: column; gap: 16px; padding: 24px; border-radius: var(--radius-aula); background: var(--color-aula); color: var(--color-on-aula); min-width: 0; }
+  .aula__testa { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+  .aula__testa > span { font-size: var(--text-sm); color: var(--color-aula-tenue); }
+  .aula__titolo { font-size: var(--text-xl); font-weight: var(--weight-medium); }
+  .aula :global(.laurea) { margin-top: 8px; }
+  .aula__esito { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 12px 20px; margin-top: auto; }
+  .aula__numero { font-size: var(--text-sm); color: var(--color-aula-tenue); font-variant-numeric: tabular-nums; }
+  .aula__numero strong { font-size: 2.5rem; font-weight: var(--weight-medium); line-height: 1; color: var(--color-on-aula); margin-right: 6px; }
+  .aula__nota { max-width: 25ch; font-size: var(--text-sm); color: var(--color-aula-tenue); }
+  .aula__legenda { display: flex; flex-wrap: wrap; gap: 4px 20px; margin: 0; padding: 14px 0 0; border-top: 1px solid var(--color-aula-filo); list-style: none; font-size: var(--text-xs); font-variant-numeric: tabular-nums; color: var(--color-aula-tenue); }
+  .aula__legenda li { display: inline-flex; align-items: center; gap: 6px; }
+  .aula__legenda svg { width: 10px; height: 10px; }
+  .l-pieno { fill: var(--color-on-aula); } .l-anello { fill: none; stroke: var(--color-on-aula); stroke-width: 1.6; } .l-vuoto { fill: none; stroke: var(--color-aula-tenue); stroke-width: 1.4; opacity: .6; }
+  .ordine { display: grid; grid-template-columns: minmax(0, 1fr); min-width: 0; gap: 12px; padding-bottom: 22px; border-bottom: var(--border); overflow-wrap: anywhere; }
+  .ordine__etichetta { font-size: var(--text-sm); font-weight: var(--weight-medium); color: var(--color-accent); }
+  .ordine__titolo { font-size: clamp(1.75rem, 3vw, 2.375rem); font-weight: var(--weight-medium); line-height: 1.12; letter-spacing: -.015em; max-width: 24ch; }
+  .ordine__capitolo { font-size: var(--text-sm); color: var(--color-ink-muted); }
+  .ordine__testo { color: var(--color-ink-muted); max-width: 48ch; }
+  .ordine__calendario { font-size: var(--text-sm); }
+  .ordine__azioni { display: flex; flex-wrap: wrap; gap: 10px; padding-top: 8px; }
+  .ordine__azioni form { display: grid; min-width: 0; max-width: 100%; margin: 0; flex: 1 1 13rem; }
+  .ordine__altro { margin: 0; }
+  .ordine__altro button { min-height: var(--tap-min); padding: 0; border: 0; background: none; font: inherit; font-size: var(--text-sm); color: var(--color-accent); text-decoration: underline; text-underline-offset: .2em; cursor: pointer; }
+  .ripasso { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+  .ripasso__titolo { font-size: var(--text-lg); }
+  .ripasso__testo { min-width: 0; }
+  .ripasso p { font-size: var(--text-sm); color: var(--color-ink-muted); margin-top: 5px; }
+  .ripasso__vai { flex: none; }
+  .ripasso__materie { list-style: none; padding: 0; margin: 8px 0 0; display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: var(--text-sm); }
+  .ripasso__materie a { display: inline-flex; align-items: center; gap: 6px; min-height: var(--tap-min); }
+  .agente { display: inline-flex; align-items: center; gap: 8px; color: var(--color-ink-muted); text-decoration: none; font-size: var(--text-xs); min-height: 32px; }
+  .agente__luce { width: 7px; height: 7px; border-radius: 50%; border: 1px solid currentColor; flex: none; }
+  .agente--acceso .agente__luce { background: var(--color-success); border-color: var(--color-success); }
+  .agente__gestisci { margin-left: auto; text-decoration: underline; text-underline-offset: .2em; }
+  .biblioteca { display: grid; gap: 22px; }
+  .titolo-sezione { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+  .titolo-sezione h2 { font-size: var(--text-xl); font-weight: var(--weight-medium); }
+  .titolo-sezione a { font-size: var(--text-sm); color: var(--color-ink-muted); }
+  .biblioteca__corsi { display: grid; gap: 24px; }
+  .altre { display: grid; grid-template-columns: 1fr; gap: 8px; border-top: var(--border); padding-top: 20px; }
+  .altre h3 { font-size: var(--text-sm); color: var(--color-ink-muted); font-weight: var(--weight-regular); }
+  .altre ul { display: flex; flex-wrap: wrap; gap: 8px 28px; margin: 0; padding: 0; list-style: none; }
+  .altre a { display: inline-flex; align-items: center; gap: 12px; min-height: var(--tap-min); color: var(--color-ink); font-size: var(--text-sm); text-decoration: none; }
+  .altre a span { color: var(--color-ink-muted); }
+  .altre a:hover { color: var(--color-accent); text-decoration: underline; }
+  .numeri { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px 24px; font-size: var(--text-sm); color: var(--color-ink-muted); }
+  .numeri a { color: var(--color-ink-muted); }
+  @media (min-width: 800px) { .tavolo { grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 42px; } .lato { grid-row: auto; } .aula { padding: 28px 30px 20px; } .biblioteca__corsi { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 28px; } }
+  @media (max-width: 799px) { .seduta { align-items: start; } .seduta__corso { font-size: var(--text-xs); } .seduta__settimana { font-size: var(--text-xs); } .agente { display: none; } }
+  @media (max-width: 370px) { .seduta { display: block; } .seduta__settimana { margin-top: 8px; text-align: left; } .seduta__settimana br { display: none; } .aula { padding-inline: 18px; } }
 </style>

@@ -1,0 +1,27 @@
+---
+import type { ImmagineMateria } from '../lib/immagini';
+
+interface Props {
+  immagine: ImmagineMateria;
+  sizes?: string;
+  priorita?: boolean;
+}
+const { immagine, sizes = '(min-width: 800px) 560px, calc(100vw - 44px)', priorita = false } = Astro.props;
+---
+
+<img
+  src={`/immagini/${immagine.file}-960.jpg`}
+  srcset={`/immagini/${immagine.file}-480.jpg 480w, /immagini/${immagine.file}-960.jpg 960w`}
+  sizes={sizes}
+  width="960"
+  height="640"
+  alt={immagine.alt}
+  style={`object-position: ${immagine.posizione}`}
+  loading={priorita ? 'eager' : 'lazy'}
+  decoding="async"
+  fetchpriority={priorita ? 'high' : 'auto'}
+/>
+
+<style>
+  img { display: block; width: 100%; height: 100%; object-fit: cover; transition: transform 380ms var(--ease); }
+</style>

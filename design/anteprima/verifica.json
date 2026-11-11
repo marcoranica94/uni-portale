@@ -1,0 +1,382 @@
+{
+  "pages": [
+    {
+      "width": 1440,
+      "theme": "light",
+      "view": "oggi",
+      "overflow": 0,
+      "broken": [],
+      "h1": 1,
+      "nav": 68,
+      "cta": {
+        "x": 780.828125,
+        "y": 407.921875,
+        "width": 205.984375,
+        "height": 46,
+        "top": 407.921875,
+        "right": 986.8125,
+        "bottom": 453.921875,
+        "left": 780.828125
+      },
+      "svg": 180
+    },
+    {
+      "width": 1440,
+      "theme": "light",
+      "view": "materie",
+      "overflow": 0,
+      "broken": [],
+      "h1": 1,
+      "nav": 68,
+      "svg": 180
+    },
+    {
+      "width": 1440,
+      "theme": "light",
+      "view": "sociologia",
+      "overflow": 0,
+      "broken": [],
+      "h1": 1,
+      "nav": 68,
+      "cta": {
+        "x": 1056,
+        "y": 513.4375,
+        "width": 232,
+        "height": 46,
+        "top": 513.4375,
+        "right": 1288,
+        "bottom": 559.4375,
+        "left": 1056
+      },
+      "svg": 180
+    },
+    {
+      "width": 1440,
+      "theme": "dark",
+      "view": "oggi",
+      "overflow": 0,
+      "broken": [],
+      "h1": 1,
+      "nav": 68,
+      "cta": {
+        "x": 780.828125,
+        "y": 407.921875,
+        "width": 205.984375,
+        "height": 46,
+        "top": 407.921875,
+        "right": 986.8125,
+        "bottom": 453.921875,
+        "left": 780.828125
+      },
+      "svg": 180
+    },
+    {
+      "width": 1440,
+      "theme": "dark",
+      "view": "materie",
+      "overflow": 0,
+      "broken": [],
+      "h1": 1,
+      "nav": 68,
+      "svg": 180
+    },
+    {
+      "width": 1440,
+      "theme": "dark",
+      "view": "sociologia",
+      "overflow": 0,
+      "broken": [],
+      "h1": 1,
+      "nav": 68,
+      "cta": {
+        "x": 1056,
+        "y": 513.4375,
+        "width": 232,
+        "height": 46,
+        "top": 513.4375,
+        "right": 1288,
+        "bottom": 559.4375,
+        "left": 1056
+      },
+      "svg": 180
+    },
+    {
+      "width": 390,
+      "theme": "light",
+      "view": "oggi",
+      "overflow": 0,
+      "broken": [],
+      "h1": 1,
+      "nav": 60,
+      "cta": {
+        "x": 22,
+        "y": 333.5,
+        "width": 212.375,
+        "height": 46,
+        "top": 333.5,
+        "right": 234.375,
+        "bottom": 379.5,
+        "left": 22
+      },
+      "svg": 180
+    },
+    {
+      "width": 390,
+      "theme": "light",
+      "view": "materie",
+      "overflow": 0,
+      "broken": [],
+      "h1": 1,
+      "nav": 60,
+      "svg": 180
+    },
+    {
+      "width": 390,
+      "theme": "light",
+      "view": "sociologia",
+      "overflow": 0,
+      "broken": [],
+      "h1": 1,
+      "nav": 60,
+      "cta": {
+        "x": 46,
+        "y": 653.8125,
+        "width": 298,
+        "height": 46,
+        "top": 653.8125,
+        "right": 344,
+        "bottom": 699.8125,
+        "left": 46
+      },
+      "svg": 180
+    },
+    {
+      "width": 390,
+      "theme": "dark",
+      "view": "oggi",
+      "overflow": 0,
+      "broken": [],
+      "h1": 1,
+      "nav": 60,
+      "cta": {
+        "x": 22,
+        "y": 333.5,
+        "width": 212.375,
+        "height": 46,
+        "top": 333.5,
+        "right": 234.375,
+        "bottom": 379.5,
+        "left": 22
+      },
+      "svg": 180
+    },
+    {
+      "width": 390,
+      "theme": "dark",
+      "view": "materie",
+      "overflow": 0,
+      "broken": [],
+      "h1": 1,
+      "nav": 60,
+      "svg": 180
+    },
+    {
+      "width": 390,
+      "theme": "dark",
+      "view": "sociologia",
+      "overflow": 0,
+      "broken": [],
+      "h1": 1,
+      "nav": 60,
+      "cta": {
+        "x": 46,
+        "y": 653.8125,
+        "width": 298,
+        "height": 46,
+        "top": 653.8125,
+        "right": 344,
+        "bottom": 699.8125,
+        "left": 46
+      },
+      "svg": 180
+    },
+    {
+      "width": 320,
+      "theme": "light",
+      "view": "oggi",
+      "overflow": 0,
+      "broken": [],
+      "h1": 1,
+      "nav": 60,
+      "cta": {
+        "x": 16,
+        "y": 363.5,
+        "width": 288,
+        "height": 46,
+        "top": 363.5,
+        "right": 304,
+        "bottom": 409.5,
+        "left": 16
+      },
+      "svg": 180
+    },
+    {
+      "width": 320,
+      "theme": "light",
+      "view": "materie",
+      "overflow": 0,
+      "broken": [],
+      "h1": 1,
+      "nav": 60,
+      "svg": 180
+    },
+    {
+      "width": 320,
+      "theme": "light",
+      "view": "sociologia",
+      "overflow": 0,
+      "broken": [],
+      "h1": 1,
+      "nav": 60,
+      "cta": {
+        "x": 40,
+        "y": 676.3125,
+        "width": 240,
+        "height": 46,
+        "top": 676.3125,
+        "right": 280,
+        "bottom": 722.3125,
+        "left": 40
+      },
+      "svg": 180
+    },
+    {
+      "width": 320,
+      "theme": "dark",
+      "view": "oggi",
+      "overflow": 0,
+      "broken": [],
+      "h1": 1,
+      "nav": 60,
+      "cta": {
+        "x": 16,
+        "y": 363.5,
+        "width": 288,
+        "height": 46,
+        "top": 363.5,
+        "right": 304,
+        "bottom": 409.5,
+        "left": 16
+      },
+      "svg": 180
+    },
+    {
+      "width": 320,
+      "theme": "dark",
+      "view": "materie",
+      "overflow": 0,
+      "broken": [],
+      "h1": 1,
+      "nav": 60,
+      "svg": 180
+    },
+    {
+      "width": 320,
+      "theme": "dark",
+      "view": "sociologia",
+      "overflow": 0,
+      "broken": [],
+      "h1": 1,
+      "nav": 60,
+      "cta": {
+        "x": 40,
+        "y": 676.3125,
+        "width": 240,
+        "height": 46,
+        "top": 676.3125,
+        "right": 280,
+        "bottom": 722.3125,
+        "left": 40
+      },
+      "svg": 180
+    }
+  ],
+  "interactions": [
+    {
+      "name": "Ricerca e chiusura Escape",
+      "width": 1440,
+      "ok": true
+    },
+    {
+      "name": "Navigazione materia",
+      "width": 1440,
+      "ok": true
+    },
+    {
+      "name": "Dialogo dimostrativo",
+      "width": 1440,
+      "ok": true
+    },
+    {
+      "name": "Persistenza tema",
+      "width": 1440,
+      "ok": true
+    },
+    {
+      "name": "Ricerca e chiusura Escape",
+      "width": 390,
+      "ok": true
+    },
+    {
+      "name": "Navigazione materia",
+      "width": 390,
+      "ok": true
+    },
+    {
+      "name": "Dialogo dimostrativo",
+      "width": 390,
+      "ok": true
+    },
+    {
+      "name": "Persistenza tema",
+      "width": 390,
+      "ok": true
+    },
+    {
+      "name": "Ricerca e chiusura Escape",
+      "width": 320,
+      "ok": true
+    },
+    {
+      "name": "Navigazione materia",
+      "width": 320,
+      "ok": true
+    },
+    {
+      "name": "Dialogo dimostrativo",
+      "width": 320,
+      "ok": true
+    },
+    {
+      "name": "Persistenza tema",
+      "width": 320,
+      "ok": true
+    }
+  ],
+  "errors": [],
+  "references": [
+    {
+      "name": "linear",
+      "status": "fulfilled"
+    },
+    {
+      "name": "rauno",
+      "status": "fulfilled"
+    },
+    {
+      "name": "itsnicethat",
+      "status": "fulfilled"
+    }
+  ],
+  "failures": []
+}

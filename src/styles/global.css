@@ -40,8 +40,8 @@ h1 {
   font-family: var(--font-sans);
   font-size: var(--text-2xl);
   font-weight: var(--weight-bold);
-  line-height: 1.05;
-  letter-spacing: -0.01em;
+  line-height: 1.13;
+  letter-spacing: -0.025em;
 }
 h2 {
   font-size: var(--text-lg);
@@ -245,3 +245,14 @@ code {
   border-radius: 0;
   border-block: var(--border);
 }
+
+/* Ancore e focus restano visibili sotto la barra superiore e sopra quella mobile. */
+html { scroll-padding-block: 28px calc(var(--nav-bottom-height) + 20px); }
+main { min-width: 0; } input, textarea, select { max-width: 100%; }
+button, summary { touch-action: manipulation; }
+@media (min-width: 800px) { html { scroll-padding-block: calc(var(--nav-top-height) + 24px) 24px; } }
+@media (max-width: 799px) { h1 { font-size: clamp(1.875rem, 7vw, 2.5rem); } }
+/* Transizione fra documenti: nessun router, i moduli continuano a essere nativi. */
+@view-transition { navigation: auto; }
+::view-transition-old(root), ::view-transition-new(root) { animation-duration: 180ms; }
+@media (prefers-reduced-motion: reduce) { @view-transition { navigation: none; } }

@@ -27,7 +27,12 @@
         if (v === 'auto') localStorage.removeItem('tema');
         else localStorage.setItem('tema', v);
       } catch {}
+      document.dispatchEvent(new Event('uni:theme'));
     });
+  });
+  document.addEventListener('uni:theme', () => {
+    const valore = radice.dataset.theme ?? 'auto';
+    document.querySelectorAll<HTMLInputElement>('input[name="tema"]').forEach((input) => input.checked = input.value === valore);
   });
 </script>
 

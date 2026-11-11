@@ -1,0 +1,53 @@
+---
+import type { Materia } from '../lib/percorso';
+import { immagineMateria } from '../lib/immagini';
+import FotoMateria from './FotoMateria.astro';
+
+interface Props {
+  materia: Materia;
+  compatta?: boolean;
+  padronanza?: { tot: number; si: number; forse: number; no: number };
+}
+const { materia: m, compatta = false, padronanza: p } = Astro.props;
+const foto = immagineMateria(m.slug);
+---
+
+<a class:list={['corso', { 'corso--compatto': compatta, 'corso--senza-foto': !foto }]} href={`/materie/${m.slug}`}>
+  {foto && <div class="corso__foto"><FotoMateria immagine={foto} sizes={compatta ? '(min-width: 800px) 160px, 120px' : '(min-width: 800px) 560px, calc(100vw - 44px)'} /></div>}
+  <div class="corso__testo">
+    <p class="corso__meta">{m.esame.tipo === 'Da definire' ? 'Esame da definire' : `Esame ${m.esame.tipo.toLowerCase()}`}, {m.cfu}&nbsp;CFU</p>
+    <h3>{m.breve}</h3>
+    {m.appunti && <p class="corso__meta">{m.appunti.capitoli.length} documenti di appunti</p>}
+    {p && p.tot > 0 && (
+      <div class="preparazione">
+        <span class="barretta" role="img" aria-label={`${p.si} solidi, ${p.forse} in crescita, ${p.no} deboli su ${p.tot} argomenti`}>
+          <i class="si" style={`width: ${p.si / p.tot * 100}%`}></i>
+          <i class="forse" style={`width: ${p.forse / p.tot * 100}%`}></i>
+          <i class="no" style={`width: ${p.no / p.tot * 100}%`}></i>
+        </span>
+        <span>{p.si} di {p.tot} solidi</span>
+      </div>
+    )}
+    <span class="corso__apri">Apri la materia</span>
+  </div>
+</a>
+
+<style>
+  .corso { display: grid; gap: var(--space-4); color: var(--color-ink); text-decoration: none; min-width: 0; align-content: start; }
+  .corso__foto { width: 100%; min-width: 0; aspect-ratio: 2.2; overflow: hidden; border-radius: var(--radius-md); background: var(--color-surface-muted); }
+  .corso__testo { min-width: 0; }
+  h3 { margin: 4px 0 8px; font-size: clamp(1.5rem, 2.6vw, 2rem); font-weight: var(--weight-medium); line-height: 1.15; overflow-wrap: anywhere; }
+  .corso__meta { color: var(--color-ink-muted); font-size: var(--text-sm); }
+  .corso__apri { display: inline-flex; align-items: center; min-height: var(--tap-min); color: var(--color-accent); font-size: var(--text-sm); text-decoration: underline; text-decoration-color: transparent; text-underline-offset: .25em; }
+  .corso:hover .corso__apri { text-decoration-color: currentColor; }
+  .corso--compatto { grid-template-columns: 118px minmax(0, 1fr); gap: var(--space-4); align-items: center; }
+  .corso--compatto .corso__foto { aspect-ratio: auto; height: 132px; }
+  .corso--compatto h3 { font-size: var(--text-xl); }
+  .preparazione { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); margin-top: 8px; font-size: var(--text-xs); color: var(--color-ink-muted); }
+  .barretta { display: flex; width: 76px; height: 5px; overflow: hidden; border-radius: var(--radius-pill); background: var(--color-raised); }
+  .barretta i { height: 100%; } .si { background: var(--voto-si); } .forse { background: var(--voto-forse); } .no { background: var(--voto-no); }
+  @media (hover: hover) { .corso:hover .corso__foto :global(img) { transform: scale(1.035); } }
+  @media (min-width: 800px) { .corso--compatto { grid-template-columns: 155px minmax(0, 1fr); gap: 22px; } .corso--compatto h3 { font-size: 1.6rem; } }
+  @media (max-width: 370px) { .corso--compatto { grid-template-columns: 96px minmax(0, 1fr); } }
+  .corso--senza-foto { grid-template-columns: minmax(0, 1fr); }
+</style>

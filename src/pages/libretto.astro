@@ -11,6 +11,8 @@ const voti = await getVoti();
 const r = riepilogo(materie, voti);
 const daRegistrare = materie.filter((m) => !voti.has(m.codice!));
 const oggi = new Date().toISOString().slice(0, 10);
+const ora = new Date();
+const annoCorrente = Math.min(3, Math.max(1, ora.getFullYear() - 2026 + (ora.getMonth() >= 8 ? 1 : 0)));
 const anni = [1, 2, 3].map((anno) => ({ anno, voci: materie.filter((m) => m.anno === anno) }));
 
 const MESSAGGI: Record<string, { testo: string; ok: boolean }> = {
@@ -32,10 +34,10 @@ const esito = MESSAGGI[Astro.url.searchParams.get('esito') ?? ''];
   {esito && <p class:list={['avviso', esito.ok ? 'avviso--ok' : 'avviso--errore']} role="status">{esito.testo}</p>}
 
   <section class="riepilogo" aria-label="Riepilogo">
-    <div class="cifre">
+    <div class:list={['cifre', { 'cifre--inizio': r.media === null }]}>
       <div><span class="valore cifra">{r.cfu}<small> / {CFU_TOTALI}</small></span><span class="etichetta">CFU</span></div>
-      <div><span class="valore cifra">{formatoMedia(r.media)}</span><span class="etichetta">Media ponderata</span></div>
-      <div><span class="valore cifra">{r.baseLaurea ?? '–'}{r.baseLaurea !== null && <small> / 110</small>}</span><span class="etichetta">Base di laurea</span></div>
+      {r.media !== null && <div><span class="valore cifra">{formatoMedia(r.media)}</span><span class="etichetta">Media ponderata</span></div>}
+      {r.baseLaurea !== null && <div><span class="valore cifra">{r.baseLaurea}<small> / 110</small></span><span class="etichetta">Base di laurea</span></div>}
       <div><span class="valore cifra">{r.superati}<small> / {materie.length}</small></span><span class="etichetta">Esami</span></div>
     </div>
     <div class="tacche" role="img" aria-label={`${r.cfu} CFU su ${CFU_TOTALI}: ${r.superati} esami superati su ${materie.length}`}>
@@ -47,7 +49,9 @@ const esito = MESSAGGI[Astro.url.searchParams.get('esito') ?? ''];
     <p class="tacche__legenda">Una tacca per esame, larga quanto i suoi CFU; piena quando è superato.</p>
   </section>
 
-  <details class="registra">
+  {r.superati === 0 && <p class="inizio">Il primo esame superato darà inizio al libretto. Registra il voto per vedere media e avanzamento.</p>}
+
+  {daRegistrare.length > 0 && <details class="registra" open={!!esito && !esito.ok}>
     <summary class="btn btn--primary">Registra un voto</summary>
     <form method="post" action="/api/voti" class="modulo pannello">
       <input type="hidden" name="azione" value="salva" />
@@ -79,11 +83,11 @@ const esito = MESSAGGI[Astro.url.searchParams.get('esito') ?? ''];
         <button class="btn btn--primary" type="submit">Salva voto</button>
       </div>
     </form>
-  </details>
+  </details>}
 
   {anni.map((a) => (
-    <section class="stack anno" aria-labelledby={`anno-${a.anno}`}>
-      <h2 id={`anno-${a.anno}`}>{a.anno}º anno</h2>
+    <details class="anno" open={a.anno === annoCorrente}>
+      <summary class="anno__testa"><h2>{a.anno}º anno</h2><span>{a.voci.filter((m) => voti.has(m.codice!)).length} di {a.voci.length} esami superati</span></summary>
       <ul class="righe esami">
         {a.voci.map((m) => {
           const v = voti.get(m.codice!);
@@ -117,14 +121,14 @@ const esito = MESSAGGI[Astro.url.searchParams.get('esito') ?? ''];
                     </form>
                   </>
                 ) : (
-                  <span class="muted" aria-label="Da sostenere">–</span>
+                  <span class="visually-hidden">Da sostenere</span>
                 )}
               </div>
             </li>
           );
         })}
       </ul>
-    </section>
+    </details>
   ))}
 
   <p class="nota">Medie stimate: la lode vale 30 (il Regolamento non lo specifica). Alla base di laurea si aggiungono fino a 5 punti per la tesi e 1 per un periodo all'estero.</p>
@@ -392,4 +396,19 @@ const esito = MESSAGGI[Astro.url.searchParams.get('esito') ?? ''];
     color: var(--color-ink-muted);
     font-size: var(--text-sm);
   }
+
+  .intro h1 { font-weight: var(--weight-medium); }
+  .cifre--inizio { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .inizio { color: var(--color-ink-muted); max-width: 60ch; }
+  .anno { border-top: var(--border); }
+  .anno__testa { display: flex; align-items: center; gap: 16px; min-height: 64px; cursor: pointer; list-style: none; }
+  .anno__testa::-webkit-details-marker { display: none; }
+  .anno__testa h2 { font-size: var(--text-xl); font-weight: var(--weight-medium); }
+  .anno__testa > span { margin-left: auto; color: var(--color-ink-muted); font-size: var(--text-sm); }
+  .anno__testa::after { content: '+'; font-size: 22px; font-weight: var(--weight-regular); }
+  .anno[open] > .anno__testa::after { content: '−'; }
+  .esami { border-top: 0; }
+  .esame { min-height: 70px; }
+  .esame__nome { font-size: var(--text-base); }
+  .link { min-height: var(--tap-min); }
 </style>
