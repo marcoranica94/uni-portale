@@ -126,6 +126,7 @@ const altre = inCorso
       </section>
     )}
 
+    <div class="lato">
     {adesso && (
       <section class="ordine" aria-labelledby="ordine-titolo">
         <p class="ordine__etichetta">Ordine del giorno</p>
@@ -227,6 +228,7 @@ const altre = inCorso
         <div><dt>Giorni di studio di fila</dt><dd><strong>{studio.diFila}</strong></dd></div>
       </dl>
     </section>
+    </div>
   </div>
 </Base>
 
@@ -294,18 +296,17 @@ const altre = inCorso
     70%, 100% { transform: scale(3); opacity: 0; }
   }
 
-  /* Tavolo: l'aula domina; su computer l'ordine del giorno e le altre materie stanno a destra */
-  .tavolo {
+  /* Tavolo: l'aula domina; su computer ordine del giorno, ripasso e altre materie stanno nella colonna a destra */
+  .tavolo,
+  .lato {
     display: grid;
     gap: var(--space-4);
+    align-content: start;
   }
   @media (min-width: 900px) {
     .tavolo {
       grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
       align-items: start;
-    }
-    .aula {
-      grid-row: span 2;
     }
   }
 
