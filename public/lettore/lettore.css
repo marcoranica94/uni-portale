@@ -250,3 +250,26 @@ html.lettore-continuo table {
 .page h1 {
   scroll-margin-top: 72px;
 }
+
+/* Link alla ricerca nella barra */
+.lettore-cerca {
+  color: inherit;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.lettore-cerca:hover {
+  text-decoration: underline;
+}
+/* Parole trovate dalla ricerca */
+mark.lettore-trovato {
+  background: #ffe58a;
+  color: inherit;
+  padding: 0 1px;
+  border-radius: 2px;
+}
+@media print {
+  mark.lettore-trovato {
+    background: none;
+  }
+}

@@ -14,6 +14,8 @@ const uscitaJson = path.join(progetto, 'src', 'data', 'appunti.generated.json');
 
 const ESTENSIONI = new Set(['.html', '.css', '.pdf', '.png', '.jpg', '.jpeg', '.svg', '.webp']);
 
+const attributo = (t) => String(t).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+
 const config = JSON.parse(await readFile(path.join(progetto, 'src', 'data', 'materie.json'), 'utf8'));
 
 await rm(destinazione, { recursive: true, force: true });
@@ -78,9 +80,15 @@ for (const [codice, materia] of Object.entries(config)) {
     const inserto =
       (/<meta[^>]+name=["']viewport/i.test(html) ? '' : '<meta name="viewport" content="width=device-width, initial-scale=1">\n') +
       '<link rel="stylesheet" href="/lettore/lettore.css">\n' +
+      // Ricerca (Pagefind): titolo del capitolo e materia come metadati e filtro dei risultati.
+      `<meta data-pagefind-meta="title[content]" content="${attributo(dati.titolo)}">\n` +
+      `<meta data-pagefind-filter="materia[content]" data-pagefind-meta="materia[content]" content="${attributo(nomeMateria)}">\n` +
       `<script>window.__LETTORE__=${JSON.stringify(dati).replace(/</g, '\\u003c')};</script>\n` +
       '<script src="/lettore/lettore.js"></script>\n';
-    const conLettore = /<\/head>/i.test(html) ? html.replace(/<\/head>/i, `${inserto}</head>`) : inserto + html;
+    // Ogni titolo di pagina (h1) riceve un id stabile: serve all'indice del lettore e ai risultati della ricerca per sezione.
+    let sezione = 0;
+    const conId = html.replace(/<h1\b(?![^>]*\bid=)/gi, () => `<h1 id="sezione-${++sezione}"`);
+    const conLettore = /<\/head>/i.test(conId) ? conId.replace(/<\/head>/i, `${inserto}</head>`) : inserto + conId;
     await writeFile(path.join(cartella, nome), conLettore);
   }
 

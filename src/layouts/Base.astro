@@ -42,6 +42,18 @@ const { title, description = 'Portale di studio personale - Scienze politiche e 
         <SceltaTema />
       </footer>
     </main>
+    <script>
+      // Scorciatoia globale: "/" apre la ricerca negli appunti (spenta mentre scrivi in un campo).
+      document.addEventListener('keydown', (e) => {
+        if (e.key !== '/' || e.metaKey || e.ctrlKey || e.altKey) return;
+        const t = e.target as HTMLElement | null;
+        if (t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))) return;
+        const campo = document.getElementById('q');
+        e.preventDefault();
+        if (campo) campo.focus();
+        else location.href = '/cerca';
+      });
+    </script>
   </body>
 </html>
 

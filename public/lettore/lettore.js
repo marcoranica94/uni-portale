@@ -50,6 +50,9 @@
     });
     barra.appendChild(vista);
 
+    // Ricerca in tutti gli appunti.
+    barra.insertBefore(crea('a', { class: 'lettore-cerca', href: '/cerca' }, 'Cerca'), vista);
+
     // Avanzamento della lettura: filo sottile sul bordo inferiore della barra.
     var avanzamento = crea('span', { class: 'lettore-avanzamento', 'aria-hidden': 'true' });
     barra.appendChild(avanzamento);
@@ -139,4 +142,17 @@
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', monta);
   else monta();
+
+  // Arrivo dalla ricerca (?evidenzia=parole): evidenzia le parole cercate e porta alla prima.
+  if (new URLSearchParams(location.search).has('evidenzia')) {
+    import('/pagefind/pagefind-highlight.js')
+      .then(function () {
+        new window.PagefindHighlight({ highlightParam: 'evidenzia', markOptions: { className: 'lettore-trovato' } });
+        setTimeout(function () {
+          var primo = document.querySelector('mark.lettore-trovato');
+          if (primo && !location.hash) primo.scrollIntoView({ block: 'center' });
+        }, 50);
+      })
+      .catch(function () {});
+  }
 })();

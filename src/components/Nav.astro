@@ -1,13 +1,14 @@
 ---
 /**
  * Navigazione principale: barra in basso su telefono e tablet, barra laterale da 1024 px.
- * Quattro voci fisse; la voce attiva è marcata con aria-current, colore, peso e fondo.
+ * Cinque voci fisse; la voce attiva è marcata con aria-current, colore, peso e fondo.
  */
 const voci = [
   { href: '/', label: 'Oggi', icon: 'oggi' },
   { href: '/percorso', label: 'Percorso', icon: 'percorso' },
   { href: '/materie', label: 'Materie', icon: 'materie' },
   { href: '/libretto', label: 'Libretto', icon: 'libretto' },
+  { href: '/cerca', label: 'Cerca', icon: 'cerca' },
 ] as const;
 
 const path = Astro.url.pathname.replace(/\/$/, '') || '/';
@@ -43,6 +44,12 @@ const isActive = (href: string) => (href === '/' ? path === '/' : path === href 
                 <path d="M13 4h5.5A1.5 1.5 0 0 1 20 5.5v13a1.5 1.5 0 0 1-1.5 1.5H13z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" />
               </>
             )}
+            {v.icon === 'cerca' && (
+              <>
+                <circle cx="10.5" cy="10.5" r="6" fill="none" stroke="currentColor" stroke-width="1.6" />
+                <path d="M15 15l5 5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
+              </>
+            )}
             {v.icon === 'libretto' && (
               <>
                 <rect x="5" y="3" width="14" height="18" rx="2" fill="none" stroke="currentColor" stroke-width="1.6" />
@@ -76,7 +83,7 @@ const isActive = (href: string) => (href === '/' ? path === '/' : path === href 
   }
   .nav__list {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(5, 1fr);
     margin: 0;
     padding: 0;
     list-style: none;

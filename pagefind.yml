@@ -1,0 +1,8 @@
+# Indice di ricerca degli appunti (pagina /cerca). Gira dopo astro build sui file statici.
+# Solo i capitoli degli appunti; intestazioni e piè di pagina A4 ("Pagina 3", firma) non si indicizzano.
+site: dist/client
+glob: "appunti/**/*.html"
+exclude_selectors:
+  - ".page-header"
+  - ".page-footer"
+force_language: it
