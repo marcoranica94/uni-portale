@@ -9,7 +9,7 @@
   "scripts": {
     "appunti": "node scripts/sync-appunti.mjs",
     "dev": "node scripts/sync-appunti.mjs && astro dev",
-    "build": "node scripts/sync-appunti.mjs && astro check && astro build && pagefind",
+    "build": "node scripts/sync-appunti.mjs && astro check && astro build && node scripts/indice-ricerca.mjs",
     "preview": "astro preview",
     "check": "astro check",
     "astro": "astro",
