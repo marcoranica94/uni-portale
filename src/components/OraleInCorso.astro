@@ -2,7 +2,8 @@
 /**
  * Simulazione orale in corso: una domanda per volta, lettura ad alta voce, registrazione con forma d'onda,
  * invio al Worker che trascrive (l'audio non viene salvato), coda sul telefono se manca la rete.
- * Dal vivo: dopo ogni risposta il docente (agente locale) può fare una domanda di approfondimento.
+ * Dal vivo: dopo ogni risposta il docente (agente locale) può fare una domanda di approfondimento
+ * e formula la domanda successiva partendo da ciò che hai detto (quella della banca resta di riserva).
  */
 import type { Risposta, Simulazione } from '../lib/simulazioni';
 import MetricheParlato from './MetricheParlato.astro';
@@ -24,6 +25,12 @@ const dalVivo = !!sim.dal_vivo;
   {risposte.map((r) => (
     <section class="domanda" data-ordine={r.ordine} data-fatta={r.risposta ? '1' : '0'} aria-label={`Domanda ${r.ordine}`}>
       <div class="blocco" data-parte="principale">
+        {dalVivo && (
+          <p class="pensa prepara" hidden>
+            <span class="pensa__punti" aria-hidden="true"><span></span><span></span><span></span></span>
+            <span class="pensa__testo">{r.ordine === 1 ? 'Il docente sta preparando la prima domanda…' : 'Il docente sta formulando la domanda a partire dalla tua risposta…'}</span>
+          </p>
+        )}
         <p class="domanda__testo testo-domanda">{r.domanda.testo}</p>
         <button type="button" class="btn ascolta"><svg class="ascolta__icona" viewBox="0 0 20 20" aria-hidden="true"><path d="M3 8v4h3l4 3.5v-11L6 8z" fill="currentColor" /><path class="ascolta__onda1" d="M13 7.5a3.5 3.5 0 0 1 0 5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" /><path class="ascolta__onda2" d="M15.5 5a7 7 0 0 1 0 10" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" /></svg><span class="ascolta__testo">Ascolta la domanda</span> <span class="tasto" aria-hidden="true">R</span></button>
         <div class="registratore">
@@ -221,6 +228,43 @@ const dalVivo = !!sim.dal_vivo;
       }
     };
 
+    // ---------- Domanda successiva formulata dal docente (dal vivo) ----------
+    const attesaProssima = new Set<number>();
+    const seguiProssima = async (ordine: number) => {
+      const s = sezione(ordine);
+      if (!dalVivo || !s || s.dataset.fatta === '1' || attesaProssima.has(ordine)) return;
+      attesaProssima.add(ordine);
+      const b = blocco(ordine, 'principale');
+      const prepara = b.querySelector<HTMLElement>('.prepara')!;
+      const testo = b.querySelector<HTMLElement>('.domanda__testo')!;
+      const attendi = (si: boolean) => {
+        b.classList.toggle('blocco--prepara', si);
+        prepara.hidden = !si;
+      };
+      const chiedi = async () => (await (await fetch(`/api/simulazioni/${id}/prossima?ordine=${ordine}`)).json()) as { stato: string; domanda?: string; messaggio?: string };
+      try {
+        let esito = await chiedi();
+        const inizio = Date.now();
+        while (esito.stato === 'in_attesa' && Date.now() - inizio < 90_000) {
+          attendi(true);
+          await new Promise((r) => setTimeout(r, 2000));
+          esito = await chiedi();
+        }
+        attendi(false);
+        if (esito.stato === 'pronta' && esito.domanda) {
+          const nuova = testo.textContent !== esito.domanda;
+          testo.textContent = esito.domanda;
+          if (nuova && Number(s.dataset.ordine) === Number(sezioni[attuale]?.dataset.ordine)) leggi(esito.domanda, b.querySelector<HTMLElement>('.ascolta') ?? undefined);
+        } else if (esito.stato !== 'riserva') {
+          stato(b, 'Il docente non ha risposto in tempo: questa è una domanda di riserva dalla banca.', 'stato--attesa');
+        }
+      } catch {
+        attendi(false);
+      } finally {
+        attesaProssima.delete(ordine);
+      }
+    };
+
     // ---------- Invio dell'audio ----------
     const invia = async (ordine: number, parte: Parte, blob: Blob): Promise<boolean> => {
       const b = blocco(ordine, parte);
@@ -390,6 +434,7 @@ const dalVivo = !!sim.dal_vivo;
       avanti.textContent = attuale === sezioni.length - 1 ? 'Termina' : 'Domanda successiva';
       progresso.textContent = fineEsame ? 'Consegna' : `Domanda ${attuale + 1} di ${sezioni.length}`;
       aggiornaRiepilogo();
+      if (!fineEsame && dalVivo) seguiProssima(Number(sezioni[attuale].dataset.ordine));
       window.scrollTo({ top: 0 });
     };
     indietro.addEventListener('click', () => mostra(attuale - 1));
@@ -452,6 +497,10 @@ const dalVivo = !!sim.dal_vivo;
     display: grid;
     gap: var(--space-4);
     justify-items: start;
+  }
+  /* Mentre il docente formula la domanda: si vede solo l'attesa */
+  .blocco--prepara > :not(.prepara) {
+    display: none;
   }
   .blocco--extra {
     padding: var(--space-4) 0 0 var(--space-4);

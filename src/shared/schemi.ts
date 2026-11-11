@@ -43,7 +43,7 @@ export type KitModello = z.infer<typeof KitModello>;
 
 // ---------- Coda dei lavori: API tra sito e agente ----------
 
-export const TipoLavoro = z.enum(['kit', 'domande', 'correzione', 'approfondimento']);
+export const TipoLavoro = z.enum(['kit', 'domande', 'correzione', 'approfondimento', 'prossima']);
 export type TipoLavoro = z.infer<typeof TipoLavoro>;
 
 export const NomeAgente = z.enum(['claude', 'codex', 'agy']);
@@ -220,3 +220,39 @@ export const ApprofondimentoModello = z
 
 export const RisultatoApprofondimento = ApprofondimentoModello.extend({ agente: z.string() });
 export type RisultatoApprofondimento = z.infer<typeof RisultatoApprofondimento>;
+
+// ---------- Orale dinamico: la domanda successiva la formula il docente (lavoro "prossima") ----------
+
+export const RichiestaProssima = z.object({
+  simulazione: z.string(),
+  /** Posizione della domanda da formulare (1 = apertura). */
+  ordine: z.number().int().min(1),
+  totale: z.number().int().min(1),
+  codice: z.string(),
+  istruzioni: z.string().default(''),
+  /** Domande già fatte con le risposte trascritte, in ordine. */
+  storia: z.array(
+    z.object({
+      domanda: z.string(),
+      nucleo: z.string(),
+      risposta: z.string(),
+      approfondimento: z.string(),
+      rispostaExtra: z.string(),
+    }),
+  ),
+});
+export type RichiestaProssima = z.infer<typeof RichiestaProssima>;
+
+export const ProssimaModello = z
+  .object({
+    domanda: z.string().describe("La domanda, come la direbbe il docente: una o due frasi, al massimo due richieste"),
+    nucleo: z.string().describe('Id del nucleo del kit su cui verte (es. "N37"), oppure "APERTURA" per la domanda a tema libero scelto dallo studente'),
+    puntiChiave: z.array(z.string()).describe('3-6 elementi verificabili presi dalla rubrica del nucleo, solo quelli che la domanda chiede'),
+    rispostaModello: z.string().describe('Risposta completa ma concisa (6-10 righe) basata sul nucleo; per APERTURA una traccia di valutazione'),
+    motivo: z.string().describe('Perché questa domanda adesso (collegamento con la risposta precedente o indicazioni dello studente); breve'),
+  })
+  .strict();
+export type ProssimaModello = z.infer<typeof ProssimaModello>;
+
+export const RisultatoProssima = ProssimaModello.extend({ agente: z.string() });
+export type RisultatoProssima = z.infer<typeof RisultatoProssima>;

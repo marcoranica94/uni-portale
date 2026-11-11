@@ -1,7 +1,7 @@
 import type { APIRoute } from 'astro';
-import { RichiestaCompleta, RisultatoKit, RisultatoDomande, RisultatoCorrezione, RichiestaCorrezione, RisultatoApprofondimento, RichiestaApprofondimento } from '../../../shared/schemi';
+import { RichiestaCompleta, RisultatoKit, RisultatoDomande, RisultatoCorrezione, RichiestaCorrezione, RisultatoApprofondimento, RichiestaApprofondimento, RisultatoProssima, RichiestaProssima } from '../../../shared/schemi';
 import { completa, getLavoro, registraBattito, salvaKit, salvaNuclei } from '../../../lib/coda';
-import { applicaCorrezione, domandaValida, salvaApprofondimento, salvaBanca } from '../../../lib/simulazioni';
+import { applicaCorrezione, domandaValida, salvaApprofondimento, salvaBanca, salvaProssima } from '../../../lib/simulazioni';
 import { env } from 'cloudflare:workers';
 import { avvisaCorrezione } from '../../../lib/notifiche';
 import { getMaterie } from '../../../lib/percorso';
@@ -63,6 +63,16 @@ export const POST: APIRoute = async (ctx) => {
     const richiesta = RichiestaApprofondimento.parse(JSON.parse(riga?.richiesta ?? '{}'));
     await salvaApprofondimento(richiesta.simulazione, richiesta.ordine, r.data.serve, r.data.domanda);
     await completa(lavoro.id, r.data);
+    return json({ ok: true });
+  }
+
+  if (lavoro.tipo === 'prossima') {
+    const r = RisultatoProssima.safeParse(dati.risultato);
+    if (!r.success || !r.data.domanda.trim()) return json({ errore: 'Domanda non valida.', dettagli: r.success ? [] : r.error.issues.slice(0, 5) }, 400);
+    const riga = await env.DB.prepare('SELECT richiesta FROM lavori WHERE id = ?').bind(lavoro.id).first<{ richiesta: string }>();
+    const richiesta = RichiestaProssima.parse(JSON.parse(riga?.richiesta ?? '{}'));
+    await salvaProssima(richiesta.simulazione, richiesta.ordine, r.data);
+    await completa(lavoro.id, { nucleo: r.data.nucleo, motivo: r.data.motivo });
     return json({ ok: true });
   }
 

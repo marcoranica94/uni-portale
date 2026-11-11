@@ -17,6 +17,7 @@ import { generaKit } from './kit.ts';
 import { generaDomande } from './domande.ts';
 import { correggi } from './correzione.ts';
 import { generaApprofondimento } from './approfondimento.ts';
+import { generaProssima } from './prossima.ts';
 
 const { values, positionals } = parseArgs({
   allowPositionals: true,
@@ -37,9 +38,9 @@ if (!sceltaAgente.success) {
 const agente = sceltaAgente.data;
 const intervallo = Math.max(3, Number(values.intervallo) || 5) * 1000;
 const push = !values['no-push'];
-const TIPI: TipoLavoro[] = ['approfondimento', 'correzione', 'kit', 'domande'];
-/** Per l'approfondimento conta la velocità: con Claude, se non indicato, si usa il modello veloce. */
-const modelloPer = (tipo: TipoLavoro) => values.modello ?? (tipo === 'approfondimento' && agente === 'claude' ? 'haiku' : undefined);
+const TIPI: TipoLavoro[] = ['prossima', 'approfondimento', 'correzione', 'kit', 'domande'];
+/** Nell'orale dal vivo conta la velocità: con Claude, se non indicato, si usa il modello veloce. */
+const modelloPer = (tipo: TipoLavoro) => values.modello ?? ((tipo === 'approfondimento' || tipo === 'prossima') && agente === 'claude' ? 'haiku' : undefined);
 
 const ora = () => new Date().toLocaleTimeString('it-IT');
 const log = (msg: string) => console.log(`[${ora()}] ${msg}`);
@@ -60,6 +61,8 @@ async function giro(): Promise<boolean> {
       risultato = await generaDomande(lavoro.codice, lavoro.richiesta, { agente, modello: values.modello, log });
     } else if (lavoro.tipo === 'approfondimento') {
       risultato = await generaApprofondimento(lavoro.richiesta, { agente, modello: modelloPer('approfondimento'), log });
+    } else if (lavoro.tipo === 'prossima') {
+      risultato = await generaProssima(lavoro.richiesta, { agente, modello: modelloPer('prossima'), log });
     } else if (lavoro.tipo === 'correzione') {
       risultato = await correggi(lavoro.richiesta, { agente, modello: values.modello, log });
     }

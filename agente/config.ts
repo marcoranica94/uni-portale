@@ -4,7 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-export const VERSIONE = '0.1.0';
+export const VERSIONE = '0.2.0';
 
 const qui = path.dirname(fileURLToPath(import.meta.url));
 /** Cartella piattaforma/ */

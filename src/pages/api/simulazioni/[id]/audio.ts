@@ -2,7 +2,7 @@ import type { APIRoute } from 'astro';
 import { env } from 'cloudflare:workers';
 import { controllaOrigine } from '../../../../lib/origine';
 import { metricheParlato, type Parola } from '../../../../lib/calcoli';
-import { salvaTrascrizione } from '../../../../lib/simulazioni';
+import { chiediProssima, salvaTrascrizione } from '../../../../lib/simulazioni';
 
 export const prerender = false;
 
@@ -68,5 +68,7 @@ export const POST: APIRoute = async ({ request, url, locals, params }) => {
 
   const salvata = await salvaTrascrizione(String(params.id), ordine, testo, metriche, parte);
   if (!salvata) return json({ errore: 'Simulazione non più modificabile.' }, 409);
+  // Orale dal vivo: con la risposta in mano il docente prepara la domanda successiva.
+  if (parte === 'principale') await chiediProssima(String(params.id), ordine + 1).catch(() => false);
   return json({ trascrizione: testo, metriche });
 };

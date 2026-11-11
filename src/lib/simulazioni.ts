@@ -1,6 +1,6 @@
 import { env } from 'cloudflare:workers';
 import type { D1PreparedStatement } from '@cloudflare/workers-types';
-import type { DomandaCompleta, RichiestaApprofondimento, RichiestaCorrezione, RichiestaDomande, RisultatoCorrezione } from '../shared/schemi';
+import type { DomandaCompleta, RichiestaApprofondimento, RichiestaCorrezione, RichiestaDomande, RichiestaProssima, RisultatoCorrezione, RisultatoProssima } from '../shared/schemi';
 import { accoda, getKit, ultimoLavoro } from './coda';
 import { votoDa, padronanzaCapitoli, padronanzaArgomenti, capitoliDi, leggiGiorniStudio, pianoARitroso, MAI_PROVATO, type Padronanza, type EsitoRisposta } from './calcoli';
 import { getMaterie } from './percorso';
@@ -322,6 +322,8 @@ export async function creaSimulazione(
     ...scelte.map((s, i) => env.DB.prepare('INSERT INTO risposte (simulazione, ordine, domanda, massimo) VALUES (?, ?, ?, ?)').bind(id, i + 1, s.id, PUNTI[s.tipo])),
     ...scelte.map((s) => env.DB.prepare('UPDATE domande SET usata = usata + 1 WHERE id = ?').bind(s.id)),
   ]);
+  // Orale dal vivo: la prima domanda la formula il docente dalle istruzioni; quella della banca resta di riserva.
+  if (modalita === 'orale' && dalVivo && !bersaglio) await chiediProssima(id, 1);
   if (bersaglio) await riforniscoBersaglioSeServe(codice, bersaglio, modalita);
   else await riforniscoSeServe(codice, modalita);
   return id;
@@ -792,4 +794,79 @@ export async function pianoMateria(
     .map((c) => ({ file: c.file, peso: perCapitolo.get(c.file)!.length, solido: padronanza.get(c.file)?.stato === 'solido' }));
   if (!capitoli.length) return null;
   return pianoARitroso(giornoRoma(new Date()), profilo.dataAppello, profilo.giorniStudio, capitoli);
+}
+
+// ---------- Orale dinamico: la domanda successiva la formula il docente ----------
+
+async function lavoroProssima(id: string, ordine: number) {
+  return env.DB.prepare(
+    `SELECT id, stato, errore FROM lavori WHERE tipo = 'prossima'
+       AND json_extract(richiesta, '$.simulazione') = ? AND json_extract(richiesta, '$.ordine') = ?
+     ORDER BY creato DESC LIMIT 1`,
+  )
+    .bind(id, ordine)
+    .first<{ id: string; stato: string; errore: string | null }>();
+}
+
+/**
+ * Chiede all'agente la domanda numero `ordine`, costruita su istruzioni e risposte date fin qui.
+ * Solo per l'orale dal vivo in corso e se quella domanda non ha ancora risposta; niente doppioni in coda.
+ */
+export async function chiediProssima(id: string, ordine: number): Promise<boolean> {
+  const dati = await getSimulazione(id);
+  if (!dati || dati.sim.stato !== 'in_corso' || dati.sim.modalita !== 'orale' || !dati.sim.dal_vivo || dati.sim.capitolo || dati.sim.argomento) return false;
+  const slot = dati.risposte.find((r) => r.ordine === ordine);
+  if (!slot || slot.risposta) return false;
+  const pendente = await lavoroProssima(id, ordine);
+  if (pendente && (pendente.stato === 'in_coda' || pendente.stato === 'in_corso')) return false;
+  const richiesta: RichiestaProssima = {
+    simulazione: id,
+    ordine,
+    totale: dati.risposte.length,
+    codice: dati.sim.codice,
+    istruzioni: (await getProfilo(dati.sim.codice)).istruzioni,
+    storia: dati.risposte
+      .filter((r) => r.ordine < ordine && r.risposta)
+      .map((r) => ({ domanda: r.domanda.testo, nucleo: r.domanda.nucleo, risposta: r.risposta ?? '', approfondimento: r.approfondimento ?? '', rispostaExtra: r.rispostaExtra ?? '' })),
+  };
+  await accoda('prossima', dati.sim.codice, richiesta);
+  return true;
+}
+
+/**
+ * Salva la domanda formulata dal docente e la mette al suo posto, se lo studente non ha già risposto.
+ * La domanda resta nello storico (archiviata: non entra nella banca) e conta per la padronanza del suo nucleo.
+ */
+export async function salvaProssima(id: string, ordine: number, p: RisultatoProssima) {
+  const dati = await getSimulazione(id);
+  const slot = dati?.risposte.find((r) => r.ordine === ordine);
+  if (!dati || !slot || slot.risposta || dati.sim.stato !== 'in_corso') return;
+  const nucleo = await env.DB.prepare('SELECT file FROM nuclei WHERE codice = ? AND id = ?').bind(dati.sim.codice, p.nucleo).first<{ file: string }>();
+  const nuova = crypto.randomUUID();
+  await env.DB.batch([
+    env.DB.prepare(
+      `INSERT INTO domande (id, codice, nucleo, tipo, testo, punti_chiave, risposta_modello, file, lotto, usata, archiviata)
+       VALUES (?, ?, ?, 'aperta', ?, ?, ?, ?, 'dal-vivo', 1, 1)`,
+    ).bind(nuova, dati.sim.codice, p.nucleo, p.domanda.trim().slice(0, 1000), JSON.stringify(p.puntiChiave.slice(0, 8)), p.rispostaModello.slice(0, 4000), nucleo?.file ?? ''),
+    // La domanda di riserva torna disponibile nella banca.
+    env.DB.prepare("UPDATE domande SET usata = MAX(usata - 1, 0) WHERE id = ? AND lotto != 'dal-vivo'").bind(slot.domanda.id),
+    env.DB.prepare('UPDATE risposte SET domanda = ? WHERE simulazione = ? AND ordine = ? AND risposta IS NULL').bind(nuova, id, ordine),
+  ]);
+}
+
+export type StatoProssima = { stato: 'pronta'; domanda: string } | { stato: 'in_attesa' } | { stato: 'errore'; messaggio: string } | { stato: 'riserva'; domanda: string };
+
+/** A che punto è la domanda `ordine`: formulata dal docente, in preparazione, o quella di riserva della banca. */
+export async function statoProssima(id: string, ordine: number): Promise<StatoProssima> {
+  const r = await env.DB.prepare(
+    'SELECT d.testo, d.lotto FROM risposte r JOIN domande d ON d.id = r.domanda WHERE r.simulazione = ? AND r.ordine = ?',
+  )
+    .bind(id, ordine)
+    .first<{ testo: string; lotto: string }>();
+  if (!r) return { stato: 'errore', messaggio: 'Domanda inesistente.' };
+  if (r.lotto === 'dal-vivo') return { stato: 'pronta', domanda: r.testo };
+  const l = await lavoroProssima(id, ordine);
+  if (l && (l.stato === 'in_coda' || l.stato === 'in_corso')) return { stato: 'in_attesa' };
+  if (l?.stato === 'errore') return { stato: 'errore', messaggio: l.errore ?? 'non riuscita' };
+  return { stato: 'riserva', domanda: r.testo };
 }
