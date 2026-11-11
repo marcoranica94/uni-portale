@@ -4,11 +4,11 @@ import { z } from 'astro/zod';
 import { parse } from 'yaml';
 
 /**
- * Piano di studi ufficiale (percorso/piano-di-studi.yaml, nella radice del repository).
+ * Piano di studi ufficiale (percorso/piano-di-studi.yaml).
  * Ogni insegnamento diventa una voce con id = codice UniBg (o uno slug se il codice manca).
  */
 const insegnamenti = defineCollection({
-  loader: file('../percorso/piano-di-studi.yaml', {
+  loader: file('./percorso/piano-di-studi.yaml', {
     parser: (testo) => {
       const piano = parse(testo) as { insegnamenti: Record<string, unknown>[] };
       return piano.insegnamenti.map((voce, indice) => ({

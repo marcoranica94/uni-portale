@@ -3,12 +3,9 @@
 // Gira prima di dev e build: le fonti protette (fonti/, lavorazione/) non vengono mai toccate.
 import { readFile, writeFile, mkdir, rm, readdir, copyFile, stat } from 'node:fs/promises';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { improntaAppunti } from './impronta-appunti.mjs';
+import { PROGETTO as progetto, REPO_APPUNTI as repo } from './cartella-appunti.mjs';
 
-const here = path.dirname(fileURLToPath(import.meta.url));
-const progetto = path.resolve(here, '..');
-const repo = path.resolve(progetto, '..');
 const destinazione = path.join(progetto, 'public', 'appunti');
 const uscitaJson = path.join(progetto, 'src', 'data', 'appunti.generated.json');
 

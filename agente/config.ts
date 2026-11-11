@@ -2,15 +2,12 @@
 import { readFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { PROGETTO, REPO_APPUNTI } from '../scripts/cartella-appunti.mjs';
 
 export const VERSIONE = '0.2.0';
 
-const qui = path.dirname(fileURLToPath(import.meta.url));
-/** Cartella piattaforma/ */
-export const PROGETTO = path.resolve(qui, '..');
-/** Radice del repository (appunti, percorso, ecc.) */
-export const REPO = path.resolve(PROGETTO, '..');
+/** PROGETTO: radice del portale. REPO_APPUNTI: radice del repository degli appunti (UNI_APPUNTI). */
+export { PROGETTO, REPO_APPUNTI };
 
 export const BASE_URL = process.env.UNI_BASE_URL ?? 'https://uni.marcoranica.com';
 export const HOST = os.hostname().split('.')[0];

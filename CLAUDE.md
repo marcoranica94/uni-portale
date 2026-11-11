@@ -1,6 +1,6 @@
 # Portale di studio — uni.marcoranica.com
 
-Istruzioni per chi lavora sul portale. Valgono insieme al `CLAUDE.md` nella radice del repository, che resta la regola per gli appunti.
+Istruzioni per chi lavora sul portale. Gli appunti stanno in un repository separato e privato, con un proprio `CLAUDE.md` che resta la regola per gli appunti.
 
 ## Obiettivo
 
@@ -37,8 +37,8 @@ Leggi il documento prima di modificarlo e passa sempre `if_version`.
 ## Decisioni prese
 
 - **Stack:** Astro monolitico (pagine + endpoint `src/pages/api/`) su Cloudflare Workers, database D1, Cloudflare Access per l'accesso. Tutto TypeScript, schemi Zod condivisi tra sito e agente. Costo zero.
-- **Codice:** in questa cartella `piattaforma/`, nello stesso repository degli appunti. Il deploy avviene da una GitHub Action con sparse checkout (la storia Git pesa circa 0,9 GB): solo `piattaforma/`, `percorso/` e le cartelle `appunti/`.
-- **Dati:** percorso, materie e kit d'esame stanno nel repository; tentativi, risposte, voti e correzioni stanno in D1, con backup notturno in un repository privato.
+- **Codice:** in questo repository (`uni-portale`), separato dal repository privato degli appunti (`unibg`). Il portale trova gli appunti in `UNI_APPUNTI`, di default `../unibg` accanto a questo repository (`scripts/cartella-appunti.mjs`). Il deploy avviene da una GitHub Action che scarica questo repository e, con una deploy key in sola lettura, solo le cartelle `appunti/` del repository degli appunti; un push di appunti fa ripartire il deploy con `repository_dispatch`.
+- **Dati:** percorso e materie stanno in questo repository, i kit d'esame in quello degli appunti; tentativi, risposte, voti e correzioni stanno in D1, con backup notturno nel repository privato degli appunti (ramo `backup-d1`).
 - **Audio:** non si salva mai. Transita solo per la trascrizione e viene cancellato subito; regola di scadenza a 7 giorni come rete di sicurezza. Si conservano solo informazioni dell'esame e risultati.
 - **Agente locale:** CLI `uni-agent` che preleva la coda via API (service token di Access) e usa `claude -p`, `codex exec` o `agy -p` con output JSON vincolato a schema. Nessun costo di API. Le regole di correzione vanno scritte nel prompt inviato all'agente, perché ogni strumento legge file di istruzioni diversi.
 - **Kit d'esame:** per ogni materia `<corso>/esame/kit-esame.md`, generato una volta dagli appunti (nuclei, definizioni, autori, rubrica, impronta degli appunti). Domande e correzioni partono dal kit, non da tutti gli appunti. Dalle fonti protette solo sintesi e numeri di pagina.
@@ -51,16 +51,16 @@ Leggi il documento prima di modificarlo e passa sempre `if_version`.
 
 | Percorso | Contenuto |
 | --- | --- |
-| `percorso/piano-di-studi.yaml` | Piano di studi ufficiale UniBg, curriculum Economico-giuridico, coorte 2026/27: materie, CFU, modalità d'esame, programmi, regole del voto di laurea |
-| `scienze-politiche/<materia>/appunti/` | Appunti HTML A4 e PDF completi, da pubblicare sul portale |
-| `<corso>/esame/kit-esame.md` | Kit d'esame per materia (da creare nello Sprint 2) |
-| `piattaforma/` | Codice del portale (da creare nello Sprint 0) |
+| `percorso/piano-di-studi.yaml` (qui) | Piano di studi ufficiale UniBg, curriculum Economico-giuridico, coorte 2026/27: materie, CFU, modalità d'esame, programmi, regole del voto di laurea |
+| `scienze-politiche/<materia>/appunti/` (repository degli appunti) | Appunti HTML A4 e PDF completi, da pubblicare sul portale |
+| `<corso>/esame/kit-esame.{json,md}` (repository degli appunti) | Kit d'esame per materia, scritti e committati da `uni-agent` |
+| `src/`, `agente/`, `migrations/`, `scripts/` | Codice del portale e dell'agente locale |
 
 Non pubblicare mai `fonti/` né `lavorazione/ocr/`: sono materiale protetto e restano solo in locale.
 
 ## Ambiente e comandi
 
-Progetto in `piattaforma/`: Astro 7, adapter `@astrojs/cloudflare` 14, Wrangler 4, TypeScript 6 (`astro check` non supporta ancora TypeScript 7), pnpm 12, Node 24 LTS.
+Progetto nella radice di questo repository: Astro 7, adapter `@astrojs/cloudflare` 14, Wrangler 4, TypeScript 6 (`astro check` non supporta ancora TypeScript 7), pnpm 12, Node 24 LTS.
 
 | Comando | A cosa serve | Dove funziona |
 | --- | --- | --- |
@@ -80,7 +80,6 @@ Progetto in `piattaforma/`: Astro 7, adapter `@astrojs/cloudflare` 14, Wrangler 
 Il telefono e il sito non parlano mai con il PC: il sito tiene una coda in D1 e `uni-agent`, sul PC, la svuota.
 
 ```
-cd piattaforma
 pnpm agente watch --agente claude     # oppure codex / agy; Ctrl+C per uscire
 pnpm agente once                      # un solo giro di coda
 pnpm agente kit sociologia            # kit senza passare dalla coda (il portale non lo registra)
@@ -89,7 +88,7 @@ pnpm agente verifica                  # credenziali e collegamento
 
 - Usa `claude -p`, `codex exec`, `agy -p` con output JSON vincolato agli schemi di `src/shared/schemi.ts` (formato rigido: campi tutti obbligatori, `nullable` al posto di `optional`).
 - Il kit d'esame va in `<corso>/esame/kit-esame.json` (fonte per domande e correzioni) e `.md` (lettura); l'agente committa e pusha solo quei file. L'impronta degli appunti (`scripts/impronta-appunti.mjs`) dice se il kit è aggiornato.
-- Requisiti su un altro PC: repository clonato, Node 24 + pnpm (`pnpm install`), almeno una CLI tra claude/codex/agy con login fatto, `~/.config/uni-agent/access.env`.
+- Requisiti su un altro PC: questo repository e quello degli appunti clonati affiancati (oppure `UNI_APPUNTI`), Node 24 + pnpm (`pnpm install`), almeno una CLI tra claude/codex/agy con login fatto, `~/.config/uni-agent/access.env`.
 - Kit: Sociologia 42 nuclei (~12 min), Diritto pubblico 71 nuclei (~8 min), con Claude (10/11/2026). Banca Sociologia: 126 domande (~12 min).
 
 ## Simulazioni d'esame
@@ -111,7 +110,7 @@ pnpm agente verifica                  # credenziali e collegamento
 Il sito è dietro Cloudflare Access. Per provarlo da qui si usa il service token `uni-agent` (policy "Agente locale", azione Service Auth):
 
 - credenziali in `~/.config/uni-agent/access.env` (`CF_ACCESS_CLIENT_ID`, `CF_ACCESS_CLIENT_SECRET`), file con permessi 600;
-- `piattaforma/scripts/uni-curl.sh /percorso [opzioni di curl]` chiama il sito con il token e risolve il nome con 1.1.1.1;
+- `scripts/uni-curl.sh /percorso [opzioni di curl]` chiama il sito con il token e risolve il nome con 1.1.1.1;
 - **mai stampare, copiare o committare il secret**; al massimo verificarne lunghezza e formato;
 - le scritture reali (voti) si fanno solo se l'utente lo chiede: i dati sono suoi.
 

@@ -30,3 +30,6 @@ pnpm-debug.log*
 # generati da scripts/sync-appunti.mjs
 public/appunti/
 src/data/appunti.generated.json
+
+# repository degli appunti scaricato dalla CI (UNI_APPUNTI)
+.appunti/

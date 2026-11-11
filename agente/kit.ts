@@ -12,7 +12,7 @@ import { parse } from 'yaml';
 import { KitModello, type NomeAgente, type RisultatoKit } from '../src/shared/schemi.ts';
 import { improntaAppunti } from '../scripts/impronta-appunti.mjs';
 import { genera } from './adattatori.ts';
-import { configMaterie, HOST, REPO } from './config.ts';
+import { configMaterie, HOST, PROGETTO, REPO_APPUNTI as REPO } from './config.ts';
 
 const exec = promisify(execFile);
 
@@ -43,7 +43,7 @@ interface InfoEsame {
 }
 
 async function infoDalPiano(codice: string): Promise<InfoEsame> {
-  const piano = parse(await readFile(path.join(REPO, 'percorso', 'piano-di-studi.yaml'), 'utf8')) as {
+  const piano = parse(await readFile(path.join(PROGETTO, 'percorso', 'piano-di-studi.yaml'), 'utf8')) as {
     insegnamenti: { codice: string | null; nome: string; esame?: { tipo?: string | null; dettagli?: string | null }; programma?: string[] | null }[];
   };
   const voce = piano.insegnamenti.find((i) => i.codice === codice);

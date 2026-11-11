@@ -1,16 +1,21 @@
 # Pubblica il portale uni.marcoranica.com su Cloudflare Workers.
-# Scarica solo ciò che serve (sparse checkout, nessuna storia): la storia completa del repository pesa ~0,9 GB.
-# Segreti richiesti nel repository GitHub: CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID.
+# Il codice sta in questo repository; gli appunti nel repository privato degli appunti,
+# di cui si scaricano solo le cartelle appunti/ (sparse checkout, nessuna storia).
+#
+# Segreti richiesti:
+#   CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID  deploy su Cloudflare
+#   APPUNTI_DEPLOY_KEY                           chiave SSH privata; la pubblica è una deploy key
+#                                                in sola lettura del repository degli appunti
+# Variabile (Settings → Variables): APPUNTI_REPO, es. "utente/unibg".
+#
+# Il repository degli appunti fa ripartire il deploy con un repository_dispatch di tipo "appunti".
 name: Deploy portale
 
 on:
   push:
     branches: [main]
-    paths:
-      - 'piattaforma/**'
-      - 'percorso/**'
-      - 'scienze-politiche/*/appunti/**'
-      - '.github/workflows/deploy-portale.yml'
+  repository_dispatch:
+    types: [appunti]
   workflow_dispatch:
 
 concurrency:
@@ -26,32 +31,39 @@ jobs:
     timeout-minutes: 15
     env:
       HA_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN != '' }}
-    defaults:
-      run:
-        working-directory: piattaforma
+      HA_APPUNTI: ${{ secrets.APPUNTI_DEPLOY_KEY != '' && vars.APPUNTI_REPO != '' }}
+      UNI_APPUNTI: ${{ github.workspace }}/.appunti
     steps:
-      - name: Checkout parziale
+      - name: Checkout del portale
         uses: actions/checkout@v7
         with:
+          fetch-depth: 1
+
+      - name: Checkout parziale degli appunti
+        if: env.HA_APPUNTI == 'true'
+        uses: actions/checkout@v7
+        with:
+          repository: ${{ vars.APPUNTI_REPO }}
+          ssh-key: ${{ secrets.APPUNTI_DEPLOY_KEY }}
+          path: .appunti
           fetch-depth: 1
           filter: blob:none
           sparse-checkout-cone-mode: false
           sparse-checkout: |
-            /piattaforma/
-            /percorso/
             /scienze-politiche/*/appunti/
+
+      - name: Appunti assenti
+        if: env.HA_APPUNTI != 'true'
+        run: echo "::notice::Repository degli appunti non configurato, build senza appunti."
 
       - name: pnpm
         uses: pnpm/action-setup@v6
-        with:
-          package_json_file: piattaforma/package.json
 
       - name: Node
         uses: actions/setup-node@v7
         with:
           node-version: 24
           cache: pnpm
-          cache-dependency-path: piattaforma/pnpm-lock.yaml
 
       - name: Dipendenze
         run: pnpm install --frozen-lockfile
@@ -70,13 +82,12 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
       - name: Deploy su Cloudflare
-        if: env.HA_TOKEN == 'true'
+        if: env.HA_TOKEN == 'true' && env.HA_APPUNTI == 'true'
         run: pnpm wrangler deploy
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
       - name: Deploy saltato
-        if: env.HA_TOKEN != 'true'
-        run: |
-          echo "::notice::Segreti Cloudflare non configurati, build verificata e deploy saltato."
+        if: env.HA_TOKEN != 'true' || env.HA_APPUNTI != 'true'
+        run: echo "::notice::Segreti Cloudflare o appunti non configurati, build verificata e deploy saltato."

@@ -1,4 +1,4 @@
-> Istruzioni del progetto: leggi prima `CLAUDE.md` in questa cartella e quello nella radice del repository.
+> Istruzioni del progetto: leggi prima `CLAUDE.md` in questa cartella.
 
 ## Development
 
