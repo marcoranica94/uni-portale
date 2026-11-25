@@ -4,14 +4,14 @@
     "slug": "diritto-pubblico",
     "breve": "Diritto pubblico",
     "colore": 1,
-    "appunti": "scienze-politiche/diritto pubblico/appunti",
+    "appunti": "diritto-pubblico/appunti",
     "pdf": "diritto-pubblico-appunti.pdf"
   },
   "SP-70011": {
     "slug": "sociologia",
     "breve": "Sociologia",
     "colore": 2,
-    "appunti": "scienze-politiche/sociologia/appunti",
+    "appunti": "sociologia/appunti",
     "pdf": "sociologia-appunti-completi.pdf"
   },
   "SP-70056": { "slug": "storia-dottrine", "breve": "Storia delle dottrine", "colore": 3 },

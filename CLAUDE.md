@@ -53,7 +53,7 @@ Leggi il documento prima di modificarlo e passa sempre `if_version`.
 | Percorso | Contenuto |
 | --- | --- |
 | `percorso/piano-di-studi.yaml` (qui) | Piano di studi ufficiale UniBg, curriculum Economico-giuridico, coorte 2026/27: materie, CFU, modalità d'esame, programmi, regole del voto di laurea |
-| `scienze-politiche/<materia>/appunti/` (repository degli appunti) | Appunti HTML A4 e PDF completi, da pubblicare sul portale |
+| `<corso>/appunti/` (repository degli appunti, una cartella per materia nella radice) | Appunti HTML A4 e PDF completi, da pubblicare sul portale |
 | `<corso>/esame/kit-esame.{json,md}` (repository degli appunti) | Kit d'esame per materia, scritti e committati da `uni-agent` |
 | `src/`, `agente/`, `migrations/`, `scripts/` | Codice del portale e dell'agente locale |
 
