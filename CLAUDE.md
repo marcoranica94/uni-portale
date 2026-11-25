@@ -41,7 +41,7 @@ Leggi il documento prima di modificarlo e passa sempre `if_version`.
 - **Dati:** percorso e materie stanno in questo repository, i kit d'esame in quello degli appunti; tentativi, risposte, voti e correzioni stanno in D1, con backup notturno nel repository privato degli appunti (ramo `backup-d1`).
 - **Audio:** non si salva mai. Transita solo per la trascrizione e viene cancellato subito; regola di scadenza a 7 giorni come rete di sicurezza. Si conservano solo informazioni dell'esame e risultati.
 - **Agente locale:** CLI `uni-agent` che preleva la coda via API (service token di Access) e usa `claude -p`, `codex exec` o `agy -p` con output JSON vincolato a schema. Nessun costo di API. Le regole di correzione vanno scritte nel prompt inviato all'agente, perché ogni strumento legge file di istruzioni diversi.
-- **Kit d'esame:** per ogni materia `<corso>/esame/kit-esame.md`, generato una volta dagli appunti (nuclei, definizioni, autori, rubrica, impronta degli appunti). Domande e correzioni partono dal kit, non da tutti gli appunti. Dalle fonti protette solo sintesi e numeri di pagina.
+- **Kit d'esame:** per ogni materia `<corso>/kit-esame/kit-esame.md`, generato una volta dagli appunti (nuclei, definizioni, autori, rubrica, impronta degli appunti). Domande e correzioni partono dal kit, non da tutti gli appunti. Dalle fonti protette solo sintesi e numeri di pagina.
 - **Simulazioni:** avvio con un tocco, già impostate come l'esame reale; nessun modulo lungo. Banca di domande pre-generata per poter iniziare anche a PC spento.
 - **Voce:** nello scritto si usa la dettatura del browser; nell'orale la trascrizione con tempi per parola serve a misurare pause, ritmo e intercalari.
 - **Versioni:** usa sempre l'ultima versione stabile di framework, librerie, CLI e runtime (niente beta, RC o canary), verificandola al momento.
@@ -53,11 +53,11 @@ Leggi il documento prima di modificarlo e passa sempre `if_version`.
 | Percorso | Contenuto |
 | --- | --- |
 | `percorso/piano-di-studi.yaml` (qui) | Piano di studi ufficiale UniBg, curriculum Economico-giuridico, coorte 2026/27: materie, CFU, modalità d'esame, programmi, regole del voto di laurea |
-| `<corso>/appunti/` (repository degli appunti, una cartella per materia nella radice) | Appunti HTML A4 e PDF completi, da pubblicare sul portale |
-| `<corso>/esame/kit-esame.{json,md}` (repository degli appunti) | Kit d'esame per materia, scritti e committati da `uni-agent` |
+| `<corso>/da-studiare/` (repository degli appunti, una cartella per materia nella radice) | Appunti finali: HTML A4 e PDF completi, da pubblicare sul portale |
+| `<corso>/kit-esame/kit-esame.{json,md}` (repository degli appunti) | Kit d'esame per materia, scritti e committati da `uni-agent` |
 | `src/`, `agente/`, `migrations/`, `scripts/` | Codice del portale e dell'agente locale |
 
-Non pubblicare mai `fonti/` né `lavorazione/ocr/`: sono materiale protetto e restano solo in locale.
+Non pubblicare mai `fonti/` né `lavoro-agenti/` (dove sta anche `ocr/`): sono materiale protetto e restano solo in locale.
 
 ## Ambiente e comandi
 
@@ -88,7 +88,7 @@ pnpm agente verifica                  # credenziali e collegamento
 ```
 
 - Usa `claude -p`, `codex exec`, `agy -p` con output JSON vincolato agli schemi di `src/shared/schemi.ts` (formato rigido: campi tutti obbligatori, `nullable` al posto di `optional`).
-- Il kit d'esame va in `<corso>/esame/kit-esame.json` (fonte per domande e correzioni) e `.md` (lettura); l'agente committa e pusha solo quei file. L'impronta degli appunti (`scripts/impronta-appunti.mjs`) dice se il kit è aggiornato.
+- Il kit d'esame va in `<corso>/kit-esame/kit-esame.json` (fonte per domande e correzioni) e `.md` (lettura); l'agente committa e pusha solo quei file. L'impronta degli appunti (`scripts/impronta-appunti.mjs`) dice se il kit è aggiornato.
 - Requisiti su un altro PC: questo repository e quello degli appunti clonati affiancati (oppure `UNI_APPUNTI`), Node 24 + pnpm (`pnpm install`), almeno una CLI tra claude/codex/agy con login fatto, `~/.config/uni-agent/access.env`.
 - Kit: Sociologia 42 nuclei (~12 min), Diritto pubblico 71 nuclei (~8 min), con Claude (10/11/2026). Banca Sociologia: 126 domande (~12 min).
 

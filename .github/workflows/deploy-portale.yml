@@ -50,7 +50,7 @@ jobs:
           filter: blob:none
           sparse-checkout-cone-mode: false
           sparse-checkout: |
-            /*/appunti/
+            /*/da-studiare/
 
       - name: Appunti assenti
         if: env.HA_APPUNTI != 'true'

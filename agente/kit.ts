@@ -2,7 +2,7 @@
 /**
  * Kit d'esame: legge una volta gli appunti di una materia e produce un file compatto
  * (nuclei, concetti, autori, nessi, rubrica, errori tipici, domande tipo) da cui
- * nasceranno domande e correzioni. Scrive <corso>/esame/kit-esame.json e .md e li committa.
+ * nasceranno domande e correzioni. Scrive <corso>/kit-esame/kit-esame.json e .md e li committa.
  */
 import { execFile } from 'node:child_process';
 import { mkdir, readdir, readFile, writeFile } from 'node:fs/promises';
@@ -102,7 +102,7 @@ export async function generaKit(codice: string, opz: OpzioniKit): Promise<Risult
   const agente = `${opz.agente}@${HOST}`;
   const meta = { codice, materia: materia.breve ?? materia.slug, impronta, generato, agente, appunti: materia.appunti };
 
-  const cartellaEsame = path.join(corso, 'esame');
+  const cartellaEsame = path.join(corso, 'kit-esame');
   await mkdir(cartellaEsame, { recursive: true });
   const fileJson = path.join(cartellaEsame, 'kit-esame.json');
   const fileMd = path.join(cartellaEsame, 'kit-esame.md');
@@ -164,7 +164,7 @@ export interface KitSalvato extends KitModello {
 export async function leggiKit(codice: string): Promise<KitSalvato> {
   const materia = configMaterie()[codice];
   if (!materia?.appunti) throw new Error(`Nessuna cartella di appunti configurata per ${codice}.`);
-  const file = path.join(path.dirname(path.join(REPO, materia.appunti)), 'esame', 'kit-esame.json');
+  const file = path.join(path.dirname(path.join(REPO, materia.appunti)), 'kit-esame', 'kit-esame.json');
   try {
     return JSON.parse(await readFile(file, 'utf8')) as KitSalvato;
   } catch {

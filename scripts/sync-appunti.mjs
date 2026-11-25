@@ -1,6 +1,6 @@
 // Copia gli appunti di ogni materia (HTML, CSS, PDF, immagini) in public/appunti/<slug>/
 // e scrive src/data/appunti.generated.json con l'elenco dei capitoli.
-// Gira prima di dev e build: le fonti protette (fonti/, lavorazione/) non vengono mai toccate.
+// Gira prima di dev e build: le fonti protette (fonti/, lavoro-agenti/) non vengono mai toccate.
 import { readFile, writeFile, mkdir, rm, readdir, copyFile, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { improntaAppunti } from './impronta-appunti.mjs';
@@ -24,7 +24,7 @@ for (const [codice, materia] of Object.entries(config)) {
   if (codice.startsWith('$') || !materia.appunti) continue;
   const origine = path.join(repo, materia.appunti);
   const relativa = path.relative(repo, origine);
-  if (relativa.startsWith('..') || /(^|\/)(fonti|lavorazione)(\/|$)/.test(relativa)) {
+  if (relativa.startsWith('..') || /(^|\/)(fonti|lavoro-agenti|lavorazione)(\/|$)/.test(relativa)) {
     throw new Error(`Percorso appunti non consentito per ${codice}: ${materia.appunti}`);
   }
 
